@@ -1,0 +1,4 @@
+nltk
+scikit-fuzzy
+scikit-learn
+numpy
