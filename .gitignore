@@ -1,0 +1,222 @@
+# ============================================================
+# SuaraLens - Root Git Ignore
+# ============================================================
+
+# ------------------------------------------------------------
+# Environment / Secrets
+# ------------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+*.local
+*.secret
+
+# ------------------------------------------------------------
+# OS / Editor
+# ------------------------------------------------------------
+.DS_Store
+Thumbs.db
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ------------------------------------------------------------
+# Logs
+# ------------------------------------------------------------
+*.log
+logs/
+*.pid
+
+# ============================================================
+# PHP / CodeIgniter
+# ============================================================
+
+# Composer
+backend/vendor/
+
+# CodeIgniter writable files
+backend/writable/cache/*
+backend/writable/debugbar/*
+backend/writable/logs/*
+backend/writable/session/*
+backend/writable/uploads/*
+backend/writable/heap/*
+backend/writable/queue/*
+
+# Keep directory structure
+!backend/writable/cache/.gitkeep
+!backend/writable/debugbar/.gitkeep
+!backend/writable/logs/.gitkeep
+!backend/writable/session/.gitkeep
+!backend/writable/uploads/.gitkeep
+!backend/writable/heap/.gitkeep
+!backend/writable/queue/.gitkeep
+
+# PHPUnit / coverage
+backend/coverage/
+
+# ============================================================
+# Python / ML
+# ============================================================
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python packaging
+*.egg
+*.egg-info/
+dist/
+build/
+pip-wheel-metadata/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ------------------------------------------------------------
+# SuaraLens ML data
+# ------------------------------------------------------------
+
+# Raw/private datasets
+ml/data/raw/*
+ml/data/interim/*
+ml/data/processed/*
+ml/data/external/*
+
+# Keep directory structure
+!ml/data/raw/.gitkeep
+!ml/data/interim/.gitkeep
+!ml/data/processed/.gitkeep
+!ml/data/external/.gitkeep
+
+# Trained models
+ml/models/*
+!ml/models/.gitkeep
+
+# ML experiments
+ml/experiments/*
+!ml/experiments/.gitkeep
+
+# ------------------------------------------------------------
+# MLflow
+# ------------------------------------------------------------
+mlflow/artifacts/*
+!mlflow/artifacts/.gitkeep
+
+mlruns/
+mlartifacts/
+
+# ------------------------------------------------------------
+# Python local configuration
+# ------------------------------------------------------------
+*.pickle
+*.pkl
+*.joblib
+*.onnx
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# ============================================================
+# Node / Vite / JavaScript
+# ============================================================
+
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# package manager caches
+.npm/
+.yarn/
+.pnpm-store/
+
+# ============================================================
+# Database
+# ============================================================
+
+# Local database dumps
+*.sql.gz
+*.dump
+*.bak
+
+# PostgreSQL local files
+postgres-data/
+pgdata/
+
+# SQLite development databases
+*.sqlite
+*.sqlite3
+*.db
+
+# ============================================================
+# Docker
+# ============================================================
+
+# Docker override files
+docker-compose.override.yml
+
+# Docker volumes
+.docker/
+
+# ============================================================
+# Temporary files
+# ============================================================
+
+tmp/
+temp/
+*.tmp
+*.temp
+
+# ============================================================
+# Generated reports / exports
+# ============================================================
+
+reports/generated/*
+exports/*
+*.csv
+*.xlsx
+*.parquet
+
+# Keep intentionally committed sample data
+!database/seed/*.csv
+!database/seed/*.xlsx
+
+# ============================================================
+# Security / credentials
+# ============================================================
+
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+credentials/
+secrets/
+private/

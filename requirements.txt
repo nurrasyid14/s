@@ -1,4 +1,29 @@
-nltk
-scikit-fuzzy
-scikit-learn
-numpy
+# Core data
+pandas>=2.2,<3.0
+numpy>=1.26,<3.0
+
+# NLP
+nltk>=3.9,<4.0
+spacy>=3.8,<4.0
+Sastrawi>=1.0,<2.0
+
+# Machine Learning
+scikit-learn>=1.5,<2.0
+
+# Embedding / Semantic Similarity
+sentence-transformers>=3.0,<6.0
+
+# Visualization
+matplotlib>=3.9,<4.0
+plotly>=5.24,<7.0
+
+# Experiment tracking
+mlflow>=2.17,<4.0
+
+# API / ML service
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30,<1.0
+
+# Serialization / configuration
+joblib>=1.4,<2.0
+python-dotenv>=1.0,<2.0

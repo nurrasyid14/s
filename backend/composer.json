@@ -1,0 +1,19 @@
+{
+    "name": "suaralens/backend",
+    "description": "SuaraLens - Analitik Masukan, Aduan, dan Aspirasi Stakeholder Berbasis NLP",
+    "type": "project",
+    "require": {
+        "php": "^8.2",
+        "codeigniter4/framework": "^4.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
