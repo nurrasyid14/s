@@ -33,8 +33,8 @@ def csv_to_jsonl(input_csv, output_jsonl):
 
 
 inputs = [
-    "data/input/suaralens_dummy_simulasi.csv",
-    "data/input/suaralens_dummy_uji.csv"
+    "data/suaralens_dummy_simulasi.csv",
+    "data/suaralens_dummy_uji.csv"
 ]
 
 outputs = [
