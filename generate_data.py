@@ -1,5 +1,5 @@
 """
-generate_suaralens_data.py
+generate_data.py
 ============================
 Generator dataset dummy untuk SuaraLens — Analitik Masukan, Aduan & Aspirasi
 Berbasis NLP (studi kasus: layanan kampus PENS).
