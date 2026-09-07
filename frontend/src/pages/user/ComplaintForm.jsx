@@ -251,23 +251,23 @@ export default function ComplaintForm() {
                 <p className="text-[var(--color-text)]">{form.description}</p>
               </div>
               {/* NLP Preview */}
-              <div className="p-4 rounded-xl border border-blue-500/30 bg-blue-500/5">
-                <div className="text-sm font-semibold text-blue-400 mb-2">🤖 {t('form.preview_title')}</div>
+              <div className="p-4 rounded-xl border border-blue-500/30 bg-blue-50 dark:bg-blue-500/5">
+                <div className="text-sm font-semibold text-blue-600 dark:text-blue-400 mb-3">🤖 {t('form.preview_title')}</div>
                 <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div className="p-2 rounded-lg bg-slate-800/40">
-                    <div className="text-slate-400">Kategori</div>
-                    <div className="font-semibold text-white capitalize mt-0.5">{form.category || '-'}</div>
+                  <div className="p-3 rounded-lg bg-white dark:bg-slate-800/60 border border-[var(--color-border)] shadow-sm">
+                    <div className="text-[var(--color-text-muted)] mb-1">Kategori</div>
+                    <div className="font-bold text-[var(--color-text)] capitalize">{form.category || '-'}</div>
                   </div>
-                  <div className="p-2 rounded-lg bg-slate-800/40">
-                    <div className="text-slate-400">Urgensi</div>
-                    <div className="font-semibold text-amber-400 mt-0.5">Sedang</div>
+                  <div className="p-3 rounded-lg bg-white dark:bg-slate-800/60 border border-[var(--color-border)] shadow-sm">
+                    <div className="text-[var(--color-text-muted)] mb-1">Urgensi</div>
+                    <div className="font-bold text-amber-600 dark:text-amber-400">Sedang</div>
                   </div>
-                  <div className="p-2 rounded-lg bg-slate-800/40">
-                    <div className="text-slate-400">Sentimen</div>
-                    <div className="font-semibold text-red-400 mt-0.5">Negatif</div>
+                  <div className="p-3 rounded-lg bg-white dark:bg-slate-800/60 border border-[var(--color-border)] shadow-sm">
+                    <div className="text-[var(--color-text-muted)] mb-1">Sentimen</div>
+                    <div className="font-bold text-red-600 dark:text-red-400">Negatif</div>
                   </div>
                 </div>
-                <p className="text-xs text-slate-500 mt-2">{t('form.preview_note')}</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-2">⚠️ {t('form.preview_note')}</p>
               </div>
             </div>
           )}

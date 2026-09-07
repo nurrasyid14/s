@@ -55,9 +55,9 @@ const MOCK_UNIT = [
 ]
 
 const MOCK_URGENT = [
-  { id: 1, ticket_id: 'ADS-2024-0021', description: 'AC Lab Komputer rusak sudah 2 minggu', urgency_score: 8.9 },
-  { id: 2, ticket_id: 'ADS-2024-0034', description: 'Nilai semester tidak muncul di sistem', urgency_score: 8.5 },
-  { id: 3, ticket_id: 'ADS-2024-0047', description: 'Beasiswa tidak cair padahal sudah memenuhi syarat', urgency_score: 9.1 },
+  { id: 1, ticket_id: 'ADS-2024-0021', description: 'AC Lab Komputer rusak sudah 2 minggu, perkuliahan terganggu', urgency_score: 8.9, sender_name: 'Budi Santoso', sender_role: 'Mahasiswa', is_anonymous: false, status: 'new' },
+  { id: 2, ticket_id: 'ADS-2024-0034', description: 'Nilai semester tidak muncul di sistem informasi akademik', urgency_score: 8.5, sender_name: null, sender_role: 'Mahasiswa', is_anonymous: true, status: 'process' },
+  { id: 3, ticket_id: 'ADS-2024-0047', description: 'Beasiswa tidak cair padahal sudah memenuhi semua persyaratan', urgency_score: 9.1, sender_name: 'Rizky Pratama', sender_role: 'Mahasiswa', is_anonymous: false, status: 'escalate' },
 ]
 
 // =============================================
