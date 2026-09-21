@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronUp, ChevronDown, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronUp, ChevronDown, Search, Filter, ChevronLeft, ChevronRight, Inbox } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 /**
@@ -30,8 +30,8 @@ export default function DataTable({
   emptyDesc,
 }) {
   const { t } = useTranslation()
-  const [sortKey,   setSortKey]   = useState(null)
-  const [sortDir,   setSortDir]   = useState('asc')
+  const [sortKey, setSortKey] = useState(null)
+  const [sortDir, setSortDir] = useState('asc')
 
   const totalPages = Math.ceil(total / limit)
 
@@ -46,12 +46,12 @@ export default function DataTable({
 
   const sorted = sortKey
     ? [...data].sort((a, b) => {
-        const va = a[sortKey], vb = b[sortKey]
-        if (va == null) return 1
-        if (vb == null) return -1
-        const cmp = va < vb ? -1 : va > vb ? 1 : 0
-        return sortDir === 'asc' ? cmp : -cmp
-      })
+      const va = a[sortKey], vb = b[sortKey]
+      if (va == null) return 1
+      if (vb == null) return -1
+      const cmp = va < vb ? -1 : va > vb ? 1 : 0
+      return sortDir === 'asc' ? cmp : -cmp
+    })
     : data
 
   return (
@@ -115,7 +115,7 @@ export default function DataTable({
               {!loading && sorted.length === 0 && (
                 <tr>
                   <td colSpan={columns.length} className="px-4 py-16 text-center">
-                    <div className="text-4xl mb-3">📭</div>
+                    <Inbox size={28} className="text-[var(--color-text-muted)] mx-auto mb-3" />
                     <div className="font-semibold text-[var(--color-text)]">{emptyTitle || t('common.empty_state')}</div>
                     <div className="text-sm text-[var(--color-text-muted)] mt-1">{emptyDesc || t('common.empty_desc')}</div>
                   </td>
@@ -155,7 +155,7 @@ export default function DataTable({
                   <button
                     key={p}
                     onClick={() => onPageChange?.(p)}
-                    className={`w-8 h-8 rounded text-xs font-medium transition-colors ${p === page ? 'bg-blue-600 text-white' : 'hover:bg-[var(--color-card-hover)] text-[var(--color-text-muted)]'}`}
+                    className={`w-8 h-8 rounded text-xs font-medium transition-colors ${p === page ? 'bg-[var(--color-primary)] text-white' : 'hover:bg-[var(--color-card-hover)] text-[var(--color-text-muted)]'}`}
                   >
                     {p}
                   </button>

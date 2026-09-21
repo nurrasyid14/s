@@ -6,20 +6,20 @@ import Navbar from '../../components/layout/Navbar.jsx'
 import { StatusBadge, UrgencyBadge } from '../../components/ui/StatusBadge.jsx'
 import { getComplaints } from '../../services/complaintApi.js'
 import { formatDate, getUrgencyLevel } from '../../utils/formatter.js'
-import { AlertTriangle, User } from 'lucide-react'
+import { AlertTriangle, User, CheckCircle2 } from 'lucide-react'
 
 const FOLLOWUP_STATUSES = [
-  { key: '',         label: 'Semua' },
-  { key: 'new',      label: 'Belum Ditinjau' },
-  { key: 'process',  label: 'Ditinjau' },
+  { key: '', label: 'Semua' },
+  { key: 'new', label: 'Belum Ditinjau' },
+  { key: 'process', label: 'Ditinjau' },
   { key: 'escalate', label: 'Dieskalasi' },
 ]
 
 export default function Followups() {
   const { t } = useTranslation()
-  const [data,   setData]   = useState([])
+  const [data, setData] = useState([])
   const [status, setStatus] = useState('')
-  const [loading,setLoading]= useState(true)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setLoading(true)
@@ -38,7 +38,7 @@ export default function Followups() {
           <div className="flex gap-2 mb-5">
             {FOLLOWUP_STATUSES.map(({ key, label }) => (
               <button key={key} onClick={() => setStatus(key)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-smooth ${status === key ? 'bg-blue-600 text-white' : 'border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}>
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-smooth ${status === key ? 'bg-[var(--color-primary)] text-white' : 'border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}>
                 {label}
               </button>
             ))}
@@ -53,11 +53,11 @@ export default function Followups() {
           {/* Cards */}
           {loading ? (
             <div className="space-y-3">
-              {[1,2,3].map(i => <div key={i} className="skeleton h-24 rounded-xl" />)}
+              {[1, 2, 3].map(i => <div key={i} className="skeleton h-24 rounded-xl" />)}
             </div>
           ) : data.length === 0 ? (
             <div className="text-center py-20">
-              <div className="text-5xl mb-3">✅</div>
+              <CheckCircle2 size={32} className="text-[var(--color-status-success)] mx-auto mb-3" />
               <div className="font-semibold text-[var(--color-text)]">Tidak ada antrian tindak lanjut</div>
               <div className="text-sm text-[var(--color-text-muted)] mt-1">Semua aduan urgency tinggi sudah ditangani.</div>
             </div>
@@ -75,7 +75,7 @@ export default function Followups() {
                       </div>
                       <p className="text-sm text-[var(--color-text)] truncate">{c.description}</p>
                       <div className="flex items-center gap-3 mt-2 text-xs text-[var(--color-text-muted)]">
-                        <span className="flex items-center gap-1"><User size={11}/> {c.is_anonymous ? 'Anonim' : c.sender_name} ({c.sender_role})</span>
+                        <span className="flex items-center gap-1"><User size={11} /> {c.is_anonymous ? 'Anonim' : c.sender_name} ({c.sender_role})</span>
                         <span>{formatDate(c.created_at)}</span>
                       </div>
                     </div>

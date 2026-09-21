@@ -9,14 +9,14 @@ import { formatDateTime, getUrgencyLevel } from '../../utils/formatter.js'
 import { ArrowLeft, Send, AlertTriangle } from 'lucide-react'
 
 const TYPE_MAP = { complaint: 'Aduan', feedback: 'Masukan', suggestion: 'Saran' }
-const CAT_MAP  = { facility: 'Fasilitas', academic: 'Akademik', admin: 'Administrasi', finance: 'Keuangan', other: 'Lainnya' }
+const CAT_MAP = { facility: 'Fasilitas', academic: 'Akademik', admin: 'Administrasi', finance: 'Keuangan', other: 'Lainnya' }
 
 export default function ComplaintDetail() {
   const { id } = useParams()
   const { t, i18n } = useTranslation()
-  const [data,    setData]    = useState(null)
+  const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [reply,   setReply]   = useState('')
+  const [reply, setReply] = useState('')
   const [sending, setSending] = useState(false)
   const [newStatus, setNewStatus] = useState('')
 
@@ -44,7 +44,7 @@ export default function ComplaintDetail() {
     <div className="flex h-screen bg-[var(--color-bg)]">
       <Sidebar />
       <div className="flex-1 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-[var(--color-primary)]/30 border-t-[var(--color-primary)] rounded-full animate-spin" />
       </div>
     </div>
   )
@@ -82,7 +82,7 @@ export default function ComplaintDetail() {
                 <h3 className="font-semibold text-[var(--color-text)] mb-4">{t('detail.info_title')}</h3>
                 <div className="grid grid-cols-3 gap-3 text-sm mb-4">
                   {[
-                    { label: 'Jenis',    value: TYPE_MAP[data.type] || data.type },
+                    { label: 'Jenis', value: TYPE_MAP[data.type] || data.type },
                     { label: 'Kategori', value: CAT_MAP[data.category] || data.category },
                     { label: 'Pengirim', value: data.is_anonymous ? `${t('complaints.anonymous')} (${data.sender_role})` : data.sender_name },
                   ].map(({ label, value }) => (
@@ -105,7 +105,7 @@ export default function ComplaintDetail() {
               </div>
 
               {/* NLP Analysis */}
-              <div className="card-elevated p-5 border-l-4 border-blue-500">
+              <div className="card-elevated rounded-xl p-5 border-l-4 border-l-[var(--color-primary)]">
                 <h3 className="font-semibold text-[var(--color-text)] mb-4">{t('detail.nlp_title')}</h3>
                 <div className="grid grid-cols-3 gap-3 text-sm">
                   <div className="p-3 rounded-xl bg-[var(--color-bg-secondary)]">
@@ -115,19 +115,19 @@ export default function ComplaintDetail() {
                   </div>
                   <div className="p-3 rounded-xl bg-[var(--color-bg-secondary)]">
                     <div className="text-xs text-[var(--color-text-muted)] mb-1">{t('detail.urgency_score')}</div>
-                    <div className={`font-bold text-lg ${urgency.color === 'red' ? 'text-red-400' : urgency.color === 'amber' ? 'text-amber-400' : 'text-emerald-400'}`}>
+                    <div className={`font-bold text-lg ${urgency.color === 'red' ? 'text-[var(--color-status-danger)]' : urgency.color === 'amber' ? 'text-[var(--color-status-warning)]' : 'text-[var(--color-status-success)]'}`}>
                       {data.urgency_score}/10
                     </div>
                     <UrgencyBadge score={data.urgency_score} />
                   </div>
                   <div className="p-3 rounded-xl bg-[var(--color-bg-secondary)]">
                     <div className="text-xs text-[var(--color-text-muted)] mb-1">{t('detail.sentiment')}</div>
-                    <div className={`font-bold capitalize ${data.sentiment === 'negative' ? 'text-red-400' : data.sentiment === 'positive' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    <div className={`font-bold capitalize ${data.sentiment === 'negative' ? 'text-[var(--color-status-danger)]' : data.sentiment === 'positive' ? 'text-[var(--color-status-success)]' : 'text-[var(--color-status-warning)]'}`}>
                       {data.sentiment === 'negative' ? 'Negatif' : data.sentiment === 'positive' ? 'Positif' : 'Netral'}
                     </div>
                   </div>
                 </div>
-                <div className="mt-3 flex items-start gap-1.5 text-xs text-amber-500/80">
+                <div className="mt-3 flex items-start gap-1.5 text-xs text-[var(--color-status-warning)]">
                   <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
                   {t('detail.nlp_disclaimer')}
                 </div>
@@ -197,7 +197,7 @@ export default function ComplaintDetail() {
                     className="w-full px-3 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
                   />
                   <button type="submit" disabled={sending || !reply.trim()}
-                    className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition-smooth">
+                    className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-smooth">
                     {sending ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Send size={14} /> {t('detail.send')}</>}
                   </button>
                 </form>
