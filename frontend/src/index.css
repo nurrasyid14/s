@@ -1,0 +1,199 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&display=swap');
+
+/* ============================================================
+   SuaraLens — Design Tokens
+   Nuansa: institusional & tegas. Palet: putih / biru / kuning.
+   Tipografi: Public Sans (dipakai oleh banyak digital service
+   pemerintahan — cocok tematik untuk layanan publik kampus).
+   ============================================================ */
+
+:root {
+  /* --- Brand --- */
+  --color-primary: #1D4E89;
+  /* biru institusional — aksi utama, link, state aktif */
+  --color-primary-dark: #163B68;
+  /* hover/pressed */
+  --color-primary-soft: #E7EEF6;
+  /* tint biru untuk background terpilih/hover halus */
+  --color-accent: #F2B705;
+  /* kuning — aksen terbatas: highlight, badge penting, fokus sekunder */
+  --color-accent-dark: #C9970A;
+
+  /* --- Surface & text --- */
+  --color-bg: #F5F6F4;
+  /* off-white hangat, bukan putih steril */
+  --color-bg-secondary: #EEF0EC;
+  --color-surface: #FFFFFF;
+  --color-card-hover: #F1F3EF;
+  --color-border: #DBDFD9;
+  --color-text: #16223A;
+  /* navy-ink, bukan hitam pekat */
+  --color-text-muted: #5B6472;
+
+  /* --- Status (dipakai StatusBadge / StatCard / chart) --- */
+  --color-status-info: var(--color-primary);
+  --color-status-success: #1E7145;
+  --color-status-warning: #B8860B;
+  --color-status-danger: #B3261E;
+  --color-status-neutral: #6B7280;
+
+  --radius: 10px;
+  --font-sans: 'Public Sans', system-ui, -apple-system, sans-serif;
+}
+
+.dark {
+  --color-primary: #4C82C4;
+  --color-primary-dark: #3A6BA8;
+  --color-primary-soft: #1B2A40;
+  --color-accent: #F2B705;
+  --color-accent-dark: #D9A400;
+
+  --color-bg: #0F1B2D;
+  --color-bg-secondary: #16243A;
+  --color-surface: #16243A;
+  --color-card-hover: #1C2E48;
+  --color-border: #2A3B54;
+  --color-text: #EEF1F5;
+  --color-text-muted: #9AA7B8;
+
+  --color-status-info: #4C82C4;
+  --color-status-success: #3FA56B;
+  --color-status-warning: #E0B33B;
+  --color-status-danger: #E1564C;
+  --color-status-neutral: #8A93A0;
+}
+
+* {
+  font-family: var(--font-sans);
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* ---- Structural card: border-led hierarchy, not shadow-led ----
+   Menghindari "SaaS-card kit" generik (rounded seragam + soft shadow
+   di mana-mana). Border tipis + radius kecil, shadow nyaris tak ada. */
+.card-elevated {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 2px rgba(22, 34, 58, 0.04);
+}
+
+/* ---- Solid institutional panel (dulu: glassmorphism blur) ---- */
+.glass {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  backdrop-filter: none;
+}
+
+/* ---- Judul aksen: solid, bukan gradient dekoratif ---- */
+.gradient-text {
+  color: var(--color-primary);
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+}
+
+.transition-smooth {
+  transition: all 160ms ease;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--color-bg-secondary) 25%, var(--color-border) 50%, var(--color-bg-secondary) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Motion dipangkas jadi satu reveal singkat, bukan efek bertumpuk
+   di tiap card — dipertahankan agar file lama tidak patah, tapi
+   durasinya pendek & tidak dipakai berulang di list panjang. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 220ms ease both;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 220ms ease both;
+}
+
+.delay-100 {
+  animation-delay: 60ms;
+}
+
+.delay-200 {
+  animation-delay: 120ms;
+}
+
+.delay-300 {
+  animation-delay: 180ms;
+}
+
+.delay-400 {
+  animation-delay: 240ms;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2.2s ease-in-out infinite;
+}
+
+@keyframes pulse-soft {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Glow dekoratif dihapus — CTA cukup mengandalkan kontras warna. */
+.glow-primary {
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .animate-fade-in,
+  .animate-fade-in-up,
+  .animate-pulse-soft,
+  .skeleton {
+    animation: none;
+  }
+}
