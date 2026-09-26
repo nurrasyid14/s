@@ -75,7 +75,7 @@ export default function Followups() {
                       </div>
                       <p className="text-sm text-[var(--color-text)] truncate">{c.description}</p>
                       <div className="flex items-center gap-3 mt-2 text-xs text-[var(--color-text-muted)]">
-                        <span className="flex items-center gap-1"><User size={11} /> {c.is_anonymous ? 'Anonim' : c.sender_name} ({c.sender_role})</span>
+                        <span className="flex items-center gap-1"><User size={11} /> {t('complaints.anonymous')} ({c.sender_role})</span>
                         <span>{formatDate(c.created_at)}</span>
                       </div>
                     </div>

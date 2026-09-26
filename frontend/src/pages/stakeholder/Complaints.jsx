@@ -39,7 +39,7 @@ export default function ComplaintsPage() {
     { key: 'created_at', label: t('complaints.date'), sortable: true, render: v => formatDate(v) },
     { key: 'type', label: t('complaints.type'), render: v => TYPE_MAP[v] || v },
     { key: 'category', label: t('complaints.category'), render: v => CAT_MAP[v] || v },
-    { key: 'sender_name', label: t('complaints.sender'), render: (v, row) => row.is_anonymous ? <span className="text-[var(--color-text-muted)] text-xs italic">{t('complaints.anonymous')}</span> : v },
+    { key: 'sender_name', label: t('complaints.sender'), render: (v, row) => <span className="text-[var(--color-text-muted)] text-xs italic">{t('complaints.anonymous')} · {row.sender_role}</span> },
     { key: 'urgency_score', label: t('complaints.urgency'), sortable: true, render: v => <UrgencyBadge score={v} /> },
     { key: 'status', label: t('complaints.status'), sortable: true, render: v => <StatusBadge status={v} /> },
     {

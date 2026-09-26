@@ -84,7 +84,7 @@ export default function ComplaintDetail() {
                   {[
                     { label: 'Jenis', value: TYPE_MAP[data.type] || data.type },
                     { label: 'Kategori', value: CAT_MAP[data.category] || data.category },
-                    { label: 'Pengirim', value: data.is_anonymous ? `${t('complaints.anonymous')} (${data.sender_role})` : data.sender_name },
+                    { label: 'Pengirim', value: `${t('complaints.anonymous')} (${data.sender_role})` },
                   ].map(({ label, value }) => (
                     <div key={label}>
                       <div className="text-xs text-[var(--color-text-muted)]">{label}</div>

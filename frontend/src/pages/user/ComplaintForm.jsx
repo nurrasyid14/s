@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
-import { CheckCircle, AlertCircle, AlertTriangle, MessageCircle, Lightbulb, Check, Paperclip, Bot } from 'lucide-react'
+import { CheckCircle, AlertCircle, AlertTriangle, MessageCircle, Lightbulb, Check, Paperclip, Bot, ShieldCheck } from 'lucide-react'
 import { submitComplaint } from '../../services/complaintApi.js'
 import Navbar from '../../components/layout/Navbar.jsx'
 
@@ -36,7 +36,7 @@ export default function ComplaintForm() {
   const [error, setError] = useState('')
   const [form, setForm] = useState({
     type: '', category: '', description: '', unit: '',
-    attachments: [], is_anonymous: false,
+    attachments: [],
   })
 
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); setError('') }
@@ -83,7 +83,7 @@ export default function ComplaintForm() {
             <button onClick={() => navigate('/user/complaints')} className="px-6 py-2.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white rounded-lg font-semibold text-sm transition-smooth">
               {t('form.track_status')}
             </button>
-            <button onClick={() => { setSubmitted(null); setStep(1); setForm({ type: '', category: '', description: '', unit: '', attachments: [], is_anonymous: false }) }}
+            <button onClick={() => { setSubmitted(null); setStep(1); setForm({ type: '', category: '', description: '', unit: '', attachments: [] }) }}
               className="px-6 py-2.5 border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-lg font-semibold text-sm transition-smooth"
             >
               Ajukan Lagi
@@ -209,17 +209,9 @@ export default function ComplaintForm() {
                 <p className="text-sm text-[var(--color-text-muted)]">Klik atau drag & drop file di sini</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">JPG, PNG, PDF — max 5MB</p>
               </div>
-              {/* Anon toggle */}
-              <div className="mt-5 flex items-start gap-3 p-4 rounded-lg bg-[var(--color-bg-secondary)] border border-[var(--color-border)]">
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={form.is_anonymous}
-                  onClick={() => setField('is_anonymous', !form.is_anonymous)}
-                  className={`mt-0.5 flex-shrink-0 w-11 h-6 rounded-full transition-smooth ${form.is_anonymous ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-border)]'}`}
-                >
-                  <span className={`block w-4 h-4 bg-white rounded-full shadow transition-smooth mt-1 ${form.is_anonymous ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
+              {/* Automatic anonymization guarantee — no toggle, applies to every submission */}
+              <div className="mt-5 flex items-start gap-3 p-4 rounded-lg border" style={{ borderColor: 'color-mix(in srgb, var(--color-status-success) 40%, transparent)', background: 'color-mix(in srgb, var(--color-status-success) 8%, transparent)' }}>
+                <ShieldCheck size={18} className="text-[var(--color-status-success)] flex-shrink-0 mt-0.5" />
                 <div>
                   <div className="text-sm font-semibold text-[var(--color-text)]">{t('form.anon_toggle')}</div>
                   <div className="text-xs text-[var(--color-text-muted)] mt-0.5">{t('form.anon_desc')}</div>
@@ -233,18 +225,20 @@ export default function ComplaintForm() {
             <div className="space-y-4">
               <h3 className="font-semibold text-[var(--color-text)] mb-4">{t('form.step5_title')}</h3>
               {/* Summary */}
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-3 gap-3 text-sm">
                 {[
                   { label: 'Jenis', value: form.type },
                   { label: 'Kategori', value: form.category },
                   { label: 'Unit', value: form.unit || '-' },
-                  { label: 'Anonim', value: form.is_anonymous ? 'Ya' : 'Tidak' },
                 ].map(({ label, value }) => (
                   <div key={label} className="p-3 rounded-lg bg-[var(--color-bg-secondary)] border border-[var(--color-border)]">
                     <div className="text-xs text-[var(--color-text-muted)]">{label}</div>
                     <div className="font-semibold text-[var(--color-text)] capitalize mt-0.5">{value}</div>
                   </div>
                 ))}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-[var(--color-status-success)]">
+                <ShieldCheck size={13} /> {t('form.anon_toggle')}
               </div>
               <div className="p-3 rounded-lg bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-sm">
                 <div className="text-xs text-[var(--color-text-muted)] mb-1">Deskripsi</div>
