@@ -2,20 +2,22 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext.jsx'
 
 // Public
-import LandingPage           from './pages/public/LandingPage.jsx'
+import LandingPage from './pages/public/LandingPage.jsx'
 // Auth
-import SignInPage            from './pages/auth/SignInPage.jsx'
-import SignUpUserPage        from './pages/auth/SignUpUserPage.jsx'
+import SignInPage from './pages/auth/SignInPage.jsx'
+import SignUpUserPage from './pages/auth/SignUpUserPage.jsx'
 import SignUpStakeholderPage from './pages/auth/SignUpStakeholderPage.jsx'
 // User
-import ComplaintForm  from './pages/user/ComplaintForm.jsx'
-import MyComplaints   from './pages/user/MyComplaints.jsx'
+import ComplaintForm from './pages/user/ComplaintForm.jsx'
+import MyComplaints from './pages/user/MyComplaints.jsx'
 // Stakeholder
 import StakeholderDashboard from './pages/stakeholder/Dashboard.jsx'
-import Complaints           from './pages/stakeholder/Complaints.jsx'
-import ComplaintDetail      from './pages/stakeholder/ComplaintDetail.jsx'
-import Analytics            from './pages/stakeholder/Analytics.jsx'
-import Followups            from './pages/stakeholder/Followups.jsx'
+import Complaints from './pages/stakeholder/Complaints.jsx'
+import ComplaintDetail from './pages/stakeholder/ComplaintDetail.jsx'
+import Analytics from './pages/stakeholder/Analytics.jsx'
+import Followups from './pages/stakeholder/Followups.jsx'
+import Evidence from './pages/stakeholder/Evidence.jsx'
+import Settings from './pages/stakeholder/Settings.jsx'
 
 /** Route guard — redirect unauthenticated users */
 function ProtectedRoute({ children, role }) {
@@ -33,24 +35,26 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         {/* Public */}
-        <Route path="/"                  element={<LandingPage />} />
+        <Route path="/" element={<LandingPage />} />
 
         {/* Auth */}
-        <Route path="/signin"            element={<SignInPage />} />
-        <Route path="/signup-user"       element={<SignUpUserPage />} />
-        <Route path="/signup-stakeholder"element={<SignUpStakeholderPage />} />
+        <Route path="/signin" element={<SignInPage />} />
+        <Route path="/signup-user" element={<SignUpUserPage />} />
+        <Route path="/signup-stakeholder" element={<SignUpStakeholderPage />} />
 
         {/* User Area */}
-        <Route path="/user/submit"       element={<ProtectedRoute role="user"><ComplaintForm /></ProtectedRoute>} />
-        <Route path="/user/complaints"   element={<ProtectedRoute role="user"><MyComplaints /></ProtectedRoute>} />
-        <Route path="/user/dashboard"    element={<ProtectedRoute role="user"><MyComplaints /></ProtectedRoute>} />
+        <Route path="/user/submit" element={<ProtectedRoute role="user"><ComplaintForm /></ProtectedRoute>} />
+        <Route path="/user/complaints" element={<ProtectedRoute role="user"><MyComplaints /></ProtectedRoute>} />
+        <Route path="/user/dashboard" element={<ProtectedRoute role="user"><MyComplaints /></ProtectedRoute>} />
 
         {/* Stakeholder Area */}
-        <Route path="/stakeholder"                     element={<ProtectedRoute role="stakeholder"><StakeholderDashboard /></ProtectedRoute>} />
-        <Route path="/stakeholder/complaints"          element={<ProtectedRoute role="stakeholder"><Complaints /></ProtectedRoute>} />
-        <Route path="/stakeholder/complaints/:id"      element={<ProtectedRoute role="stakeholder"><ComplaintDetail /></ProtectedRoute>} />
-        <Route path="/stakeholder/analytics"           element={<ProtectedRoute role="stakeholder"><Analytics /></ProtectedRoute>} />
-        <Route path="/stakeholder/followups"           element={<ProtectedRoute role="stakeholder"><Followups /></ProtectedRoute>} />
+        <Route path="/stakeholder" element={<ProtectedRoute role="stakeholder"><StakeholderDashboard /></ProtectedRoute>} />
+        <Route path="/stakeholder/complaints" element={<ProtectedRoute role="stakeholder"><Complaints /></ProtectedRoute>} />
+        <Route path="/stakeholder/complaints/:id" element={<ProtectedRoute role="stakeholder"><ComplaintDetail /></ProtectedRoute>} />
+        <Route path="/stakeholder/analytics" element={<ProtectedRoute role="stakeholder"><Analytics /></ProtectedRoute>} />
+        <Route path="/stakeholder/followups" element={<ProtectedRoute role="stakeholder"><Followups /></ProtectedRoute>} />
+        <Route path="/stakeholder/evidence" element={<ProtectedRoute role="stakeholder"><Evidence /></ProtectedRoute>} />
+        <Route path="/stakeholder/settings" element={<ProtectedRoute role="stakeholder"><Settings /></ProtectedRoute>} />
 
         {/* 404 */}
         <Route path="*" element={<Navigate to="/" replace />} />

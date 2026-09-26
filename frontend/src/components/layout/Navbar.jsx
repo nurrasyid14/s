@@ -17,9 +17,9 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
   const { user, logout } = useAuth()
   const { dark, toggle } = useTheme()
   const navigate = useNavigate()
-  const [menuOpen,  setMenuOpen]  = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
-  const [notifs,    setNotifs]    = useState([])
+  const [notifs, setNotifs] = useState([])
   const notifRef = useRef(null)
 
   function switchLang() {
@@ -28,14 +28,12 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
     localStorage.setItem('suaralens_lang', next)
   }
 
-  // Load notifications lazily when dropdown opens
   useEffect(() => {
     if (notifOpen && notifs.length === 0) {
       getUrgentComplaints().then(data => setNotifs(data || []))
     }
   }, [notifOpen])
 
-  // Close dropdown on outside click
   useEffect(() => {
     function handleClick(e) {
       if (notifRef.current && !notifRef.current.contains(e.target)) {
@@ -47,8 +45,8 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
   }, [])
 
   const URGENCY_COLOR = (score) =>
-    score >= 8 ? 'text-red-500'   :
-    score >= 5 ? 'text-amber-500' : 'text-emerald-500'
+    score >= 8 ? 'text-[var(--color-status-danger)]' :
+      score >= 5 ? 'text-[var(--color-status-warning)]' : 'text-[var(--color-status-success)]'
 
   // ---- Stakeholder variant (inside sidebar layout) ----
   if (variant === 'stakeholder') {
@@ -64,37 +62,34 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
               className="relative p-2 rounded-lg hover:bg-[var(--color-card-hover)] transition-colors"
               aria-label="Notifikasi"
             >
-              <Bell size={18} className={notifOpen ? 'text-blue-500' : 'text-[var(--color-text-muted)]'} />
+              <Bell size={18} className={notifOpen ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'} />
               {notifCount > 0 && (
-                <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold leading-none">
+                <span className="absolute top-1 right-1 bg-[var(--color-status-danger)] text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold leading-none">
                   {notifCount > 9 ? '9+' : notifCount}
                 </span>
               )}
             </button>
 
-            {/* Dropdown Panel */}
             {notifOpen && (
-              <div className="absolute right-0 top-12 w-80 rounded-xl shadow-2xl border border-[var(--color-border)] bg-[var(--color-bg)] z-50 overflow-hidden animate-fade-in">
-                {/* Header */}
+              <div className="absolute right-0 top-12 w-80 rounded-xl shadow-lg border border-[var(--color-border)] bg-[var(--color-surface)] z-50 overflow-hidden animate-fade-in">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
                   <div className="flex items-center gap-2">
-                    <Bell size={15} className="text-blue-500" />
+                    <Bell size={15} className="text-[var(--color-primary)]" />
                     <span className="font-semibold text-sm text-[var(--color-text)]">
                       {i18n.language === 'id' ? 'Aduan Perlu Perhatian' : 'Needs Attention'}
                     </span>
                   </div>
                   {notifCount > 0 && (
-                    <span className="bg-red-500/20 text-red-500 text-xs font-bold px-2 py-0.5 rounded-full">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ color: 'var(--color-status-danger)', background: 'color-mix(in srgb, var(--color-status-danger) 15%, transparent)' }}>
                       {notifCount} {i18n.language === 'id' ? 'baru' : 'new'}
                     </span>
                   )}
                 </div>
 
-                {/* Notification list */}
                 <div className="max-h-72 overflow-y-auto divide-y divide-[var(--color-border)]">
                   {notifs.length === 0 ? (
                     <div className="py-10 text-center">
-                      <CheckCircle2 size={32} className="text-emerald-500 mx-auto mb-2" />
+                      <CheckCircle2 size={32} className="text-[var(--color-status-success)] mx-auto mb-2" />
                       <p className="text-sm font-semibold text-[var(--color-text)]">Semua aman!</p>
                       <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                         {i18n.language === 'id' ? 'Tidak ada aduan mendesak.' : 'No urgent complaints.'}
@@ -132,11 +127,10 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
                   )}
                 </div>
 
-                {/* Footer */}
                 <div className="px-4 py-2.5 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
                   <button
                     onClick={() => { navigate('/stakeholder/followups'); setNotifOpen(false) }}
-                    className="text-xs text-blue-500 hover:text-blue-400 font-medium w-full text-center"
+                    className="text-xs text-[var(--color-primary)] hover:underline font-medium w-full text-center"
                   >
                     {i18n.language === 'id' ? 'Lihat semua tindak lanjut →' : 'View all follow-ups →'}
                   </button>
@@ -147,7 +141,7 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
 
           {/* Dark mode */}
           <button onClick={toggle} className="p-2 rounded-lg hover:bg-[var(--color-card-hover)] transition-colors">
-            {dark ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-[var(--color-text-muted)]" />}
+            {dark ? <Sun size={18} className="text-[var(--color-accent)]" /> : <Moon size={18} className="text-[var(--color-text-muted)]" />}
           </button>
 
           {/* Language */}
@@ -161,38 +155,38 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
 
   // ---- Public / User variant ----
   return (
-    <nav className="sticky top-0 z-50 bg-[#0F172A]/90 backdrop-blur-md border-b border-white/10">
+    <nav className="sticky top-0 z-50 bg-[var(--color-surface)]/95 backdrop-blur-sm border-b border-[var(--color-border)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-teal-500 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-[var(--color-primary)] flex items-center justify-center">
               <span className="text-white font-bold text-sm">SL</span>
             </div>
-            <span className="font-bold text-white text-lg">SuaraLens</span>
+            <span className="font-bold text-[var(--color-text)] text-lg">SuaraLens</span>
           </Link>
 
           {/* Desktop */}
           <div className="hidden md:flex items-center gap-3">
-            <button onClick={switchLang} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white border border-slate-700 hover:border-slate-500 transition-colors">
+            <button onClick={switchLang} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text)] border border-[var(--color-border)] hover:border-[var(--color-primary)]/40 transition-colors">
               <Globe size={13} /> {i18n.language === 'id' ? 'EN' : 'ID'}
             </button>
 
             {user ? (
               <>
-                <Link to={user.role === 'stakeholder' ? '/stakeholder' : '/user/dashboard'} className="text-sm text-slate-300 hover:text-white transition-colors">
+                <Link to={user.role === 'stakeholder' ? '/stakeholder' : '/user/dashboard'} className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">
                   {t('nav.dashboard')}
                 </Link>
-                <button onClick={logout} className="text-sm text-red-400 hover:text-red-300 transition-colors">
+                <button onClick={logout} className="text-sm text-[var(--color-status-danger)] hover:opacity-80 transition-colors">
                   {t('nav.logout')}
                 </button>
               </>
             ) : (
               <>
-                <Link to="/signin" className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white border border-slate-700 rounded-lg hover:border-slate-500 transition-colors">
+                <Link to="/signin" className="px-4 py-2 text-sm font-medium text-[var(--color-text)] border border-[var(--color-border)] rounded-lg hover:border-[var(--color-primary)]/40 transition-colors">
                   {t('nav.login')}
                 </Link>
-                <Link to="/signup-user" className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors">
+                <Link to="/signup-user" className="px-4 py-2 text-sm font-semibold text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] rounded-lg transition-colors">
                   {t('nav.register')}
                 </Link>
               </>
@@ -200,25 +194,25 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
           </div>
 
           {/* Mobile hamburger */}
-          <button className="md:hidden p-2 text-slate-400 hover:text-white" onClick={() => setMenuOpen(m => !m)}>
+          <button className="md:hidden p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)]" onClick={() => setMenuOpen(m => !m)}>
             {menuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
 
         {/* Mobile menu */}
         {menuOpen && (
-          <div className="md:hidden py-3 border-t border-white/10 space-y-1 animate-fade-in">
-            <button onClick={switchLang} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-400 hover:text-white">
+          <div className="md:hidden py-3 border-t border-[var(--color-border)] space-y-1 animate-fade-in">
+            <button onClick={switchLang} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
               <Globe size={15} /> {i18n.language === 'id' ? 'Switch to English' : 'Ganti ke Bahasa Indonesia'}
             </button>
             {!user && (
               <>
-                <Link to="/signin" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-slate-300 hover:text-white">{t('nav.login')}</Link>
-                <Link to="/signup-user" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-white font-semibold">{t('nav.register')}</Link>
+                <Link to="/signin" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)]">{t('nav.login')}</Link>
+                <Link to="/signup-user" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-[var(--color-primary)] font-semibold">{t('nav.register')}</Link>
               </>
             )}
             {user && (
-              <button onClick={logout} className="block px-4 py-2 text-sm text-red-400 w-full text-left">{t('nav.logout')}</button>
+              <button onClick={logout} className="block px-4 py-2 text-sm text-[var(--color-status-danger)] w-full text-left">{t('nav.logout')}</button>
             )}
           </div>
         )}

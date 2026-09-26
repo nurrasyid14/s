@@ -211,13 +211,15 @@ export default function ComplaintForm() {
               </div>
               {/* Anon toggle */}
               <div className="mt-5 flex items-start gap-3 p-4 rounded-lg bg-[var(--color-bg-secondary)] border border-[var(--color-border)]">
-                <div className="relative inline-block mt-0.5">
-                  <input id="anon" type="checkbox" checked={form.is_anonymous} onChange={e => setField('is_anonymous', e.target.checked)} className="sr-only" />
-                  <label htmlFor="anon" onClick={() => setField('is_anonymous', !form.is_anonymous)}
-                    className={`block w-11 h-6 rounded-full cursor-pointer transition-smooth ${form.is_anonymous ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-border)]'}`}>
-                    <span className={`block w-4 h-4 bg-white rounded-full shadow transition-smooth mt-1 ${form.is_anonymous ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </label>
-                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={form.is_anonymous}
+                  onClick={() => setField('is_anonymous', !form.is_anonymous)}
+                  className={`mt-0.5 flex-shrink-0 w-11 h-6 rounded-full transition-smooth ${form.is_anonymous ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-border)]'}`}
+                >
+                  <span className={`block w-4 h-4 bg-white rounded-full shadow transition-smooth mt-1 ${form.is_anonymous ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
                 <div>
                   <div className="text-sm font-semibold text-[var(--color-text)]">{t('form.anon_toggle')}</div>
                   <div className="text-xs text-[var(--color-text-muted)] mt-0.5">{t('form.anon_desc')}</div>

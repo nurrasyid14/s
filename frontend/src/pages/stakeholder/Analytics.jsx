@@ -11,7 +11,7 @@ import {
   RadialBarChart, RadialBar,
 } from 'recharts'
 
-const PERIOD_OPTIONS = ['dashboard.period_week', 'dashboard.period_month', 'analytics.period_custom']
+const PERIOD_OPTIONS = ['analytics.period_week', 'analytics.period_month', 'analytics.period_custom']
 const COLORS = {
   Negatif: '#B3261E', Negative: '#B3261E',
   Netral: '#B8860B', Neutral: '#B8860B',
@@ -47,11 +47,11 @@ export default function Analytics() {
         <Navbar variant="stakeholder" title={t('analytics.title')} />
         <main className="flex-1 overflow-y-auto p-6 space-y-5">
           {/* Period filter */}
-          <div className="flex gap-2">
-            {[0, 1, 2].map(i => (
+          <div className="inline-flex items-center gap-1 p-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)]">
+            {PERIOD_OPTIONS.map((key, i) => (
               <button key={i} onClick={() => setPeriod(i)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-smooth ${period === i ? 'bg-[var(--color-primary)] text-white' : 'border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}>
-                {t(PERIOD_OPTIONS[i])}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-smooth ${period === i ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}>
+                {t(key)}
               </button>
             ))}
           </div>

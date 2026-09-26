@@ -10,15 +10,15 @@ import { formatDate } from '../../utils/formatter.js'
 import { Eye } from 'lucide-react'
 
 const TYPE_MAP = { complaint: 'Aduan', feedback: 'Masukan', suggestion: 'Saran' }
-const CAT_MAP  = { facility: 'Fasilitas', academic: 'Akademik', admin: 'Administrasi', finance: 'Keuangan', other: 'Lainnya' }
+const CAT_MAP = { facility: 'Fasilitas', academic: 'Akademik', admin: 'Administrasi', finance: 'Keuangan', other: 'Lainnya' }
 
 export default function ComplaintsPage() {
   const { t } = useTranslation()
-  const [data,    setData]    = useState([])
-  const [total,   setTotal]   = useState(0)
-  const [page,    setPage]    = useState(1)
+  const [data, setData] = useState([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
-  const [search,  setSearch]  = useState('')
+  const [search, setSearch] = useState('')
   const [filters, setFilters] = useState({ status: '', type: '' })
 
   async function load(p = 1) {
@@ -35,17 +35,17 @@ export default function ComplaintsPage() {
   useEffect(() => { load(1) }, [search, filters])
 
   const COLUMNS = [
-    { key: 'ticket_id',    label: t('complaints.id'),       sortable: true  },
-    { key: 'created_at',   label: t('complaints.date'),     sortable: true,  render: v => formatDate(v) },
-    { key: 'type',         label: t('complaints.type'),                      render: v => TYPE_MAP[v] || v },
-    { key: 'category',     label: t('complaints.category'),                  render: v => CAT_MAP[v] || v  },
-    { key: 'sender_name',  label: t('complaints.sender'),                    render: (v, row) => row.is_anonymous ? <span className="text-[var(--color-text-muted)] text-xs italic">{t('complaints.anonymous')}</span> : v },
-    { key: 'urgency_score',label: t('complaints.urgency'),  sortable: true,  render: v => <UrgencyBadge score={v} /> },
-    { key: 'status',       label: t('complaints.status'),   sortable: true,  render: v => <StatusBadge status={v} /> },
+    { key: 'ticket_id', label: t('complaints.id'), sortable: true },
+    { key: 'created_at', label: t('complaints.date'), sortable: true, render: v => formatDate(v) },
+    { key: 'type', label: t('complaints.type'), render: v => TYPE_MAP[v] || v },
+    { key: 'category', label: t('complaints.category'), render: v => CAT_MAP[v] || v },
+    { key: 'sender_name', label: t('complaints.sender'), render: (v, row) => row.is_anonymous ? <span className="text-[var(--color-text-muted)] text-xs italic">{t('complaints.anonymous')}</span> : v },
+    { key: 'urgency_score', label: t('complaints.urgency'), sortable: true, render: v => <UrgencyBadge score={v} /> },
+    { key: 'status', label: t('complaints.status'), sortable: true, render: v => <StatusBadge status={v} /> },
     {
       key: 'id', label: t('complaints.actions'),
       render: (v) => (
-        <Link to={`/stakeholder/complaints/${v}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 rounded-lg transition-colors">
+        <Link to={`/stakeholder/complaints/${v}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors" style={{ color: 'var(--color-primary)', background: 'var(--color-primary-soft)' }}>
           <Eye size={13} /> {t('complaints.view_detail')}
         </Link>
       ),
