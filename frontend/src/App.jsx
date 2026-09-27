@@ -16,8 +16,8 @@ import Complaints from './pages/stakeholder/Complaints.jsx'
 import ComplaintDetail from './pages/stakeholder/ComplaintDetail.jsx'
 import Analytics from './pages/stakeholder/Analytics.jsx'
 import Followups from './pages/stakeholder/Followups.jsx'
-import Evidence from './pages/stakeholder/Evidence.jsx'
-import Settings from './pages/stakeholder/Settings.jsx'
+import Evidence from './pages/stakeholder/evidence.jsx'
+import Settings from './pages/stakeholder/settings.jsx'
 
 /** Route guard — redirect unauthenticated users */
 function ProtectedRoute({ children, role }) {
