@@ -4,20 +4,26 @@ ai_summary.py
 Generate ringkasan naratif otomatis dari angka agregat analytics
 menggunakan LLM via Ollama (grounded — input hanya angka, bukan teks mentah).
 
+Mendukung Ollama Cloud API maupun Ollama lokal (auto-detect dari llm_engine).
+
 Dapat diimport dari notebook lain:
     from modules.ai_summary import generate_summary
 
-Prasyarat: Ollama berjalan dengan model qwen3:8b atau qwen2.5:7b.
+Prasyarat: openai, python-dotenv, dan OLLAMA_API_KEY di .env (jika pakai cloud).
 """
 
 import json
-import requests
+import re
 import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from modules.llm_engine import OLLAMA_BASE_URL, DEFAULT_MODEL, FALLBACK_MODEL, check_ollama_status
+from modules.llm_engine import (
+    OLLAMA_API_MODE, DEFAULT_MODEL, FALLBACK_MODEL,
+    check_ollama_status, _get_client
+)
+
 
 # ── System Prompt ─────────────────────────────────────────────────────────────
 
@@ -35,6 +41,7 @@ ATURAN KETAT:
 
 Format output: teks paragraf biasa (bukan JSON, bukan bullet point).
 Panjang: 3-5 kalimat."""
+
 
 # ── Fungsi Utama ─────────────────────────────────────────────────────────────
 
@@ -72,7 +79,7 @@ def generate_summary(aggregated_data: dict,
                 "model_used":       None,
                 "input_data_keys":  list(aggregated_data.keys()),
                 "inference_time_s": 0,
-                "error":            "Ollama server tidak berjalan"
+                "error":            f"Ollama tidak dapat diakses: {status.get('error')}"
             }
         model = status["recommended_model"] or DEFAULT_MODEL
 
@@ -85,27 +92,22 @@ Data analitik (HANYA gunakan angka-angka di bawah ini):
 
 Berdasarkan data di atas, tulis ringkasan naratif (3-5 kalimat) untuk pimpinan PENS."""
 
-    payload = {
-        "model":  model,
-        "prompt": prompt,
-        "system": SUMMARY_SYSTEM_PROMPT,
-        "stream": False,
-        "options": {
-            "temperature": 0.2,   # sedikit lebih kreatif dari klasifikasi tapi tetap rendah
-            "num_predict": 512,
-        }
-    }
-
     start_time = time.time()
     try:
-        resp = requests.post(
-            f"{OLLAMA_BASE_URL}/api/generate",
-            json=payload,
-            timeout=90
+        client   = _get_client()
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
+                {"role": "user",   "content": prompt},
+            ],
+            temperature=0.2,   # sedikit lebih kreatif tapi tetap rendah
+            max_tokens=512,
         )
-        resp.raise_for_status()
-        summary_text = resp.json().get("response", "").strip()
-        elapsed      = time.time() - start_time
+        summary_text = response.choices[0].message.content.strip()
+        # Bersihkan thinking tags jika ada (model qwen3)
+        summary_text = re.sub(r'<think>.*?</think>', '', summary_text, flags=re.DOTALL).strip()
+        elapsed = time.time() - start_time
 
         return {
             "summary":           summary_text,
@@ -147,7 +149,6 @@ def check_grounding(summary: str, aggregated_data: dict) -> dict:
         "grounding_note": str
     }
     """
-    import re
     numbers_in_summary = re.findall(r'\b\d+(?:[.,]\d+)?(?:\s*%)?', summary)
     data_str = json.dumps(aggregated_data, ensure_ascii=False, default=str)
 
@@ -199,12 +200,12 @@ def generate_summary_template(aggregated_data: dict) -> dict:
     total    = aggregated_data.get("total_records", "N/A")
     breach   = aggregated_data.get("overall_breach_pct", "N/A")
     by_cat   = aggregated_data.get("by_category", [])
-    top_cat  = by_cat[0]["kategori"] if by_cat else "N/A"
+    top_cat  = by_cat[0]["kategori"]    if by_cat else "N/A"
     top_pct  = by_cat[0]["breach_pct"] if by_cat else "N/A"
 
     avg_res  = aggregated_data.get("avg_resolution_days", [])
     slow_cat = avg_res[0]["kategori"] if avg_res else "N/A"
-    slow_day = avg_res[0]["avg_days"]  if avg_res else "N/A"
+    slow_day = avg_res[0]["avg_days"] if avg_res else "N/A"
 
     summary = (
         f"Dalam periode pelaporan ini, sistem SuaraLens mencatat total {total} masukan "

@@ -2,20 +2,58 @@
 llm_engine.py
 =============
 Klasifikasi kategori & urgency scoring menggunakan LLM via Ollama.
-Model default: qwen3:8b (Qwen3 8B).
+
+Mendukung dua mode:
+  1. Ollama Cloud API  : https://ollama.com/v1  (butuh OLLAMA_API_KEY)
+  2. Ollama Lokal      : http://localhost:11434  (tanpa API key)
+
+Konfigurasi via .env:
+  OLLAMA_API_KEY=<your_key>          # Wajib untuk mode Cloud
+  OLLAMA_BASE_URL=https://ollama.com # Opsional, default cloud jika ada key
+  OLLAMA_MODEL=qwen3:8b              # Opsional
 
 Dapat diimport dari notebook lain:
     from modules.llm_engine import classify_llm, VALID_CATEGORIES
 
 Prasyarat:
-    - Ollama terinstall & server berjalan: ollama serve
-    - Model tersedia: ollama pull qwen3:8b
+  pip install openai python-dotenv
 """
 
 import json
+import os
 import time
-import requests
+import warnings
+from pathlib import Path
 from typing import Optional
+
+# ── Load .env ──────────────────────────────────────────────────────────────────
+try:
+    from dotenv import load_dotenv
+    # Cari .env dari root project (dua level di atas notebooks/modules/)
+    _env_path = Path(__file__).resolve().parents[2] / ".env"
+    load_dotenv(dotenv_path=_env_path, override=False)
+except ImportError:
+    warnings.warn("python-dotenv tidak ditemukan. Pastikan OLLAMA_API_KEY di-set manual.", stacklevel=2)
+
+# ── Konfigurasi ────────────────────────────────────────────────────────────────
+
+# Deteksi otomatis: cloud vs lokal
+OLLAMA_API_KEY  = os.getenv("OLLAMA_API_KEY", "")
+DEFAULT_MODEL   = os.getenv("OLLAMA_MODEL", "qwen3:8b")
+FALLBACK_MODEL  = "qwen2.5:7b"
+
+# Base URL & mode
+if OLLAMA_API_KEY:
+    # Mode Cloud: Ollama.com hosted API (OpenAI-compatible)
+    OLLAMA_BASE_URL  = os.getenv("OLLAMA_BASE_URL", "https://ollama.com")
+    OLLAMA_API_MODE  = "cloud"
+else:
+    # Mode Lokal: Ollama self-hosted
+    OLLAMA_BASE_URL  = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    OLLAMA_API_MODE  = "local"
+
+# OpenAI-compatible endpoint (berlaku untuk keduanya)
+OPENAI_BASE_URL = f"{OLLAMA_BASE_URL.rstrip('/')}/v1"
 
 # ── Konstanta ─────────────────────────────────────────────────────────────────
 
@@ -35,10 +73,6 @@ VALID_CATEGORIES = [
 ]
 
 VALID_URGENCY = ["Low", "Medium", "High", "Critical"]
-
-OLLAMA_BASE_URL = "http://localhost:11434"
-DEFAULT_MODEL   = "qwen3:8b"
-FALLBACK_MODEL  = "qwen2.5:7b"
 
 # ── System Prompt ─────────────────────────────────────────────────────────────
 
@@ -87,21 +121,48 @@ Output HARUS berupa JSON valid dengan format PERSIS seperti ini:
 
 JANGAN tambahkan teks lain di luar JSON."""
 
+
+# ── Client Singleton ──────────────────────────────────────────────────────────
+
+_client = None
+
+def _get_client():
+    """
+    Buat atau kembalikan OpenAI client singleton.
+    Menggunakan openai library yang kompatibel dengan Ollama API.
+    """
+    global _client
+    if _client is None:
+        try:
+            from openai import OpenAI
+        except ImportError:
+            raise ImportError(
+                "openai package tidak ditemukan. Install: pip install openai"
+            )
+
+        api_key = OLLAMA_API_KEY if OLLAMA_API_KEY else "ollama"  # local dummy key
+        _client = OpenAI(
+            base_url=OPENAI_BASE_URL,
+            api_key=api_key,
+        )
+        print(f"[INFO] LLM Client: mode={OLLAMA_API_MODE}, base_url={OPENAI_BASE_URL}")
+    return _client
+
+
 # ── Ollama Helper ─────────────────────────────────────────────────────────────
 
 def check_ollama_status() -> dict:
     """
-    Cek apakah Ollama server berjalan dan model tersedia.
+    Cek apakah Ollama (cloud atau lokal) dapat diakses dan model tersedia.
 
     Returns
     -------
-    dict dengan keys: running (bool), available_models (list), recommended_model (str)
+    dict dengan keys: running (bool), available_models (list), recommended_model (str), mode (str)
     """
     try:
-        resp = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=5)
-        resp.raise_for_status()
-        models_data = resp.json()
-        available   = [m["name"] for m in models_data.get("models", [])]
+        client = _get_client()
+        models_resp  = client.models.list()
+        available    = [m.id for m in models_resp.data]
 
         # Pilih model terbaik yang tersedia
         recommended = None
@@ -109,26 +170,30 @@ def check_ollama_status() -> dict:
             if any(candidate in m for m in available):
                 recommended = candidate
                 break
-        if recommended is None and available:
-            recommended = available[0]
+        if recommended is None:
+            recommended = available[0] if available else DEFAULT_MODEL
 
         return {
             "running":           True,
             "available_models":  available,
             "recommended_model": recommended,
+            "mode":              OLLAMA_API_MODE,
+            "base_url":          OPENAI_BASE_URL,
         }
     except Exception as e:
         return {
             "running":           False,
             "available_models":  [],
             "recommended_model": None,
+            "mode":              OLLAMA_API_MODE,
+            "base_url":          OPENAI_BASE_URL,
             "error":             str(e),
         }
 
 
 def _call_ollama(prompt: str, model: str, temperature: float = 0.1) -> Optional[str]:
     """
-    Panggil Ollama generate API dengan satu prompt.
+    Panggil Ollama via OpenAI-compatible Chat Completions API.
 
     Parameters
     ----------
@@ -140,26 +205,20 @@ def _call_ollama(prompt: str, model: str, temperature: float = 0.1) -> Optional[
     -------
     str atau None jika gagal
     """
-    payload = {
-        "model":  model,
-        "prompt": prompt,
-        "system": SYSTEM_PROMPT,
-        "stream": False,
-        "options": {
-            "temperature": temperature,
-            "num_predict": 256,    # batasi output supaya tidak ngelantur
-        }
-    }
     try:
-        resp = requests.post(
-            f"{OLLAMA_BASE_URL}/api/generate",
-            json=payload,
-            timeout=60
+        client   = _get_client()
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system",  "content": SYSTEM_PROMPT},
+                {"role": "user",    "content": prompt},
+            ],
+            temperature=temperature,
+            max_tokens=256,    # batasi output supaya tidak ngelantur
         )
-        resp.raise_for_status()
-        return resp.json().get("response", "").strip()
+        return response.choices[0].message.content.strip()
     except Exception as e:
-        print(f"[ERROR] Ollama call failed: {e}")
+        print(f"[ERROR] LLM call failed: {e}")
         return None
 
 
@@ -174,9 +233,15 @@ def _parse_and_validate(raw: str) -> Optional[dict]:
     if not raw:
         return None
 
+    # Bersihkan thinking tags (qwen3 kadang pakai <think>...</think>)
+    import re
+    raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL).strip()
+
     # Coba ekstrak JSON dari response (kadang ada teks sebelum/sesudah)
     json_match = None
     for start in [raw.find('{'), 0]:
+        if start < 0:
+            continue
         try:
             end   = raw.rfind('}') + 1
             chunk = raw[start:end]
@@ -193,9 +258,9 @@ def _parse_and_validate(raw: str) -> Optional[dict]:
     if not all(k in json_match for k in required):
         return None
 
-    # Validasi nilai
+    # Validasi nilai kategori
     if json_match["kategori"] not in VALID_CATEGORIES:
-        # Coba fuzzy match
+        # Fuzzy match
         for cat in VALID_CATEGORIES:
             if cat.lower() in str(json_match["kategori"]).lower():
                 json_match["kategori"] = cat
@@ -203,12 +268,17 @@ def _parse_and_validate(raw: str) -> Optional[dict]:
         else:
             json_match["kategori"] = "Lainnya"   # fallback
 
+    # Validasi urgency label
     if json_match["urgency_label"] not in VALID_URGENCY:
         json_match["urgency_label"] = "Medium"   # fallback
 
     # Clamp float values
-    json_match["urgency_score"] = max(0.0, min(1.0, float(json_match["urgency_score"])))
-    json_match["confidence"]    = max(0.0, min(1.0, float(json_match["confidence"])))
+    try:
+        json_match["urgency_score"] = max(0.0, min(1.0, float(json_match["urgency_score"])))
+        json_match["confidence"]    = max(0.0, min(1.0, float(json_match["confidence"])))
+    except (ValueError, TypeError):
+        json_match["urgency_score"] = 0.5
+        json_match["confidence"]    = 0.5
 
     return json_match
 
@@ -219,12 +289,12 @@ def classify_llm(teks_aduan: str,
                  model: Optional[str] = None,
                  max_retries: int = 2) -> Optional[dict]:
     """
-    Klasifikasikan satu teks aduan menggunakan LLM via Ollama.
+    Klasifikasikan satu teks aduan menggunakan LLM via Ollama (cloud atau lokal).
 
     Parameters
     ----------
     teks_aduan  : str — teks aduan dari stakeholder
-    model       : str — nama model Ollama (default: qwen3:8b atau yang tersedia)
+    model       : str — nama model Ollama (default: dari env atau qwen3:8b)
     max_retries : int — jumlah retry jika parsing gagal
 
     Returns
@@ -245,8 +315,8 @@ def classify_llm(teks_aduan: str,
     if model is None:
         status = check_ollama_status()
         if not status["running"]:
-            print("[ERROR] Ollama server tidak berjalan. Jalankan: ollama serve")
-            return {"error": "Ollama server tidak berjalan", "kategori": None}
+            print(f"[ERROR] Ollama tidak dapat diakses: {status.get('error')}")
+            return {"error": "Ollama tidak dapat diakses", "kategori": None}
         model = status["recommended_model"] or DEFAULT_MODEL
 
     prompt = f"Teks aduan:\n{teks_aduan}\n\nKlasifikasikan teks di atas."
@@ -255,24 +325,25 @@ def classify_llm(teks_aduan: str,
     result     = None
 
     for attempt in range(max_retries):
-        raw = _call_ollama(prompt, model)
+        raw    = _call_ollama(prompt, model)
         result = _parse_and_validate(raw)
         if result is not None:
             break
-        print(f"[WARN] Parsing gagal (attempt {attempt+1}/{max_retries}), retry...")
+        if attempt < max_retries - 1:
+            print(f"[WARN] Parsing gagal (attempt {attempt+1}/{max_retries}), retry...")
 
     elapsed = time.time() - start_time
 
     if result is None:
         return {
-            "kategori":        None,
-            "urgency_label":   None,
-            "urgency_score":   None,
-            "urgency_reason":  None,
-            "confidence":      None,
+            "kategori":         None,
+            "urgency_label":    None,
+            "urgency_score":    None,
+            "urgency_reason":   None,
+            "confidence":       None,
             "inference_time_s": round(elapsed, 3),
-            "model_used":      model,
-            "error":           "Gagal parse JSON setelah semua retry"
+            "model_used":       model,
+            "error":            "Gagal parse JSON setelah semua retry"
         }
 
     result["inference_time_s"] = round(elapsed, 3)
@@ -281,9 +352,9 @@ def classify_llm(teks_aduan: str,
     return result
 
 
-def classify_llm_batch(texts: list[str],
+def classify_llm_batch(texts: list,
                        model: Optional[str] = None,
-                       delay_s: float = 0.1) -> list[dict]:
+                       delay_s: float = 0.1) -> list:
     """
     Klasifikasi batch teks. Wrapper sederhana di atas classify_llm.
 
@@ -291,7 +362,7 @@ def classify_llm_batch(texts: list[str],
     ----------
     texts   : list teks aduan
     model   : nama model Ollama
-    delay_s : jeda antar request (detik) untuk hindari overload
+    delay_s : jeda antar request (detik) untuk hindari rate limiting
 
     Returns
     -------
