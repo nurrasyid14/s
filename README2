@@ -1,0 +1,142 @@
+# SuaraLens
+
+**SuaraLens** adalah prototipe analitik masukan, aduan, dan aspirasi stakeholder untuk konteks layanan kampus Politeknik Elektronika Negeri Surabaya (PENS). Proyek ini mengeksplorasi penggunaan NLP dan analitik data untuk membantu pengelola memahami isi laporan, melihat pola, dan memantau indikator tindak lanjut.
+
+> **Status proyek:** fokus implementasi yang tersedia saat ini adalah pipeline eksperimen berbasis dataset dummy dan notebook. Antarmuka React sudah memiliki sejumlah halaman, tetapi integrasi dengan backend dan pipeline ML belum terbukti end-to-end. Hasilnya belum boleh dianggap sebagai layanan produksi atau dasar keputusan otomatis.
+
+## Latar Belakang
+
+Masukan dari mahasiswa, orang tua, mitra, dan masyarakat dapat masuk melalui banyak kanal dan mencakup beragam persoalan. Jika laporan hanya dibaca satu per satu, pengelola akan kesulitan mengelompokkan topik berulang, mengenali urgensi, memantau keterlambatan, dan melihat perubahan dari waktu ke waktu. SuaraLens dibuat sebagai prototipe untuk menguji bagaimana pemrosesan bahasa dan analitik dapat membantu pekerjaan tersebut.
+
+## Lingkup Pembangunan
+
+Repositori ini mencakup:
+
+- Generator data sintetis dengan label evaluasi dan versi data uji tanpa label.
+- Notebook eksplorasi, anonimisasi, preprocessing, klasifikasi LLM, analisis sentimen, evaluasi, analitik SLA/tren, ringkasan, dan data mining.
+- Modul Python bersama untuk preprocessing, anonimisasi, klasifikasi, analitik, dan ringkasan berbantuan LLM.
+- Antarmuka web React/Vite dengan alur publik, autentikasi, pengajuan aduan, dan halaman stakeholder.
+- Direktori backend berbasis CodeIgniter yang saat ini belum berisi implementasi aplikasi (`backend/app` tidak tersedia pada snapshot ini).
+
+Di luar lingkup yang sudah dapat diklaim: layanan operasional dengan data aduan nyata, keamanan dan tata kelola produksi, validasi model pada data representatif, serta integrasi lengkap UI, API, penyimpanan, dan model.
+
+## Rincian Alur Kerja
+
+1. **Buat data uji sintetis.** `generate_data.py` membuat data simulasi berlabel untuk evaluasi dan data uji tanpa label untuk mencoba pipeline. Data mencakup variasi kanal, stakeholder, status, urgensi, pola waktu, duplikat, noise, serta contoh PII sintetis.
+2. **Siapkan format data.** `csvtojsonl.py` mengubah dua CSV generator menjadi JSONL.
+3. **Eksplorasi.** Notebook `00_eda_data_dummy.ipynb` memeriksa distribusi, kualitas, dan pola data.
+4. **Lindungi identitas dan siapkan teks.** Notebook 01 menguji deteksi/redaksi PII; notebook 02 membersihkan teks ringan dan menguji deteksi near-duplicate berbasis embedding.
+5. **Klasifikasikan masukan.** Notebook 03 menggunakan LLM melalui Ollama untuk memprediksi kategori dan urgensi. Notebook 04 menguji model sentimen Bahasa Indonesia.
+6. **Evaluasi dan analisis.** Notebook 05 membandingkan hasil terhadap label simulasi. Notebook 06 menghitung indikator SLA, waktu penyelesaian, tren bulanan, dan anomali tren.
+7. **Rangkum dan gali pola.** Notebook 07 membuat ringkasan naratif dari angka agregat, sedangkan notebook 08 mengeksplorasi clustering, topic modeling, association rules, baseline TF-IDF, dan deteksi anomali.
+8. **Sajikan dalam aplikasi.** Frontend menyediakan halaman untuk pengguna dan stakeholder. Penghubung backend dan penyajian keluaran pipeline perlu diselesaikan serta diuji sebelum alur ini dianggap terintegrasi.
+
+## Tujuan Pembangunan
+
+- Menguji alur analitik aduan berbasis NLP menggunakan data sintetis yang labelnya diketahui.
+- Mengeksplorasi klasifikasi kategori, tingkat urgensi, sentimen, kemiripan teks, SLA, tren, dan pola data.
+- Menyiapkan rancangan pengalaman pengguna untuk pengiriman aduan dan peninjauan oleh stakeholder.
+- Mengidentifikasi kebutuhan evaluasi, privasi, dan integrasi sebelum penerapan pada data nyata.
+
+## Manfaat Pembangunan
+
+### Bagi Pengguna
+
+Prototipe menggambarkan alur untuk menyampaikan aduan dan memantau laporan. Ketersediaan dan keakuratan fungsi tersebut bergantung pada penyelesaian backend dan integrasi aplikasi.
+
+### Bagi Pembangun
+
+Notebook dan data sintetis menyediakan lingkungan eksperimen yang dapat diulang untuk menguji preprocessing, model, metrik, dan analitik tanpa memakai data pribadi nyata.
+
+### Bagi Institusi
+
+Jika kelak divalidasi dan dioperasikan dengan tata kelola yang sesuai, analitik dapat membantu merangkum beban laporan dan memantau SLA. Prototipe ini sendiri belum membuktikan dampak operasional maupun akurasi pada laporan nyata.
+
+## Tentang Data
+
+Generator `generate_data.py` menghasilkan dua berkas:
+
+- `suaralens_dummy_simulasi.csv` memuat teks dan metadata beserta label ground truth, termasuk kategori, urgensi, sentimen, status, tanggal target SLA, dan indikator breach. Gunakan untuk evaluasi terkontrol.
+- `suaralens_dummy_uji.csv` hanya memuat ID, tanggal masuk, kanal, tipe stakeholder, dan teks aduan. Labelnya sengaja dihilangkan agar pipeline dapat dicoba seperti pada data baru.
+
+Generator juga menyisipkan near-duplicate dan contoh nama, NIM, nomor telepon, serta email sintetis untuk menguji alur. Data tersebut bukan laporan atau identitas nyata. Jangan memasukkan data pribadi sungguhan ke eksperimen tanpa persetujuan, pengamanan, dan prosedur tata kelola yang sesuai.
+
+Contoh pembuatan data dari direktori root:
+
+```bash
+mkdir -p data
+python generate_data.py --n 5000 --months 6 --seed 42 --outdir data
+python csvtojsonl.py
+```
+
+Perintah konversi membaca CSV dari `data/` dan menulis JSONL ke `data/output/`. Jalur input yang tertulis pada notebook tidak seragam; beberapa mengharapkan berkas langsung di `data/`, sedangkan keluaran konversi berada di `data/output/`. Samakan nilai `DATA_PATH` notebook dengan lokasi berkas sebelum menjalankannya. Sampel JSONL yang sudah ada di repositori berada di `ml/data/output/`; sesuaikan jalur data atau konfigurasi notebook bila memakai sampel tersebut.
+
+## Tentang Algoritma
+
+- **Klasifikasi kategori dan urgensi:** prompt terstruktur melalui API kompatibel OpenAI milik Ollama. Model, alamat layanan, dan mode lokal/cloud dikonfigurasi melalui variabel lingkungan. Keluaran merupakan prediksi model, bukan keputusan final.
+- **Sentimen:** pipeline klasifikasi teks Hugging Face dengan model `w11wo/indonesian-roberta-base-sentiment-classifier`.
+- **Preprocessing dan deduplikasi:** normalisasi teks ringan mempertahankan emoji dan bahasa informal; near-duplicate dicari dengan cosine similarity pada embedding multilingual Sentence Transformers.
+- **Anonimisasi:** Presidio dengan recognizer regex tambahan untuk NIM, nomor telepon, dan email Indonesia. Modul mencatat keterbatasan deteksi nama Indonesia karena konfigurasi NER yang digunakan.
+- **Analitik:** agregasi breach SLA, waktu penyelesaian, jumlah bulanan, stakeholder, dan lonjakan statistik.
+- **Data mining:** notebook 08 mengeksplorasi K-Means berbasis embedding, LDA, association rules, baseline klasifikasi TF-IDF, dan Isolation Forest.
+- **Ringkasan:** LLM merangkum data agregat, bukan teks laporan mentah; helper pemeriksaan angka bersifat heuristik dan tetap memerlukan review manusia.
+
+Hasil model dipengaruhi kualitas dan cakupan data, bahasa informal, ketimpangan kelas, versi model, dan konfigurasi. Skor keyakinan bukan jaminan kebenaran. Lakukan evaluasi per kategori dan kelompok data, tinjau kesalahan, dan pertahankan keputusan akhir pada manusia.
+
+## Arsitektur
+
+```text
+Data sintetis (CSV)
+        |
+        v
+Konversi ke JSONL ---> Notebook EDA dan pipeline NLP/analitik
+                              |       |       |
+                              |       |       +--> Ringkasan dan hasil analitik
+                              |       +----------> Ollama / Hugging Face / embeddings
+                              +------------------> Modul Python bersama
+
+Frontend React/Vite ---> modul layanan API ---> backend (belum terimplementasi)
+```
+
+### Arsitektur Laman Web
+
+Frontend menggunakan React 19, React Router, Vite, dan Tailwind CSS. Rute yang tersedia mencakup landing page dan pendaftaran/login, formulir serta daftar aduan pengguna, juga dashboard stakeholder, daftar/detail aduan, analitik, tindak lanjut, bukti, dan pengaturan. Keberadaan halaman tidak berarti seluruh fungsi sudah tersambung ke layanan yang berjalan.
+
+Direktori `backend/` memiliki konfigurasi Composer untuk CodeIgniter 4 dan berkas `spark`, tetapi kode aplikasi, rute, model, migrasi, serta API belum ada dalam snapshot ini. Dependensi FastAPI di `requirements.txt` juga belum disertai aplikasi API ML yang siap dijalankan. Karena itu belum ada jalur terverifikasi dari formulir frontend ke penyimpanan dan inferensi model.
+
+## Menjalankan Eksperimen
+
+Persyaratan umum: Python 3.10/3.11 disarankan untuk notebook, Node.js/npm untuk frontend, serta Ollama lokal atau kredensial layanan Ollama Cloud untuk notebook klasifikasi dan ringkasan. Sebagian model Hugging Face/Sentence Transformers diunduh saat pertama kali digunakan dan dapat memerlukan ruang disk serta memori yang besar.
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+jupyter lab
+```
+
+Pada Windows, aktifkan virtual environment dengan `activate_env.ps1` (PowerShell) atau `activate_env.bat` (Command Prompt), setelah membuat `.venv` dan memasang `requirements.txt`.
+
+Untuk menjalankan frontend dalam mode pengembangan:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Untuk klasifikasi atau ringkasan berbasis Ollama lokal, jalankan server Ollama dan unduh model yang dikonfigurasi, misalnya `ollama pull qwen3:8b`. Jika menggunakan cloud, isi `OLLAMA_API_KEY` di `.env`; jangan commit kunci API. Notebook sentimen dan embedding mungkin perlu mengunduh model masing-masing.
+
+## Harapan Keluaran & Penggunaan
+
+Keluaran yang ditargetkan mencakup label prediksi dengan skor, indikator SLA dan tren, temuan pengelompokan/topik, serta ringkasan berbasis angka untuk ditinjau. Notebook dapat menyimpan hasil ke `data/output/`; nama berkas dan jalur spesifik ditentukan oleh masing-masing notebook. Hasil tetap bersifat eksploratif sampai pipeline dijalankan, dievaluasi, dan dibandingkan dengan review manusia.
+
+Sebelum menyebut proyek ini selesai untuk penggunaan operasional, pekerjaan berikut masih diperlukan:
+
+- Jalankan notebook dari awal sampai akhir pada lingkungan yang terdokumentasi; catat metrik dan hasil evaluasi, termasuk keterbatasan data sintetis.
+- Samakan konfigurasi lokasi data dan hasil untuk notebook, generator, dan aplikasi.
+- Implementasikan API, penyimpanan, autentikasi/otorisasi, validasi masukan, dan integrasi frontend dengan backend serta pipeline ML.
+- Uji anonimisasi pada Bahasa Indonesia dan lakukan peninjauan privasi serta keamanan sebelum menggunakan data nyata.
+- Tambahkan pengujian otomatis dan dokumentasi deployment; pastikan hasil prediksi tidak menggantikan keputusan manusia.
+
+Pada status saat ini, SuaraLens paling tepat digunakan sebagai prototipe riset/pembelajaran untuk data sintetis, bukan sebagai sistem penerimaan aduan produksi.
