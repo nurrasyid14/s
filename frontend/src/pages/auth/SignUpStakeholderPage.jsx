@@ -42,9 +42,6 @@ export default function SignUpStakeholderPage() {
     <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <Link to="/" className="flex items-center gap-2.5 justify-center mb-8">
-          <div className="w-9 h-9 rounded-lg bg-[var(--color-primary)] flex items-center justify-center">
-            <span className="text-white font-bold">SL</span>
-          </div>
           <span className="text-[var(--color-text)] font-bold text-xl">SuaraLens</span>
         </Link>
 

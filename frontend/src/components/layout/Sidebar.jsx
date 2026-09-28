@@ -45,9 +45,6 @@ export default function Sidebar({ notifCount = 0 }) {
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-5" style={{ borderBottom: `1px solid ${PANEL_BORDER}` }}>
-        <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
-          <span className="text-[#163B68] font-bold text-sm">SL</span>
-        </div>
         {!collapsed && (
           <span className="font-bold text-white text-lg tracking-tight">SuaraLens</span>
         )}
@@ -68,8 +65,8 @@ export default function Sidebar({ notifCount = 0 }) {
               key={key}
               to={to}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-smooth border-l-4 ${active
-                  ? 'bg-white/10 text-white border-l-[var(--color-accent)]'
-                  : 'text-white/60 hover:bg-white/5 hover:text-white border-l-transparent'
+                ? 'bg-white/10 text-white border-l-[var(--color-accent)]'
+                : 'text-white/60 hover:bg-white/5 hover:text-white border-l-transparent'
                 }`}
             >
               <Icon size={18} strokeWidth={1.8} className="flex-shrink-0" />

@@ -160,9 +160,6 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[var(--color-primary)] flex items-center justify-center">
-              <span className="text-white font-bold text-sm">SL</span>
-            </div>
             <span className="font-bold text-[var(--color-text)] text-lg">SuaraLens</span>
           </Link>
 
@@ -186,7 +183,7 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
                 <Link to="/signin" className="px-4 py-2 text-sm font-medium text-[var(--color-text)] border border-[var(--color-border)] rounded-lg hover:border-[var(--color-primary)]/40 transition-colors">
                   {t('nav.login')}
                 </Link>
-                <Link to="/signup-user" className="px-4 py-2 text-sm font-semibold text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] rounded-lg transition-colors">
+                <Link to="/signup-user" className="px-4 py-2 text-sm font-semibold text-[var(--color-on-primary,#fff)] bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] rounded-lg transition-colors">
                   {t('nav.register')}
                 </Link>
               </>
