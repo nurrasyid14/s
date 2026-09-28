@@ -1,211 +1,362 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import Sidebar from '../../components/layout/Sidebar.jsx'
-import Navbar from '../../components/layout/Navbar.jsx'
+import StakeholderLayout from '../../components/layout/StakeholderLayout.jsx'
 import { StatusBadge, UrgencyBadge } from '../../components/ui/StatusBadge.jsx'
+import EmptyState from '../../components/ui/EmptyState.jsx'
+import ErrorState from '../../components/ui/ErrorState.jsx'
 import { getComplaint, updateComplaintStatus, replyToComplaint } from '../../services/complaintApi.js'
 import { formatDateTime, getUrgencyLevel } from '../../utils/formatter.js'
-import { ArrowLeft, Send, AlertTriangle } from 'lucide-react'
+import { useComplaintLabels } from '../../utils/complaintLabels.js'
+import { ArrowLeft, Send, AlertTriangle, Inbox, Check } from 'lucide-react'
 
-const TYPE_MAP = { complaint: 'Aduan', feedback: 'Masukan', suggestion: 'Saran' }
-const CAT_MAP = { facility: 'Fasilitas', academic: 'Akademik', admin: 'Administrasi', finance: 'Keuangan', other: 'Lainnya' }
+const STATUS_OPTIONS = ['new', 'process', 'done', 'escalate']
+const SUCCESS_MESSAGE_MS = 3000
+
+const focusRing =
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]'
+const fieldCls = `w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5 text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] ${focusRing}`
+
+const URGENCY_TEXT = {
+  red: 'text-[var(--color-status-danger)]',
+  amber: 'text-[var(--color-status-warning)]',
+}
+const SENTIMENT_TEXT = {
+  negative: 'text-[var(--color-status-danger)]',
+  positive: 'text-[var(--color-status-success)]',
+}
+
+function InfoItem({ label, value }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-xs text-[var(--color-text-muted)]">{label}</div>
+      <div className="mt-0.5 text-sm font-semibold text-[var(--color-text)]">{value}</div>
+    </div>
+  )
+}
+
+function NlpMetric({ label, children }) {
+  return (
+    <div className="rounded-xl bg-[var(--color-bg-secondary)] p-3">
+      <div className="mb-1 text-xs text-[var(--color-text-muted)]">{label}</div>
+      {children}
+    </div>
+  )
+}
+
+function DetailSkeleton() {
+  return (
+    <div className="space-y-5" aria-busy="true">
+      <div className="skeleton h-9 w-72 rounded-lg" />
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="space-y-5 lg:col-span-2">
+          <div className="skeleton h-56 rounded-xl" />
+          <div className="skeleton h-40 rounded-xl" />
+        </div>
+        <div className="space-y-5">
+          <div className="skeleton h-24 rounded-xl" />
+          <div className="skeleton h-48 rounded-xl" />
+          <div className="skeleton h-44 rounded-xl" />
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function ComplaintDetail() {
   const { id } = useParams()
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
+  const { typeLabel, categoryLabel, sentimentLabel } = useComplaintLabels()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
+  const [status, setStatus] = useState('')
+  const [statusSaving, setStatusSaving] = useState(false)
+  const [statusError, setStatusError] = useState(false)
   const [reply, setReply] = useState('')
   const [sending, setSending] = useState(false)
-  const [newStatus, setNewStatus] = useState('')
+  const [replyState, setReplyState] = useState('idle') // 'idle' | 'sent' | 'error'
 
   useEffect(() => {
-    getComplaint(id).then(d => { setData(d); setNewStatus(d?.status || '') }).finally(() => setLoading(false))
-  }, [id])
+    let active = true
+    setLoading(true)
+    setError(false)
+    getComplaint(id)
+      .then(d => {
+        if (!active) return
+        setData(d)
+        setStatus(d?.status || '')
+      })
+      .catch(() => { if (active) setError(true) })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [id, reloadKey])
+
+  useEffect(() => {
+    if (replyState !== 'sent') return undefined
+    const timer = setTimeout(() => setReplyState('idle'), SUCCESS_MESSAGE_MS)
+    return () => clearTimeout(timer)
+  }, [replyState])
 
   async function handleReply(e) {
     e.preventDefault()
-    if (!reply.trim()) return
+    const note = reply.trim()
+    if (!note || sending) return
     setSending(true)
-    await replyToComplaint(id, reply)
-    setReply('')
-    setSending(false)
+    setReplyState('idle')
+    try {
+      await replyToComplaint(id, note)
+      setReply('')
+      setReplyState('sent')
+      // Muat ulang agar riwayat tindak lanjut ikut diperbarui. Jika gagal, tampilan lama dipertahankan.
+      getComplaint(id).then(setData).catch(() => { })
+    } catch {
+      setReplyState('error')
+    } finally {
+      setSending(false)
+    }
   }
 
   async function handleStatusChange(e) {
-    const s = e.target.value
-    setNewStatus(s)
-    await updateComplaintStatus(id, s)
-    setData(d => ({ ...d, status: s }))
+    const next = e.target.value
+    const previous = status
+    setStatus(next)
+    setStatusSaving(true)
+    setStatusError(false)
+    try {
+      await updateComplaintStatus(id, next)
+      setData(d => ({ ...d, status: next }))
+    } catch {
+      setStatus(previous)
+      setStatusError(true)
+    } finally {
+      setStatusSaving(false)
+    }
   }
 
-  if (loading) return (
-    <div className="flex h-screen bg-[var(--color-bg)]">
-      <Sidebar />
-      <div className="flex-1 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[var(--color-primary)]/30 border-t-[var(--color-primary)] rounded-full animate-spin" />
-      </div>
-    </div>
-  )
+  const layoutTitle = t('detail.title')
 
-  if (!data) return (
-    <div className="flex h-screen bg-[var(--color-bg)]">
-      <Sidebar />
-      <div className="flex-1 flex items-center justify-center text-[var(--color-text-muted)]">Aduan tidak ditemukan.</div>
-    </div>
-  )
+  if (loading) {
+    return <StakeholderLayout title={layoutTitle}><DetailSkeleton /></StakeholderLayout>
+  }
+
+  if (error) {
+    return (
+      <StakeholderLayout title={layoutTitle}>
+        <ErrorState onRetry={() => setReloadKey(k => k + 1)} />
+      </StakeholderLayout>
+    )
+  }
+
+  if (!data) {
+    return (
+      <StakeholderLayout title={layoutTitle}>
+        <EmptyState
+          icon={Inbox}
+          title={t('stk.detail.not_found', 'Aduan tidak ditemukan.')}
+          action={
+            <Link
+              to="/stakeholder/complaints"
+              className={`inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm font-semibold text-[var(--color-text)] transition-smooth hover:bg-[var(--color-card-hover)] ${focusRing}`}
+            >
+              <ArrowLeft size={14} aria-hidden="true" /> {t('stk.detail.back_to_list', 'Kembali ke daftar aduan')}
+            </Link>
+          }
+        />
+      </StakeholderLayout>
+    )
+  }
 
   const urgency = getUrgencyLevel(data.urgency_score)
+  const followups = data.followups ?? []
+  const attachments = data.attachments ?? []
+  const hasConfidence = typeof data.nlp_confidence === 'number'
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--color-bg)]">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Navbar variant="stakeholder" title={t('detail.title')} />
-        <main className="flex-1 overflow-y-auto p-6">
-          {/* Header */}
-          <div className="flex items-center gap-3 mb-6">
-            <Link to="/stakeholder/complaints" className="p-2 rounded-lg hover:bg-[var(--color-card-hover)] text-[var(--color-text-muted)] transition-colors">
-              <ArrowLeft size={18} />
-            </Link>
-            <h2 className="text-xl font-bold text-[var(--color-text)]">{data.ticket_id}</h2>
-            <StatusBadge status={data.status} />
-            <span className="text-sm text-[var(--color-text-muted)] ml-auto">{formatDateTime(data.created_at)}</span>
-          </div>
-
-          <div className="grid lg:grid-cols-3 gap-5">
-            {/* Left column */}
-            <div className="lg:col-span-2 space-y-5">
-              {/* Info card */}
-              <div className="card-elevated p-5">
-                <h3 className="font-semibold text-[var(--color-text)] mb-4">{t('detail.info_title')}</h3>
-                <div className="grid grid-cols-3 gap-3 text-sm mb-4">
-                  {[
-                    { label: 'Jenis', value: TYPE_MAP[data.type] || data.type },
-                    { label: 'Kategori', value: CAT_MAP[data.category] || data.category },
-                    { label: 'Pengirim', value: `${t('complaints.anonymous')} (${data.sender_role})` },
-                  ].map(({ label, value }) => (
-                    <div key={label}>
-                      <div className="text-xs text-[var(--color-text-muted)]">{label}</div>
-                      <div className="font-semibold text-[var(--color-text)] mt-0.5">{value}</div>
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <div className="text-xs text-[var(--color-text-muted)] mb-1">Deskripsi</div>
-                  <p className="text-sm text-[var(--color-text)] leading-relaxed">{data.description}</p>
-                </div>
-                {data.unit && (
-                  <div className="mt-3">
-                    <div className="text-xs text-[var(--color-text-muted)] mb-0.5">Unit Terkait</div>
-                    <div className="text-sm font-medium text-[var(--color-text)]">{data.unit}</div>
-                  </div>
-                )}
-              </div>
-
-              {/* NLP Analysis */}
-              <div className="card-elevated rounded-xl p-5 border-l-4 border-l-[var(--color-primary)]">
-                <h3 className="font-semibold text-[var(--color-text)] mb-4">{t('detail.nlp_title')}</h3>
-                <div className="grid grid-cols-3 gap-3 text-sm">
-                  <div className="p-3 rounded-xl bg-[var(--color-bg-secondary)]">
-                    <div className="text-xs text-[var(--color-text-muted)] mb-1">{t('detail.auto_category')}</div>
-                    <div className="font-bold text-[var(--color-text)] capitalize">{CAT_MAP[data.nlp_category] || data.nlp_category}</div>
-                    <div className="text-xs text-teal-500 mt-0.5">{Math.round(data.nlp_confidence * 100)}% {t('detail.confidence')}</div>
-                  </div>
-                  <div className="p-3 rounded-xl bg-[var(--color-bg-secondary)]">
-                    <div className="text-xs text-[var(--color-text-muted)] mb-1">{t('detail.urgency_score')}</div>
-                    <div className={`font-bold text-lg ${urgency.color === 'red' ? 'text-[var(--color-status-danger)]' : urgency.color === 'amber' ? 'text-[var(--color-status-warning)]' : 'text-[var(--color-status-success)]'}`}>
-                      {data.urgency_score}/10
-                    </div>
-                    <UrgencyBadge score={data.urgency_score} />
-                  </div>
-                  <div className="p-3 rounded-xl bg-[var(--color-bg-secondary)]">
-                    <div className="text-xs text-[var(--color-text-muted)] mb-1">{t('detail.sentiment')}</div>
-                    <div className={`font-bold capitalize ${data.sentiment === 'negative' ? 'text-[var(--color-status-danger)]' : data.sentiment === 'positive' ? 'text-[var(--color-status-success)]' : 'text-[var(--color-status-warning)]'}`}>
-                      {data.sentiment === 'negative' ? 'Negatif' : data.sentiment === 'positive' ? 'Positif' : 'Netral'}
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-3 flex items-start gap-1.5 text-xs text-[var(--color-status-warning)]">
-                  <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
-                  {t('detail.nlp_disclaimer')}
-                </div>
-              </div>
-
-              {/* Evidence */}
-              {data.attachments?.length > 0 && (
-                <div className="card-elevated p-5">
-                  <h3 className="font-semibold text-[var(--color-text)] mb-3">{t('detail.evidence_title')}</h3>
-                  <div className="flex gap-3">
-                    {data.attachments.map((a, i) => (
-                      <img key={i} src={a.url} alt={a.name} className="w-28 h-20 object-cover rounded-lg border border-[var(--color-border)]" />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Right column */}
-            <div className="space-y-5">
-              {/* Change status */}
-              <div className="card-elevated p-5">
-                <h3 className="font-semibold text-[var(--color-text)] mb-3">{t('detail.change_status')}</h3>
-                <select value={newStatus} onChange={handleStatusChange}
-                  className="w-full px-4 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-blue-500/50">
-                  <option value="new">{t('status.new')}</option>
-                  <option value="process">{t('status.process')}</option>
-                  <option value="done">{t('status.done')}</option>
-                  <option value="escalate">{t('status.escalate')}</option>
-                </select>
-              </div>
-
-              {/* Follow-up history */}
-              <div className="card-elevated p-5">
-                <h3 className="font-semibold text-[var(--color-text)] mb-4">{t('detail.followup_title')}</h3>
-                {data.followups?.length === 0 ? (
-                  <p className="text-xs text-[var(--color-text-muted)] text-center py-4">Belum ada tindak lanjut.</p>
-                ) : (
-                  <div className="space-y-3 relative">
-                    <div className="absolute left-3.5 top-0 bottom-0 w-0.5 bg-[var(--color-border)]" />
-                    {data.followups.map((f, i) => (
-                      <div key={f.id} className="flex gap-3 relative">
-                        <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold z-10 flex-shrink-0">
-                          {f.by.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold text-[var(--color-text)]">{f.by}</div>
-                          <div className="text-xs text-[var(--color-text-muted)]">{formatDateTime(f.created_at)}</div>
-                          <div className="text-xs text-[var(--color-text)] mt-1">{f.note}</div>
-                          <StatusBadge status={f.status} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Reply form */}
-              <div className="card-elevated p-5">
-                <h3 className="font-semibold text-[var(--color-text)] mb-3">{t('detail.reply_title')}</h3>
-                <form onSubmit={handleReply}>
-                  <textarea
-                    value={reply}
-                    onChange={e => setReply(e.target.value)}
-                    placeholder={t('detail.reply_placeholder')}
-                    rows={4}
-                    className="w-full px-3 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
-                  />
-                  <button type="submit" disabled={sending || !reply.trim()}
-                    className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-smooth">
-                    {sending ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Send size={14} /> {t('detail.send')}</>}
-                  </button>
-                </form>
-              </div>
-            </div>
-          </div>
-        </main>
+    <StakeholderLayout title={layoutTitle}>
+      {/* Header */}
+      <div className="flex flex-wrap items-center gap-3">
+        <Link
+          to="/stakeholder/complaints"
+          aria-label={t('stk.detail.back_to_list', 'Kembali ke daftar aduan')}
+          className={`rounded-lg p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-card-hover)] ${focusRing}`}
+        >
+          <ArrowLeft size={18} aria-hidden="true" />
+        </Link>
+        <h2 className="text-xl font-bold text-[var(--color-text)]">{data.ticket_id}</h2>
+        <StatusBadge status={data.status} />
+        <span className="ml-auto text-sm text-[var(--color-text-muted)]">{formatDateTime(data.created_at)}</span>
       </div>
-    </div>
+
+      <div className="grid gap-5 lg:grid-cols-3">
+        {/* Kolom kiri */}
+        <div className="min-w-0 space-y-5 lg:col-span-2">
+          <section className="card-elevated rounded-xl p-5">
+            <h3 className="mb-4 text-base font-semibold text-[var(--color-text)]">{t('detail.info_title')}</h3>
+            <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <InfoItem label={t('stk.detail.type', 'Jenis')} value={typeLabel(data.type)} />
+              <InfoItem label={t('stk.detail.category', 'Kategori')} value={categoryLabel(data.category)} />
+              <InfoItem label={t('stk.detail.sender', 'Pengirim')} value={t('complaints.anonymous')} />
+              <InfoItem label={t('stk.detail.sender_role', 'Role pengirim')} value={data.sender_role || '—'} />
+              <InfoItem label={t('stk.detail.unit', 'Unit terkait')} value={data.unit || '—'} />
+              <InfoItem label={t('stk.detail.date', 'Tanggal')} value={formatDateTime(data.created_at)} />
+            </div>
+            <div className="border-t border-[var(--color-border)] pt-4">
+              <div className="mb-1 text-xs text-[var(--color-text-muted)]">{t('stk.detail.description', 'Deskripsi')}</div>
+              <p className="whitespace-pre-line text-sm leading-relaxed text-[var(--color-text)]">{data.description}</p>
+            </div>
+          </section>
+
+          <section className="card-elevated rounded-xl border-l-4 border-l-[var(--color-primary)] p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-base font-semibold text-[var(--color-text)]">{t('detail.nlp_title')}</h3>
+              <span
+                className="rounded-full px-2.5 py-1 text-xs font-medium text-[var(--color-primary)]"
+                style={{ background: 'var(--color-primary-soft)' }}
+              >
+                {t('stk.detail.ai_badge', 'Rekomendasi AI')}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+              <NlpMetric label={t('detail.auto_category')}>
+                <div className="font-bold text-[var(--color-text)]">{categoryLabel(data.nlp_category)}</div>
+                {hasConfidence && (
+                  <div className="mt-0.5 text-xs text-[var(--color-primary)]">
+                    {Math.round(data.nlp_confidence * 100)}% {t('detail.confidence')}
+                  </div>
+                )}
+              </NlpMetric>
+              <NlpMetric label={t('detail.urgency_score')}>
+                <div className={`text-lg font-bold ${URGENCY_TEXT[urgency.color] ?? 'text-[var(--color-status-success)]'}`}>
+                  {data.urgency_score}/10
+                </div>
+                <UrgencyBadge score={data.urgency_score} />
+              </NlpMetric>
+              <NlpMetric label={t('detail.sentiment')}>
+                <div className={`font-bold ${SENTIMENT_TEXT[data.sentiment] ?? 'text-[var(--color-status-warning)]'}`}>
+                  {sentimentLabel(data.sentiment)}
+                </div>
+              </NlpMetric>
+            </div>
+            <div className="mt-3 flex items-start gap-1.5 text-xs text-[var(--color-status-warning)]">
+              <AlertTriangle size={13} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+              {t('detail.nlp_disclaimer')}
+            </div>
+          </section>
+
+          {attachments.length > 0 && (
+            <section className="card-elevated rounded-xl p-5">
+              <h3 className="mb-3 text-base font-semibold text-[var(--color-text)]">
+                {t('detail.evidence_title')} ({attachments.length})
+              </h3>
+              <div className="flex flex-wrap gap-3">
+                {attachments.map((a, i) => (
+                  <a
+                    key={i}
+                    href={a.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={a.name}
+                    className={`overflow-hidden rounded-lg border border-[var(--color-border)] transition-smooth hover:border-[var(--color-primary)] ${focusRing}`}
+                  >
+                    <img src={a.url} alt={a.name} loading="lazy" className="h-20 w-28 object-cover" />
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+
+        {/* Kolom kanan */}
+        <div className="min-w-0 space-y-5">
+          <section className="card-elevated rounded-xl p-5">
+            <label htmlFor="complaint-status" className="mb-3 block text-base font-semibold text-[var(--color-text)]">
+              {t('detail.change_status')}
+            </label>
+            <select
+              id="complaint-status"
+              value={status}
+              onChange={handleStatusChange}
+              disabled={statusSaving}
+              className={`${fieldCls} disabled:opacity-60`}
+            >
+              {STATUS_OPTIONS.map(key => <option key={key} value={key}>{t(`status.${key}`)}</option>)}
+            </select>
+            {statusError && (
+              <p role="alert" className="mt-2 text-xs text-[var(--color-status-danger)]">
+                {t('stk.detail.status_error', 'Status gagal diperbarui. Silakan coba lagi.')}
+              </p>
+            )}
+          </section>
+
+          <section className="card-elevated rounded-xl p-5">
+            <h3 className="mb-4 text-base font-semibold text-[var(--color-text)]">{t('detail.followup_title')}</h3>
+            {followups.length === 0 ? (
+              <p className="py-4 text-center text-xs text-[var(--color-text-muted)]">
+                {t('stk.detail.no_followups', 'Belum ada tindak lanjut.')}
+              </p>
+            ) : (
+              <ol className="relative space-y-4">
+                <div className="absolute bottom-0 left-3.5 top-0 w-0.5 bg-[var(--color-border)]" aria-hidden="true" />
+                {followups.map(f => (
+                  <li key={f.id} className="relative flex gap-3">
+                    <div
+                      className="z-10 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-xs font-bold text-white"
+                      aria-hidden="true"
+                    >
+                      {f.by?.charAt(0)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-semibold text-[var(--color-text)]">{f.by}</div>
+                      <div className="text-xs text-[var(--color-text-muted)]">{formatDateTime(f.created_at)}</div>
+                      <div className="mt-1 text-xs text-[var(--color-text)]">{f.note}</div>
+                      <div className="mt-1.5"><StatusBadge status={f.status} /></div>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+
+          <section className="card-elevated rounded-xl p-5">
+            <h3 id="reply-title" className="mb-3 text-base font-semibold text-[var(--color-text)]">
+              {t('detail.reply_title')}
+            </h3>
+            <form onSubmit={handleReply}>
+              <textarea
+                aria-labelledby="reply-title"
+                value={reply}
+                onChange={e => setReply(e.target.value)}
+                placeholder={t('detail.reply_placeholder')}
+                rows={4}
+                className={`${fieldCls} resize-none`}
+              />
+              <button
+                type="submit"
+                disabled={sending || !reply.trim()}
+                className={`mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-primary)] py-2.5 text-sm font-semibold text-white transition-smooth hover:bg-[var(--color-primary-dark)] disabled:opacity-60 ${focusRing}`}
+              >
+                {sending ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" role="status" aria-label={t('stk.detail.sending', 'Mengirim...')} />
+                ) : (
+                  <><Send size={14} aria-hidden="true" /> {t('detail.send')}</>
+                )}
+              </button>
+              {replyState === 'sent' && (
+                <p role="status" className="mt-2 flex items-center gap-1.5 text-xs text-[var(--color-status-success)]">
+                  <Check size={13} aria-hidden="true" /> {t('stk.detail.reply_sent', 'Tanggapan terkirim.')}
+                </p>
+              )}
+              {replyState === 'error' && (
+                <p role="alert" className="mt-2 text-xs text-[var(--color-status-danger)]">
+                  {t('stk.detail.reply_error', 'Tanggapan gagal dikirim. Silakan coba lagi.')}
+                </p>
+              )}
+            </form>
+          </section>
+        </div>
+      </div>
+    </StakeholderLayout>
   )
 }
