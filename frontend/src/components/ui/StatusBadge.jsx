@@ -27,7 +27,7 @@ export function StatusBadge({ status }) {
   const label = i18n.language === 'en' ? info.labelEn : info.label
 
   return (
-    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold" style={badgeStyle(info.color)}>
+    <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold" style={badgeStyle(info.color)}>
       {label}
     </span>
   )
@@ -43,7 +43,7 @@ export function UrgencyBadge({ score }) {
   const label = i18n.language === 'en' ? `${info.levelEn} (${score})` : `${info.level} (${score})`
 
   return (
-    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold" style={badgeStyle(info.color)}>
+    <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold" style={badgeStyle(info.color)}>
       {label}
     </span>
   )

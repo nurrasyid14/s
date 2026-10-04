@@ -39,19 +39,19 @@ function ChartCard({ title, loading, empty, caption, children }) {
   const { t } = useTranslation()
 
   return (
-    <section className="card-elevated rounded-xl p-5">
-      <h3 className="mb-4 text-base font-semibold text-[var(--color-text)]">{title}</h3>
+    <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+      <h3 className="mb-4 text-xs font-bold uppercase tracking-wider font-mono text-[var(--color-text)]">{title}</h3>
       {loading ? (
-        <div className="skeleton h-[220px] rounded-lg" />
+        <div className="skeleton h-[220px] border border-[var(--color-border)]" />
       ) : empty ? (
-        <div className="flex h-[220px] items-center justify-center text-sm text-[var(--color-text-muted)]">
+        <div className="flex h-[220px] items-center justify-center text-xs font-mono text-[var(--color-text-muted)]">
           {t('stk.common.no_data', 'Belum ada data.')}
         </div>
       ) : (
         children
       )}
       {!loading && !empty && caption && (
-        <p className="mt-3 text-xs text-[var(--color-text-muted)]">{caption}</p>
+        <p className="mt-3 pt-3 border-t border-[var(--color-border)] text-xs font-mono text-[var(--color-text-muted)]">{caption}</p>
       )}
     </section>
   )
@@ -128,11 +128,11 @@ export default function Analytics() {
           <ChartCard title={t('analytics.sentiment_title')} loading={loading} empty={sentiment.length === 0}>
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
-                <Pie data={sentiment} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} stroke="none">
+                <Pie data={sentiment} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} stroke="none">
                   {sentiment.map((s, i) => <Cell key={i} fill={sentimentColor(s)} />)}
                 </Pie>
                 <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '12px', color: 'var(--color-text-muted)' }} />
+                <Legend iconType="square" iconSize={8} wrapperStyle={{ fontSize: '12px', fontFamily: 'monospace', color: 'var(--color-text-muted)' }} />
               </PieChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -149,7 +149,7 @@ export default function Analytics() {
                 <XAxis type="number" tick={AXIS_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
                 <YAxis dataKey="category" type="category" tick={AXIS_TICK} tickLine={false} axisLine={false} width={90} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'var(--color-card-hover)' }} />
-                <Bar dataKey="count" fill="var(--color-primary)" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="count" fill="var(--color-primary)" radius={0} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -158,18 +158,18 @@ export default function Analytics() {
             <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-8">
               <ResponsiveContainer width={160} height={160}>
                 <RadialBarChart cx="50%" cy="50%" innerRadius="60%" outerRadius="100%" data={slaData} startAngle={90} endAngle={-270}>
-                  <RadialBar dataKey="value" cornerRadius={4} background={{ fill: 'var(--color-bg-secondary)' }} />
+                  <RadialBar dataKey="value" cornerRadius={0} background={{ fill: 'var(--color-bg-secondary)' }} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
                 </RadialBarChart>
               </ResponsiveContainer>
-              <div className="space-y-3">
+              <div className="space-y-3 font-mono">
                 <div>
                   <div className="text-3xl font-bold text-[var(--color-status-success)]">{sla?.compliant}%</div>
-                  <div className="text-xs text-[var(--color-text-muted)]">{t('stk.analytics.sla_ok', 'SLA terpenuhi')}</div>
+                  <div className="text-xs text-[var(--color-text-muted)] uppercase">{t('stk.analytics.sla_ok', 'SLA terpenuhi')}</div>
                 </div>
                 <div>
                   <div className="text-xl font-bold text-[var(--color-status-danger)]">{sla?.non_compliant}%</div>
-                  <div className="text-xs text-[var(--color-text-muted)]">{t('stk.analytics.sla_breach', 'Pelanggaran SLA')}</div>
+                  <div className="text-xs text-[var(--color-text-muted)] uppercase">{t('stk.analytics.sla_breach', 'Pelanggaran SLA')}</div>
                 </div>
               </div>
             </div>
@@ -187,7 +187,7 @@ export default function Analytics() {
                 <XAxis dataKey="unit" tick={{ ...AXIS_TICK, fontSize: 10 }} tickLine={false} axisLine={false} />
                 <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'var(--color-card-hover)' }} />
-                <Bar dataKey="count" fill="var(--color-accent)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" fill="var(--color-accent)" radius={0} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>

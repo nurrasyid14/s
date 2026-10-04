@@ -45,7 +45,7 @@ export default function Evidence() {
                 <ErrorState onRetry={() => setReloadKey(k => k + 1)} />
             ) : loading ? (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true">
-                    {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="skeleton h-56 rounded-xl" />)}
+                    {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="skeleton h-56 border border-[var(--color-border)]" />)}
                 </div>
             ) : data.length === 0 ? (
                 <EmptyState
@@ -59,9 +59,9 @@ export default function Evidence() {
                         <li key={c.id}>
                             <Link
                                 to={`/stakeholder/complaints/${c.id}`}
-                                className="card-elevated block h-full overflow-hidden rounded-xl transition-smooth hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+                                className="block h-full border border-[var(--color-border)] bg-[var(--color-surface)] transition-colors hover:border-[var(--color-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
                             >
-                                <div className="aspect-[4/3] overflow-hidden bg-[var(--color-bg-secondary)]">
+                                <div className="aspect-[16/10] overflow-hidden bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)]">
                                     <img
                                         src={c.attachments[0].url}
                                         alt={c.attachments[0].name}
@@ -70,14 +70,16 @@ export default function Evidence() {
                                     />
                                 </div>
                                 <div className="p-4">
-                                    <div className="mb-1.5 flex items-center justify-between gap-2">
-                                        <span className="font-mono text-xs text-[var(--color-text-muted)]">{c.ticket_id}</span>
+                                    <div className="mb-2 flex items-center justify-between gap-2">
+                                        <span className="font-mono text-xs px-2 py-0.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)]">{c.ticket_id}</span>
                                         <StatusBadge status={c.status} />
                                     </div>
-                                    <p className="line-clamp-2 text-sm text-[var(--color-text)]">{c.description}</p>
-                                    <div className="mt-2 flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
-                                        <Paperclip size={11} aria-hidden="true" />
-                                        {t('stk.evidence.attachments', { n: c.attachments.length, defaultValue: '{{n}} lampiran' })} · {formatDate(c.created_at)}
+                                    <p className="line-clamp-2 text-sm font-medium text-[var(--color-text)] leading-relaxed">{c.description}</p>
+                                    <div className="mt-3 flex items-center gap-1.5 text-xs font-mono text-[var(--color-text-muted)] pt-3 border-t border-[var(--color-border)]">
+                                        <Paperclip size={12} aria-hidden="true" />
+                                        <span>{t('stk.evidence.attachments', { n: c.attachments.length, defaultValue: '{{n}} lampiran' })}</span>
+                                        <span>·</span>
+                                        <span>{formatDate(c.created_at)}</span>
                                     </div>
                                 </div>
                             </Link>

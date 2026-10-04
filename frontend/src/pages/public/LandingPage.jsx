@@ -1,501 +1,514 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  FileEdit, ScanSearch, ShieldCheck, BarChart3, ArrowRight, Clock, Users, MessageSquare,
-  CheckCircle, AlertCircle, TrendingUp, Workflow, Lock, Home, Plus,
+  FileEdit, ScanSearch, ShieldCheck, BarChart3, Clock, MessageSquare, Users, Globe, Sun, Moon,
+  CheckCircle2, ArrowRight, Menu, X, Building2, GraduationCap, Wallet, Wrench, Server, Library,
+  Home, Plus, Bell, Search, Paperclip,
 } from 'lucide-react'
-import Navbar from '../../components/layout/Navbar.jsx'
+import { useState } from 'react'
+import { useAuth } from '../../context/AuthContext.jsx'
+import { useTheme } from '../../context/ThemeContext.jsx'
 
-/* ---------- helpers ---------- */
-// Pemilih bahasa: L('teks id', 'text en'). Mekanisme i18n.language tetap dipertahankan.
+/* Pemilih bahasa: L('teks id', 'text en') — mengikuti i18n.language. */
 function useL() {
   const { i18n } = useTranslation()
   const isId = !i18n.language || i18n.language.startsWith('id')
   return (id, en) => (isId ? id : en)
 }
 
-const C = {
-  neg: 'var(--l-neg)', neu: 'var(--l-neu)', pos: 'var(--l-pos)',
+/* Reveal saat scroll: blur + naik 14px (animasi seperti referensi). */
+function useReveal() {
+  const ref = useRef(null)
+  useEffect(() => {
+    const root = ref.current
+    if (!root) return undefined
+    const items = root.querySelectorAll('.reveal')
+    if (!('IntersectionObserver' in window)) {
+      items.forEach(el => el.classList.add('in'))
+      return undefined
+    }
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('in')
+          io.unobserve(e.target)
+        }
+      })
+    }, { threshold: 0.15 })
+    items.forEach((el, i) => {
+      el.style.transitionDelay = `${(i % 6) * 70}ms`
+      io.observe(el)
+    })
+    return () => io.disconnect()
+  }, [])
+  return ref
 }
-const DARK = `--color-bg:#07130F;--color-bg-secondary:#0C1E18;--color-surface:#0F241C;--color-border:#1E3D31;--color-text:#E9F7F0;--color-text-muted:#93B5A7;--color-primary:#3DDC97;--color-primary-dark:#22C083;--color-primary-soft:#12332A;--color-accent:#FFC94A;--l-sky:#46D1E0;--l-neg:#FF7A6E;--l-neu:#F5B14A;--l-pos:#3DDC97;--l-shadow:rgba(0,0,0,.55);--l-shadow-lg:rgba(34,192,131,.35);color-scheme:dark;`
-// Tema halaman ini di-scope ke .landing-root. Gelap aktif lewat .dark / [data-theme="dark"],
-// atau otomatis mengikuti sistem bila aplikasi belum menetapkan tema sendiri.
-const THEME_CSS = `
-.landing-root{--color-bg:#F3FBF7;--color-bg-secondary:#E4F6EC;--color-surface:#FFFFFF;--color-border:#DCEFE5;--color-text:#0C2A22;--color-text-muted:#527065;--color-primary:#12A26B;--color-primary-dark:#0B7F54;--color-primary-soft:#DDF5E8;--color-accent:#F5B82E;--l-sky:#2BB6C9;--l-neg:#E0493D;--l-neu:#C98207;--l-pos:#0E9A62;--l-shadow:rgba(12,80,55,.28);--l-shadow-lg:rgba(12,110,75,.38);--l-grad:linear-gradient(135deg,#0F9464 0%,#0B7F54 55%,#0A6B66 100%);color-scheme:light}
-.dark .landing-root,[data-theme="dark"] .landing-root{${DARK}}
-@media (prefers-color-scheme: dark){:root:not(.light):not(.dark):not([data-theme]) .landing-root{${DARK}}}
-.l-grad{background:var(--l-grad);color:#fff}
-html.landing-snap{--nav-h:4rem;scroll-padding-top:var(--nav-h);scroll-behavior:smooth}
-@media (max-width:1023px){html.landing-snap{scroll-snap-type:y proximity}}
-@media (prefers-reduced-motion:reduce){html.landing-snap{scroll-behavior:auto}}
-.landing-page{scroll-snap-align:start;scroll-snap-stop:always;min-height:calc(100svh - var(--nav-h,4rem));display:flex;flex-direction:column;justify-content:center}
-.l-dots{background:radial-gradient(var(--color-primary) 1.6px,transparent 2px) 0 0/16px 16px;opacity:.3}
-@media (min-width:1024px) and (max-height:820px){.l-play{zoom:.86}}
-@media (min-width:1024px) and (max-height:700px){.l-play{zoom:.72}}
-@keyframes l-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
-@keyframes l-ring{to{stroke-dashoffset:var(--to)}}
-@keyframes l-bar{to{transform:scaleX(1)}}
-@keyframes l-barv{to{transform:scaleY(1)}}
-.l-float{animation:l-float 6s ease-in-out infinite}
-.l-ring{stroke-dasharray:214;stroke-dashoffset:214}
-.l-bar{transform-origin:left;transform:scaleX(0)}
-.l-barv{transform-origin:bottom;transform:scaleY(0)}
-.l-play .l-ring,.l-reveal.in .l-ring{animation:l-ring 1.4s .5s ease-out forwards}
-.l-play .l-bar,.l-reveal.in .l-bar{animation:l-bar 1s .2s ease-out forwards}
-.l-reveal.in .l-barv{animation:l-barv .9s .3s ease-out forwards}
-.l-reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease-out,transform .7s ease-out}
-.l-reveal.in{opacity:1;transform:none}
-@media (prefers-reduced-motion:reduce){.l-float{animation:none}.l-ring{animation:none!important;stroke-dashoffset:var(--to)}.l-bar,.l-barv{animation:none!important;transform:none}.l-reveal{opacity:1;transform:none;transition:none}}
-`
-const PANEL = 'bg-[var(--color-surface)] ring-1 ring-[var(--color-border)] shadow-[0_18px_40px_-24px_var(--l-shadow)]'
-const BTN = 'inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full font-semibold transition-all duration-300 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]'
-const SECTION = 'w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20'
 
-const Heading = ({ children, sub, center }) => (
-  <div className={center ? 'l-reveal text-center max-w-2xl mx-auto mb-12 md:mb-16' : 'l-reveal max-w-xl'}>
-    <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-[1.1]">{children}</h2>
-    {sub && <p className="mt-4 text-base md:text-lg text-[var(--color-text-muted)] leading-relaxed">{sub}</p>}
+const Hatch = ({ className = '', opacity = 'opacity-10' }) => (
+  <div className={`relative w-full overflow-hidden ${className}`}>
+    <div className={`hatch absolute inset-0 ${opacity}`} style={{ color: 'var(--hatch)' }} />
   </div>
 )
 
-const Badge = ({ label, color }) => (
-  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ color, background: `color-mix(in srgb, ${color} 12%, transparent)` }}>
-    <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />{label}
-  </span>
-)
-
-const TREND = 'M0,55 C20,50 35,45 55,38 C75,30 90,42 110,35 C130,28 145,20 165,15 C185,10 200,22 220,18 C240,14 260,20 280,12'
-const Trend = ({ h = 'h-16' }) => (
-  <svg viewBox="0 0 280 70" preserveAspectRatio="none" className={`w-full ${h}`} aria-hidden="true">
-    <defs>
-      <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" style={{ stopColor: 'var(--l-sky)', stopOpacity: 0.35 }} />
-        <stop offset="1" style={{ stopColor: 'var(--l-sky)', stopOpacity: 0 }} />
-      </linearGradient>
-    </defs>
-    <path d={`${TREND} L280,70 L0,70 Z`} fill="url(#tg)" />
-    <path d={TREND} fill="none" strokeWidth="2.5" strokeLinecap="round" vectorEffect="non-scaling-stroke" style={{ stroke: 'var(--color-primary)' }} />
-  </svg>
-)
-
-/* ---------- hero ---------- */
-const MUTED = 'text-[var(--color-text-muted)]'
-const Ring = ({ pct, track, color, size = 'w-24 h-24', w = 9, children }) => (
-  <div className={`relative shrink-0 ${size}`}>
-    <svg viewBox="0 0 84 84" className="w-full h-full -rotate-90" aria-hidden="true">
-      <circle cx="42" cy="42" r="34" fill="none" strokeWidth={w} style={{ stroke: track }} />
-      <circle cx="42" cy="42" r="34" fill="none" strokeWidth={w} strokeLinecap="round" className="l-ring" style={{ stroke: color, '--to': 214 * (1 - pct / 100) }} />
-    </svg>
-    <div className="absolute inset-0 flex items-center justify-center font-extrabold">{children}</div>
-  </div>
-)
-
-function Phone() {
-  const L = useL()
-  const rows = [
-    ['SL-0247', L('AC ruang lab 3', 'Lab 3 air conditioner'), 80, C.neu],
-    ['SL-0244', L('Wi-Fi gedung D', 'Building D Wi-Fi'), 100, C.pos],
-  ]
+/* ---------- Bingkai ponsel (path SVG identik dengan referensi) ---------- */
+function PhoneFrame({ children, className = '', style }) {
   return (
-    <div className="relative mx-auto w-[16.5rem] sm:w-[18.5rem] rounded-[2.75rem] bg-[#0C2A22] p-2.5 ring-2 ring-[#9DB3AA] shadow-[0_40px_80px_-24px_var(--l-shadow-lg)]">
-      <div className="relative overflow-hidden rounded-[2.25rem] bg-[var(--color-bg)] text-[var(--color-text)]">
-        <div className="absolute left-1/2 top-2 h-5 w-20 -translate-x-1/2 rounded-full bg-[#0C2A22]" />
-        <div className="flex justify-between px-6 pt-3 text-[10px] font-semibold"><span>9:41</span><span>5G</span></div>
-        <div className="px-4 pb-3 pt-6">
-          <div className={`text-xs ${MUTED}`}>{L('Selamat pagi,', 'Good morning,')}</div>
-          <div className="font-bold">Rina</div>
-          <div className="mt-3 flex items-center gap-3 rounded-2xl l-grad p-3">
-            <Ring pct={75} track="rgba(255,255,255,.28)" color="#fff" size="w-16 h-16" w={10}><span className="text-sm">75%</span></Ring>
-            <div className="text-[11px] leading-5">
-              <div className="text-xs font-semibold">{L('Progres aduan', 'Complaint progress')}</div>
-              <div>#SL-0247, {L('tahap 4 dari 5', 'step 4 of 5')}</div>
-              <div>{L('Sisa SLA 2j 10m', 'SLA left 2h 10m')}</div>
-            </div>
+    <div className={className} style={style}>
+      <svg width="100%" viewBox="0 0 433 882" preserveAspectRatio="xMidYMid meet" fill="none" xmlns="http://www.w3.org/2000/svg" className="block">
+        <path d="M2 73C2 32.6832 34.6832 0 75 0H357C397.317 0 430 32.6832 430 73V809C430 849.317 397.317 882 357 882H75C34.6832 882 2 849.317 2 809V73Z" style={{ fill: 'var(--phone-body)' }} />
+        <path d="M0 171C0 170.448 0.447715 170 1 170H3V204H1C0.447715 204 0 203.552 0 203V171Z" style={{ fill: 'var(--phone-body)' }} />
+        <path d="M1 234C1 233.448 1.44772 233 2 233H3.5V300H2C1.44772 300 1 299.552 1 299V234Z" style={{ fill: 'var(--phone-body)' }} />
+        <path d="M1 319C1 318.448 1.44772 318 2 318H3.5V385H2C1.44772 385 1 384.552 1 384V319Z" style={{ fill: 'var(--phone-body)' }} />
+        <path d="M430 279H432C432.552 279 433 279.448 433 280V384C433 384.552 432.552 385 432 385H430V279Z" style={{ fill: 'var(--phone-body)' }} />
+        <path d="M6 74C6 35.3401 37.3401 4 76 4H356C394.66 4 426 35.3401 426 74V808C426 846.66 394.66 878 356 878H76C37.3401 878 6 846.66 6 808V74Z" style={{ fill: 'var(--phone-bezel)' }} />
+        <path opacity="0.5" d="M174 5H258V5.5C258 6.60457 257.105 7.5 256 7.5H176C174.895 7.5 174 6.60457 174 5.5V5Z" style={{ fill: 'var(--phone-body)' }} />
+        <path d="M21.25 75C21.25 44.2101 46.2101 19.25 77 19.25H355C385.79 19.25 410.75 44.2101 410.75 75V807C410.75 837.79 385.79 862.75 355 862.75H77C46.2101 862.75 21.25 837.79 21.25 807V75Z" style={{ fill: 'var(--phone-screen)' }} />
+        <foreignObject x="21.25" y="19.25" width="389.5" height="843.5">
+          <div xmlns="http://www.w3.org/1999/xhtml" style={{ width: '100%', height: '100%', borderRadius: 55.75, overflow: 'hidden', position: 'relative', background: '#FFFFFF', color: '#0A1220', fontFamily: 'Geist, sans-serif' }}>
+            {children}
           </div>
-          <div className="mb-2 mt-4 flex justify-between text-xs"><span className="font-bold">{L('Aduan Saya', 'My Complaints')}</span><span className="text-[var(--color-primary)]">{L('Lihat', 'View')}</span></div>
-          <ul className="space-y-2">
-            {rows.map(([id, title, pct, col], i) => (
-              <li key={id} className="rounded-xl bg-[var(--color-surface)] px-3 py-2 shadow-sm ring-1 ring-[var(--color-border)]">
-                <div className="flex justify-between text-[11px]"><span className="font-semibold">{title}</span><span className={MUTED}>{id}</span></div>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--color-border)]"><div className="l-bar h-full rounded-full" style={{ width: `${pct}%`, background: col, animationDelay: `${900 + i * 150}ms` }} /></div>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="flex items-center justify-around border-t border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5">
-          <Home size={16} className="text-[var(--color-primary)]" /><BarChart3 size={16} className={MUTED} />
-          <span className="-mt-6 flex h-10 w-10 items-center justify-center rounded-full l-grad shadow-lg"><Plus size={18} /></span>
-          <MessageSquare size={16} className={MUTED} /><Users size={16} className={MUTED} />
-        </div>
-      </div>
+        </foreignObject>
+        <path d="M154 48.5C154 38.2827 162.283 30 172.5 30H259.5C269.717 30 278 38.2827 278 48.5C278 58.7173 269.717 67 259.5 67H172.5C162.283 67 154 58.7173 154 48.5Z" style={{ fill: 'var(--phone-bezel)' }} />
+        <path d="M249 48.5C249 42.701 253.701 38 259.5 38C265.299 38 270 42.701 270 48.5C270 54.299 265.299 59 259.5 59C253.701 59 249 54.299 249 48.5Z" style={{ fill: '#111' }} />
+        <path d="M254 48.5C254 45.4624 256.462 43 259.5 43C262.538 43 265 45.4624 265 48.5C265 51.5376 262.538 54 259.5 54C256.462 54 254 51.5376 254 48.5Z" fill="rgba(255,255,255,0.3)" />
+      </svg>
     </div>
   )
 }
 
-function HeroVisual() {
-  const L = useL()
-  const chip = 'l-float absolute flex items-center gap-2 rounded-2xl bg-[var(--color-surface)] px-3.5 py-2.5 text-xs font-semibold shadow-xl ring-1 ring-[var(--color-border)]'
+/* ---------- Layar mockup (dirancang pada kanvas 389x843) ---------- */
+const NAVY = '#0B1F3A'
+const BLUE = '#2563EB'
+const LINE = 'rgba(10,18,32,0.12)'
+const MUTE = 'rgba(10,18,32,0.55)'
+
+function ScreenHeader({ title, sub }) {
   return (
-    <div className="l-play relative mx-auto max-w-md lg:max-w-none py-4">
-      <div className="absolute inset-x-6 top-2 -bottom-2 rounded-[5rem] bg-[var(--color-primary-soft)]" aria-hidden="true" />
-      <div className="l-dots absolute right-2 top-4 h-28 w-24" aria-hidden="true" />
-      <div className="landing-rise relative" style={{ animationDelay: '200ms' }}><div className="l-float"><Phone /></div></div>
-      <div className={`${chip} left-0 top-28 sm:-left-2`} style={{ animationDelay: '-2s' }}><CheckCircle size={16} className="text-[var(--color-primary)]" />{L('Aduan terverifikasi', 'Complaint verified')}</div>
-      <div className={`${chip} right-0 bottom-32 sm:-right-2`} style={{ animationDelay: '-4s' }}><Clock size={16} className="text-[var(--color-primary)]" />{L('SLA terpenuhi 94%', 'SLA met 94%')}</div>
-      <span className="l-float absolute left-6 bottom-16 h-5 w-5 rounded-full bg-[var(--color-accent)]" style={{ animationDelay: '-1s' }} aria-hidden="true" />
+    <div style={{ padding: '70px 26px 16px' }}>
+      <div style={{ fontSize: 15, color: MUTE }}>{sub}</div>
+      <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.04em', marginTop: 2 }}>{title}</div>
     </div>
   )
 }
 
-function FeatureStrip() {
-  const L = useL()
-  const f = [
-    [FileEdit, L('Ajukan Aduan', 'Submit Complaints'), L('Kirim aduan lengkap dengan detail kapan saja.', 'Send a complaint with details any time.')],
-    [ScanSearch, L('Verifikasi Cepat', 'Fast Verification'), L('Aduan dicek dan dikategorikan sebelum ditangani.', 'Complaints are checked and categorized first.')],
-    [Clock, L('Pantau SLA', 'Track SLA'), L('Waktu respons dan tenggat terlihat jelas.', 'Response time and deadlines stay visible.')],
-    [BarChart3, L('Analitik Aduan', 'Complaint Analytics'), L('Lihat tren dan sentimen untuk keputusan yang lebih baik.', 'See trends and sentiment to decide better.')],
-  ]
+function TabBar({ active }) {
+  const items = [Home, MessageSquare, Plus, BarChart3, Users]
   return (
-    <div id="features" className={`${PANEL} l-reveal mt-8 lg:mt-6 grid rounded-[2rem] sm:grid-cols-2 lg:grid-cols-4 lg:divide-x divide-[var(--color-border)]`}>
-      {f.map(([Icon, title, desc]) => (
-        <div key={title} className="flex items-start gap-4 p-5">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-primary-soft)]"><Icon size={20} className="text-[var(--color-primary)]" /></div>
-          <div>
-            <h3 className="text-base font-bold leading-snug">{title}</h3>
-            <p className={`mt-1 text-xs leading-relaxed ${MUTED}`}>{desc}</p>
-          </div>
+    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 92, borderTop: `1px solid ${LINE}`, background: '#fff', display: 'flex', justifyContent: 'space-around', alignItems: 'flex-start', paddingTop: 18 }}>
+      {items.map((Ic, i) => (
+        <div key={i} style={{ width: 52, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', background: i === 2 ? NAVY : 'transparent', color: i === 2 ? '#fff' : i === active ? BLUE : MUTE }}>
+          <Ic size={24} />
         </div>
       ))}
     </div>
   )
 }
 
+function Chip({ children, color = BLUE }) {
+  return <span style={{ fontSize: 13, fontWeight: 600, padding: '4px 10px', color, background: `${color}1A` }}>{children}</span>
+}
+
+function ScreenList({ L }) {
+  const rows = [
+    ['SL-0247', L('AC ruang lab 3 tidak dingin', 'Lab 3 AC not cooling'), L('Diproses', 'In progress'), '#B45309'],
+    ['SL-0244', L('Wi-Fi gedung D putus-putus', 'Building D Wi-Fi unstable'), L('Selesai', 'Resolved'), '#15803D'],
+    ['SL-0239', L('Antrean KRS terlalu lama', 'KRS queue too long'), L('Baru', 'New'), BLUE],
+    ['SL-0231', L('Buku referensi kurang', 'Not enough references'), L('Selesai', 'Resolved'), '#15803D'],
+  ]
+  return (
+    <>
+      <ScreenHeader sub={L('Selamat pagi, Rina', 'Good morning, Rina')} title={L('Aduan Saya', 'My Complaints')} />
+      <div style={{ margin: '0 26px', padding: 18, background: NAVY, color: '#fff' }}>
+        <div style={{ fontSize: 14, opacity: 0.75 }}>{L('Progres terbaru', 'Latest progress')} · #SL-0247</div>
+        <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.03em', marginTop: 6 }}>{L('Tahap 4 dari 5', 'Step 4 of 5')}</div>
+        <div style={{ display: 'flex', gap: 5, marginTop: 14 }}>
+          {[1, 2, 3, 4, 5].map(n => <div key={n} style={{ flex: 1, height: 5, background: n <= 4 ? '#60A5FA' : 'rgba(255,255,255,.25)' }} />)}
+        </div>
+      </div>
+      <div style={{ padding: '22px 26px 0', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {rows.map(([id, title, st, col]) => (
+          <div key={id} style={{ border: `1px solid ${LINE}`, padding: '14px 16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 13, color: MUTE, fontFamily: 'Geist Mono, monospace' }}>{id}</span>
+              <Chip color={col}>{st}</Chip>
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.02em', marginTop: 8 }}>{title}</div>
+          </div>
+        ))}
+      </div>
+      <TabBar active={1} />
+    </>
+  )
+}
+
+function ScreenForm({ L }) {
+  return (
+    <>
+      <ScreenHeader sub={L('Langkah 3 dari 5', 'Step 3 of 5')} title={L('Ajukan Aduan', 'Submit Complaint')} />
+      <div style={{ padding: '0 26px' }}>
+        <div style={{ display: 'flex', gap: 5 }}>
+          {[1, 2, 3, 4, 5].map(n => <div key={n} style={{ flex: 1, height: 5, background: n <= 3 ? BLUE : LINE }} />)}
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 600, marginTop: 26 }}>{L('Kategori', 'Category')}</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+          {[L('Fasilitas', 'Facilities'), L('Akademik', 'Academic'), L('Administrasi', 'Admin'), L('Keuangan', 'Finance')].map((c, i) => (
+            <span key={c} style={{ fontSize: 14, padding: '8px 14px', border: `1px solid ${i === 0 ? NAVY : LINE}`, background: i === 0 ? NAVY : '#fff', color: i === 0 ? '#fff' : '#0A1220' }}>{c}</span>
+          ))}
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 600, marginTop: 26 }}>{L('Deskripsi aduan', 'Complaint details')}</div>
+        <div style={{ marginTop: 10, border: '1px solid rgba(10,18,32,.55)', padding: 14, height: 190, fontSize: 15, lineHeight: 1.5, color: '#0A1220' }}>
+          {L('Pendingin ruangan lab 3 tidak berfungsi sejak Senin. Praktikum menjadi terganggu karena suhu ruangan terlalu panas…', 'The lab 3 air conditioner has not worked since Monday. Practical sessions are disrupted because the room is too hot…')}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: MUTE, marginTop: 8 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Paperclip size={14} />{L('Lampirkan bukti', 'Attach evidence')}</span>
+          <span>112 / 50+</span>
+        </div>
+        <div style={{ marginTop: 30, background: NAVY, color: '#fff', textAlign: 'center', padding: '15px 0', fontSize: 16, fontWeight: 500 }}>{L('Lanjut', 'Continue')}</div>
+      </div>
+      <TabBar active={2} />
+    </>
+  )
+}
+
+function ScreenDash({ L }) {
+  const bars = [38, 52, 44, 66, 58, 82, 74]
+  return (
+    <>
+      <ScreenHeader sub={L('Portal Stakeholder', 'Stakeholder Portal')} title={L('Ringkasan', 'Overview')} />
+      <div style={{ padding: '0 26px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {[[L('Total aduan', 'Total'), '1.284'], [L('Rata-rata SLA', 'Avg SLA'), '2,4 hr'], [L('Sentimen negatif', 'Negative'), '31%'], [L('Urgensi tinggi', 'High urgency'), '12']].map(([k, v], i) => (
+            <div key={k} style={{ border: `1px solid ${i === 3 ? BLUE : LINE}`, padding: '12px 14px' }}>
+              <div style={{ fontSize: 12.5, color: MUTE }}>{k}</div>
+              <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.04em', marginTop: 4, color: i === 3 ? BLUE : '#0A1220' }}>{v}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ border: `1px solid ${LINE}`, marginTop: 14, padding: 16 }}>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>{L('Tren 7 hari', '7-day trend')}</div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 150, marginTop: 14 }}>
+            {bars.map((h, i) => <div key={i} style={{ flex: 1, height: `${h}%`, background: i === 5 ? NAVY : '#93B4F5' }} />)}
+          </div>
+        </div>
+        <div style={{ border: `1px solid ${LINE}`, marginTop: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Bell size={18} color={BLUE} />
+          <div style={{ fontSize: 14 }}><b>SL-0247</b> · {L('Urgensi 8, perlu ditinjau', 'Urgency 8, needs review')}</div>
+        </div>
+      </div>
+      <TabBar active={3} />
+    </>
+  )
+}
+
+/* ---------- Header ---------- */
+function Header() {
+  const { t, i18n } = useTranslation()
+  const L = useL()
+  const { user, logout } = useAuth()
+  const { dark, toggle } = useTheme()
+  const [open, setOpen] = useState(false)
+
+  const switchLang = () => {
+    const next = i18n.language === 'id' ? 'en' : 'id'
+    i18n.changeLanguage(next)
+    localStorage.setItem('suaralens_lang', next)
+  }
+  const links = [
+    ['#features', L('Fitur', 'Features')],
+    ['#units', L('Unit Layanan', 'Service Units')],
+    ['#about', L('Tentang', 'About')],
+    ['#contact', L('Kontak', 'Contact')],
+  ]
+  const dash = user?.role === 'stakeholder' ? '/stakeholder' : '/user/dashboard'
+  return (
+    <header className="relative w-full border-b border-white/50" style={{ color: 'var(--color-text)' }}>
+      <div className="flex w-full items-center justify-between py-6 px-4 md:px-8">
+        <Link to="/" className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center" style={{ background: 'var(--color-btn)', color: 'var(--color-btn-text)' }}>
+            <ScanSearch size={16} />
+          </span>
+          <span className="text-xl font-bold tracking-tight">SuaraLens</span>
+        </Link>
+        <nav className="hidden md:flex items-center gap-4 lg:gap-8 text-sm lg:text-base font-medium">
+          {links.map(([href, label]) => <a key={href} href={href} className="hover:opacity-70 transition-opacity">{label}</a>)}
+        </nav>
+        <div className="flex items-center gap-3">
+          <button onClick={toggle} aria-label="Toggle theme" className="p-2 hover:opacity-70 transition-opacity">{dark ? <Sun size={18} /> : <Moon size={18} />}</button>
+          <button onClick={switchLang} className="hidden md:flex items-center gap-1 text-sm font-medium hover:opacity-70 transition-opacity"><Globe size={15} />{i18n.language === 'id' ? 'EN' : 'ID'}</button>
+          {user ? (
+            <>
+              <Link to={dash} className="hidden md:block px-4 py-2 border text-sm font-medium transition-colors hover:bg-black/5" style={{ borderColor: 'var(--color-text)' }}>{t('nav.dashboard')}</Link>
+              <button onClick={logout} className="px-4 py-2 text-sm font-medium transition-colors" style={{ background: 'var(--color-btn)', color: 'var(--color-btn-text)' }}>{t('nav.logout')}</button>
+            </>
+          ) : (
+            <>
+              <Link to="/signin" className="hidden md:block px-4 py-2 border text-sm font-medium transition-colors hover:bg-black/5" style={{ borderColor: 'var(--color-text)' }}>{t('nav.login')}</Link>
+              <Link to="/signup-user" className="px-4 py-2 text-sm font-medium transition-colors hover:opacity-90" style={{ background: 'var(--color-btn)', color: 'var(--color-btn-text)' }}>{t('nav.register')}</Link>
+            </>
+          )}
+          <button className="md:hidden p-2" onClick={() => setOpen(o => !o)} aria-label="Menu">{open ? <X size={20} /> : <Menu size={20} />}</button>
+        </div>
+      </div>
+      {open && (
+        <div className="md:hidden border-t border-white/50 px-4 py-3 flex flex-col gap-3 text-sm font-medium animate-fade-in">
+          {links.map(([href, label]) => <a key={href} href={href} onClick={() => setOpen(false)}>{label}</a>)}
+          <button onClick={switchLang} className="flex items-center gap-2 text-left"><Globe size={15} />{i18n.language === 'id' ? 'English' : 'Bahasa Indonesia'}</button>
+          {!user && <Link to="/signin" onClick={() => setOpen(false)}>{t('nav.login')}</Link>}
+        </div>
+      )}
+    </header>
+  )
+}
+
+/* ---------- Hero ---------- */
 function Hero() {
-  const { t } = useTranslation()
   const L = useL()
   return (
-    <section className="landing-page">
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 md:pt-6 pb-6">
-        <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-6">
-          <div>
-            <div className="landing-rise inline-flex items-center gap-2 rounded-full bg-[var(--color-surface)] px-3.5 py-1.5 text-xs font-semibold text-[var(--color-primary)] shadow-sm ring-1 ring-[var(--color-border)]">
-              <ShieldCheck size={14} />{L('Platform manajemen aduan PENS', 'PENS complaint management platform')}
-            </div>
-            <h1 className="landing-rise mt-6 text-5xl font-extrabold leading-[1.05] tracking-tight md:text-6xl" style={{ animationDelay: '100ms' }}>
-              <span className="block">{L('Kelola Aduan,', 'Manage Complaints,')}</span><span className="block">{L('Bangun Kepercayaan.', 'Build Trust.')}</span>
-            </h1>
-            <p className={`landing-rise mt-6 max-w-md text-lg leading-relaxed ${MUTED}`} style={{ animationDelay: '200ms' }}>
-              {L('Terima, proses, pantau, dan analisis aduan dalam satu platform. Setiap aduan punya jalur yang jelas sampai selesai.',
-                'Receive, process, monitor, and analyze complaints in one platform. Every complaint gets a clear path to resolution.')}
-            </p>
-            <div className="landing-rise mt-8 flex flex-col gap-3 sm:flex-row" style={{ animationDelay: '300ms' }}>
-              <Link to="/signup-user" className={`${BTN} l-grad shadow-lg shadow-[var(--l-shadow)] hover:-translate-y-0.5 hover:brightness-110`}>
-                {t('landing.cta_submit', L('Ajukan Aduan', 'Submit a Complaint'))}<ArrowRight size={17} />
-              </Link>
-              <Link to="/signin" className={`${BTN} text-[var(--color-primary)] ring-1 ring-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]`}>
-                {t('landing.cta_stakeholder', L('Masuk sebagai Stakeholder', 'Sign in as Stakeholder'))}
-              </Link>
-            </div>
-            <p className={`landing-rise mt-5 text-sm ${MUTED}`} style={{ animationDelay: '400ms' }}>{L('Pantau status aduan Anda kapan saja, tanpa antre.', 'Track your complaint status any time, no queue.')}</p>
-          </div>
-          <HeroVisual />
+    <section className="relative w-full pt-8 md:pt-12 flex flex-col items-center overflow-hidden">
+      <div className="flex w-full flex-col items-center">
+        <div className="blur-in">
+          <a href="#features" className="flex w-fit items-center gap-2 border p-1 text-xs md:text-sm font-medium backdrop-blur-sm transition-colors hover:bg-white/20" style={{ borderColor: 'var(--color-border)' }}>
+            <span className="px-3 py-1 text-[10px] md:text-xs" style={{ background: 'var(--color-btn)', color: 'var(--color-btn-text)' }}>{L('Baru', 'New')}</span>
+            <span className="pr-2" style={{ color: 'var(--color-text-muted)' }}>{L('Analitik sentimen aduan berbasis NLP →', 'NLP-based complaint sentiment analytics →')}</span>
+          </a>
         </div>
-        <FeatureStrip />
-      </div>
-    </section>
-  )
-}
-
-function Problem() {
-  const L = useL()
-  const items = [
-    [MessageSquare, L('Aduan tersebar', 'Scattered complaints'), L('Aduan masuk lewat banyak kanal, sulit dikelola di satu tempat.', 'Complaints arrive through many channels and are hard to manage in one place.')],
-    [Clock, L('Progres sulit dipantau', 'Progress is hard to follow'), L('Status, penanggung jawab, dan tenggat tidak terlihat jelas.', 'Status, owner, and deadline are not clearly visible.')],
-    [TrendingUp, L('Minim insight', 'Little insight'), L('Data aduan belum dipakai untuk melihat pola dan mengambil keputusan.', 'Complaint data is rarely used to spot patterns and decide.')],
-  ]
-  return (
-    <section id="problem" className={`${SECTION} landing-page`}>
-      <Heading center>{L('Mengelola aduan tidak seharusnya rumit', "Complaint management shouldn't be complicated")}</Heading>
-      <div className={`${PANEL} l-reveal rounded-3xl grid md:grid-cols-3 md:divide-x divide-y md:divide-y-0 divide-[var(--color-border)]`}>
-        {items.map(([Icon, title, desc]) => (
-          <div key={title} className="p-8 md:p-10">
-            <Icon size={22} className="text-[var(--color-neg,#B3261E)] mb-5" style={{ color: C.neg }} />
-            <h3 className="text-lg font-bold mb-2">{title}</h3>
-            <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">{desc}</p>
-          </div>
-        ))}
-      </div>
-      <p className="l-reveal mt-6 flex items-center justify-center gap-2 text-center text-sm font-semibold text-[var(--color-primary)] md:text-base">
-        <CheckCircle size={18} className="shrink-0" />{L('SuaraLens menyatukan semuanya dalam satu platform.', 'SuaraLens brings everything into one platform.')}
-      </p>
-    </section>
-  )
-}
-
-function HowItWorks() {
-  const L = useL()
-  const steps = [
-    [FileEdit, L('Ajukan', 'Submit'), L('Pengguna mengirim aduan.', 'A user sends a complaint.')],
-    [ScanSearch, L('Verifikasi', 'Verify'), L('Aduan dicek dan dikategorikan.', 'It is checked and categorized.')],
-    [Workflow, L('Selesaikan', 'Resolve'), L('Unit terkait menangani aduan.', 'The responsible unit handles it.')],
-    [BarChart3, L('Analisis', 'Analyze'), L('Data diolah menjadi insight.', 'Data becomes insight.')],
-  ]
-  return (
-    <section id="workflow" className={`${SECTION} landing-page`}>
-      <Heading center>{L('Cara kerja SuaraLens', 'How SuaraLens works')}</Heading>
-      <div className="relative grid md:grid-cols-4 gap-10 md:gap-6">
-        <div className="absolute left-7 top-7 bottom-7 w-px bg-[var(--color-border)] md:hidden" aria-hidden="true" />
-        <div className="absolute top-7 left-[12.5%] right-[12.5%] h-px bg-[var(--color-border)] hidden md:block" aria-hidden="true" />
-        {steps.map(([Icon, title, desc], i) => (
-          <div key={title} className="l-reveal relative flex md:flex-col md:items-center md:text-center gap-5 md:gap-4" style={{ transitionDelay: `${i * 120}ms` }}>
-            <div className="relative w-14 h-14 shrink-0 rounded-full bg-[var(--color-surface)] ring-1 ring-[var(--color-border)] shadow-md flex items-center justify-center">
-              <Icon size={22} className="text-[var(--color-primary)]" />
-              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[var(--color-accent)] text-[#0C2A22] text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
-            </div>
-            <div><h3 className="font-bold">{title}</h3><p className="text-sm text-[var(--color-text-muted)] mt-1 max-w-[14rem]">{desc}</p></div>
-          </div>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function Analytics() {
-  const L = useL()
-  const days = L('SSRKJSM', 'MTWTFSS').split('')
-  const bars = [40, 65, 50, 80, 60, 90, 72]
-  const points = [L('Tren, sentimen, dan tingkat urgensi dalam satu dashboard', 'Trend, sentiment, and urgency in one dashboard'), L('Kinerja SLA dan tingkat penyelesaian per unit', 'SLA performance and resolution rate per unit'), L('Bahan laporan untuk pengambilan keputusan', 'Ready material for decision-making')]
-  const card = `${PANEL} l-reveal rounded-3xl p-4 sm:p-5`
-  const d = (n) => ({ transitionDelay: `${n}ms` })
-  return (
-    <section id="analytics" className="landing-page">
-      <div className={`${SECTION} grid items-center gap-12 lg:grid-cols-5`}>
-        <div className="lg:col-span-2">
-          <Heading sub={L('Setiap aduan menambah data. SuaraLens membantu membaca polanya.', 'Every complaint adds data. SuaraLens helps you read the pattern.')}>
-            {L('Ubah aduan menjadi insight yang bisa ditindaklanjuti', 'Turn complaints into actionable insights')}
-          </Heading>
-          <ul className="mt-8 space-y-3">
-            {points.map((p) => <li key={p} className="flex gap-3 text-sm"><CheckCircle size={18} className="mt-0.5 shrink-0 text-[var(--color-primary)]" />{p}</li>)}
-          </ul>
+        <div className="blur-in delay-100">
+          <h1 className="mt-6 max-w-4xl px-4 text-center text-4xl font-bold leading-[1.1] tracking-tight text-white md:text-7xl" style={{ textShadow: '0px 4px 4px rgba(0,0,0,0.09)' }}>
+            {L('Suarakan Aduan', 'Raise Any Complaint')}<br />{L('Tanpa Ragu', 'Without Hesitation')}
+          </h1>
         </div>
-        <div className="relative lg:col-span-3">
-          <div className="absolute -inset-4 -z-10 rounded-[3rem] bg-[var(--color-primary-soft)] opacity-70" aria-hidden="true" />
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <div className={card}>
-              <div className={`text-xs ${MUTED}`}>{L('Total aduan', 'Total complaints')}</div>
-              <div className="mt-1 text-3xl font-extrabold tracking-tight">247</div>
-              <Trend h="h-10" />
-              <div className="text-[11px] text-[var(--color-primary)]">+12% {L('dari kemarin', 'vs yesterday')}</div>
+        <div className="blur-in delay-200">
+          <p className="mt-4 max-w-xl px-4 text-center text-base text-white/90">
+            {L('Sampaikan keluhan, masukan, dan saran kepada unit layanan kampus dengan aman. Pantau setiap tahap penanganan hingga tuntas, secara transparan dan terukur.',
+              'Send complaints, feedback, and suggestions to campus service units safely. Track every handling step through to resolution, transparently and measurably.')}
+          </p>
+        </div>
+        <div className="blur-in delay-300">
+          <div className="mt-8 flex w-full flex-col items-center gap-4 px-4 sm:w-auto sm:flex-row">
+            <Link to="/signup-user" className="w-full px-6 py-2.5 font-medium text-base transition-colors text-center sm:w-auto hover:opacity-90" style={{ background: 'var(--color-btn)', color: 'var(--color-btn-text)' }}>{L('Ajukan Aduan', 'Submit a Complaint')}</Link>
+            <Link to="/signin" className="w-full px-6 py-2.5 border border-white text-white font-medium text-base transition-colors text-center sm:w-auto hover:bg-white/10">{L('Masuk Stakeholder', 'Stakeholder Sign In')}</Link>
+          </div>
+        </div>
+      </div>
+
+      <Hatch className="h-10 border-y border-white my-5 text-white" opacity="opacity-30" />
+      <div className="absolute" style={{ display: 'none' }} />
+
+      <div className="w-full flex justify-center -mt-4 relative z-10 -mb-4">
+        <div className="relative flex min-h-[380px] md:min-h-[520px] lg:min-h-[640px] w-full items-center justify-center">
+          <div className="relative flex h-full w-full max-w-4xl items-center justify-center">
+            <div className="absolute w-[220px] md:w-[260px] lg:w-[280px] z-10" style={{ transform: 'translateX(-78%)' }}>
+              <PhoneFrame className="phone-rise w-full" style={{ animationDelay: '300ms' }}><ScreenList L={L} /></PhoneFrame>
             </div>
-            <div className={`${card} col-span-2 flex flex-col items-center text-center sm:col-span-1 sm:row-span-2`} style={d(100)}>
-              <div className={`self-start text-xs ${MUTED}`}>{L('Kepatuhan SLA', 'SLA compliance')}</div>
-              <div className="my-4"><Ring pct={94} track="var(--color-border)" color="var(--color-primary)" size="w-32 h-32" w={9}><span className="text-3xl">94%</span></Ring></div>
-              <div className={`text-xs ${MUTED}`}>{L('Target 90%', 'Target 90%')}</div>
-              <div className="mt-auto flex h-16 w-full items-end justify-between gap-1.5 pt-4">
-                {bars.map((h, i) => <div key={i} className="flex flex-1 flex-col items-center gap-1"><div className="l-barv w-full rounded-full bg-[var(--color-primary)]" style={{ height: `${h * 0.6}%`, minHeight: 6, animationDelay: `${i * 80}ms`, opacity: i === 5 ? 1 : 0.4 }} /><span className={`text-[9px] ${MUTED}`}>{days[i]}</span></div>)}
-              </div>
+            <div className="relative w-[240px] md:w-[280px] lg:w-[300px] z-20">
+              <PhoneFrame className="phone-rise w-full" style={{ animationDelay: '150ms' }}><ScreenForm L={L} /></PhoneFrame>
             </div>
-            <div className={card} style={d(200)}>
-              <div className={`text-xs ${MUTED}`}>{L('Rata-rata respons', 'Average response')}</div>
-              <div className="mt-1 text-3xl font-extrabold tracking-tight">3.2 <span className={`text-sm font-medium ${MUTED}`}>/ 4 {L('jam', 'h')}</span></div>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--color-border)]"><div className="l-bar h-full w-[80%] rounded-full bg-[var(--color-sky,var(--l-sky))]" style={{ background: 'var(--l-sky)' }} /></div>
-            </div>
-            <div className={card} style={d(300)}>
-              <div className="flex items-center justify-between"><div className={`text-xs ${MUTED}`}>{L('Urgensi tinggi', 'High urgency')}</div><AlertCircle size={18} style={{ color: C.neg }} /></div>
-              <div className="mt-1 text-3xl font-extrabold tracking-tight">8</div>
-              <div className={`mt-2 text-[11px] ${MUTED}`}>{L('Perlu ditangani hari ini', 'Needs attention today')}</div>
-            </div>
-            <div className={`${card} col-span-2 sm:col-span-1`} style={d(400)}>
-              <div className="flex items-center justify-between"><div className={`text-xs ${MUTED}`}>{L('Selesai', 'Resolved')}</div><CheckCircle size={18} className="text-[var(--color-primary)]" /></div>
-              <div className="mt-1 text-3xl font-extrabold tracking-tight">163 <span className={`text-sm font-medium ${MUTED}`}>/ 247</span></div>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--color-border)]"><div className="l-bar h-full w-[66%] rounded-full bg-[var(--color-primary)]" /></div>
+            <div className="absolute w-[220px] md:w-[260px] lg:w-[280px] z-10" style={{ transform: 'translateX(78%)' }}>
+              <PhoneFrame className="phone-rise w-full" style={{ animationDelay: '450ms' }}><ScreenDash L={L} /></PhoneFrame>
             </div>
           </div>
         </div>
       </div>
+      <div className="absolute bottom-0 left-0 right-0 h-48 z-20 pointer-events-none" style={{ background: 'linear-gradient(to top, var(--hero-fade), transparent)' }} />
     </section>
   )
 }
 
-function Roles() {
+/* ---------- Unit layanan (setara bar logo referensi) ---------- */
+function Units() {
   const L = useL()
-  const roles = [
-    [MessageSquare, 'User', L('Mengajukan dan melacak aduan.', 'Submit and track complaints.')],
-    [ScanSearch, L('Verifikator', 'Verifier'), L('Meninjau dan memvalidasi aduan masuk.', 'Review and validate incoming complaints.')],
-    [Workflow, 'Staff', L('Menangani aduan yang ditugaskan.', 'Handle assigned complaints.')],
-    [ShieldCheck, 'Supervisor', L('Memantau kinerja dan SLA.', 'Monitor performance and SLA.')],
-    [BarChart3, 'Stakeholder', L('Menganalisis tren dan kinerja organisasi.', 'Analyze trends and organizational performance.')],
+  const units = [
+    [GraduationCap, L('Akademik', 'Academic')],
+    [Users, L('Kemahasiswaan', 'Student Affairs')],
+    [Wallet, L('Keuangan', 'Finance')],
+    [Wrench, L('Sarana & Prasarana', 'Facilities')],
+    [Server, 'IT Center'],
+    [Library, L('Perpustakaan', 'Library')],
   ]
   return (
-    <section className={`${SECTION} landing-page`}>
-      <Heading center sub={L('Setiap peran melihat dan mengerjakan hal yang sesuai tugasnya.', 'Each role sees and does what fits its job.')}>
-        {L('Satu platform. Peran berbeda.', 'One platform. Different roles.')}
-      </Heading>
-      <div className="relative grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="absolute top-[3.75rem] left-[10%] right-[10%] h-px bg-[var(--color-border)] hidden lg:block" aria-hidden="true" />
-        {roles.map(([Icon, name, desc], i) => (
-          <div key={name} className={`${PANEL} l-reveal relative rounded-3xl p-6 text-center`} style={{ transitionDelay: `${i * 90}ms` }}>
-            <div className="w-14 h-14 mx-auto rounded-full bg-[var(--color-primary-soft)] flex items-center justify-center mb-4"><Icon size={22} className="text-[var(--color-primary)]" /></div>
-            <h3 className="font-bold mb-1">{name}</h3>
-            <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">{desc}</p>
-          </div>
-        ))}
+    <section id="units" className="w-full flex flex-col items-center pt-24 pb-16 relative z-20" style={{ background: 'var(--color-bg)' }}>
+      <h2 className="reveal text-center text-sm md:text-base font-medium mb-10 px-4" style={{ color: 'var(--color-text-muted)' }}>
+        {L('Dipercaya oleh unit layanan kampus EEPIS', 'Trusted by EEPIS campus service units')}
+      </h2>
+      <div className="w-full flex flex-col">
+        <Hatch className="reveal h-8 border-t" opacity="opacity-10" />
+        <div className="w-full border-y grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 divide-x divide-y lg:divide-y-0" style={{ borderColor: 'var(--color-border)', background: 'color-mix(in srgb, var(--color-surface) 50%, transparent)' }}>
+          {units.map(([Icon, name]) => (
+            <div key={name} className="reveal flex h-24 items-center justify-center gap-2 p-4 opacity-60 hover:opacity-100 transition-opacity" style={{ borderColor: 'var(--color-border)' }}>
+              <Icon size={20} /><span className="text-base font-semibold tracking-tight">{name}</span>
+            </div>
+          ))}
+        </div>
+        <Hatch className="reveal h-8 border-b" opacity="opacity-10" />
       </div>
-      <Metrics />
     </section>
   )
 }
 
-function Metrics() {
-  const L = useL()
-  const m = [['94%', L('SLA terpenuhi', 'SLA compliance')], ['3.2j', L('Rata-rata respons', 'Average response')], ['247', L('Aduan terlacak', 'Complaints tracked')], ['100%', L('Status terlihat', 'Visible status')]]
+/* ---------- Fitur (3 kartu) ---------- */
+function Wave() {
+  const hs = [16, 34, 24, 50, 30, 20, 46, 28, 40, 18, 36, 48, 30, 22, 16, 34, 24, 48, 28, 18]
   return (
-    <div className="l-reveal mt-10">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-px overflow-hidden rounded-2xl bg-[var(--color-border)] ring-1 ring-[var(--color-border)]">
-        {m.map(([v, l]) => (
-          <div key={l} className="bg-[var(--color-surface)] px-5 py-4">
-            <div className="text-2xl md:text-3xl font-extrabold tracking-tight text-[var(--color-primary)]">{v}</div>
-            <div className="text-xs text-[var(--color-text-muted)] mt-0.5">{l}</div>
-          </div>
-        ))}
+    <div className="relative flex w-full items-center justify-center overflow-hidden max-w-[260px]" style={{ height: 96, color: 'color-mix(in srgb, var(--color-primary) 40%, transparent)', WebkitMaskImage: 'linear-gradient(90deg,transparent,black 14%,black 86%,transparent)', maskImage: 'linear-gradient(90deg,transparent,black 14%,black 86%,transparent)' }} role="img" aria-label="Aktivitas aduan">
+      <div className="flex h-full items-center justify-center" style={{ gap: 3 }}>
+        {hs.map((h, i) => <span key={i} className="animate-wave block bg-current" style={{ width: 4, height: h * 1.4, animationDelay: `${i * 70}ms` }} />)}
       </div>
-      <p className="mt-2 text-xs text-right text-[var(--color-text-muted)]">{L('Data demo untuk ilustrasi, bukan hasil nyata.', 'Demo data for illustration, not real results.')}</p>
     </div>
   )
 }
 
-function Security() {
-  const { t } = useTranslation()
-  const L = useL()
-  const items = [[Lock, L('Akses berbasis peran', 'Role-based access')], [MessageSquare, L('Pelacakan aduan', 'Complaint tracking')], [Clock, L('Riwayat aktivitas', 'Activity history')], [ShieldCheck, L('Privasi data', 'Data privacy')], [Workflow, L('Alur yang transparan', 'Transparent workflow')]]
+function IconMarquee() {
+  const icons = [FileEdit, ScanSearch, ShieldCheck, BarChart3, Clock, MessageSquare, Users, Building2, CheckCircle2, Bell, Search, Paperclip]
+  const row = icons.map((Ic, i) => <Ic key={i} size={44} strokeWidth={1.4} className="shrink-0" />)
   return (
-    <section className="landing-page">
-      <div className={`${SECTION} !py-12 grid lg:grid-cols-2 gap-10 items-center`}>
-        <div>
-          <ShieldCheck size={32} className="text-[var(--color-primary)] mb-5" />
-          <Heading sub={t('landing.privacy_desc')}>{L('Dibangun untuk transparansi dan akuntabilitas', 'Built for transparency and accountability')}</Heading>
+    <div className="mt-auto mb-10 w-full overflow-hidden" style={{ WebkitMaskImage: 'linear-gradient(to right,transparent,black 10%,black 90%,transparent)', maskImage: 'linear-gradient(to right,transparent,black 10%,black 90%,transparent)' }}>
+      <div className="animate-marquee flex w-max items-center gap-6 pr-6" style={{ color: 'color-mix(in srgb, var(--color-primary) 40%, transparent)' }}>
+        {row}{row}
+      </div>
+    </div>
+  )
+}
+
+function Features() {
+  const L = useL()
+  const h3 = 'text-3xl font-semibold leading-[1.05] tracking-[-0.055em] md:text-2xl lg:text-[2.55rem]'
+  const p = 'mt-5 text-sm leading-6 md:text-xs md:leading-5 lg:text-[13px] lg:leading-6'
+  return (
+    <section id="features" className="w-full px-4 py-20 md:px-8 md:py-24" style={{ background: 'var(--color-bg)' }}>
+      <div className="mx-auto flex max-w-6xl flex-col items-center">
+        <h2 className="reveal max-w-2xl text-center text-3xl leading-[0.95] tracking-[-0.04em] md:text-5xl lg:text-4xl" style={{ color: 'var(--color-text-muted)' }}>
+          {L('Semua yang Anda Butuhkan', 'Everything You Need To')}<br />{L('untuk Aduan yang Tuntas', 'Get Complaints Resolved')}
+        </h2>
+        <div className="mt-14 grid w-full grid-cols-1 gap-6 md:grid-cols-3 md:gap-8">
+          <article className="reveal flex min-h-[430px] flex-col border p-8 md:p-9" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+            <h3 className={`${h3} lg:max-w-[13rem]`}>{L('Aduan 24 jam setiap hari', 'Complaints 24/7')}</h3>
+            <p className={p} style={{ color: 'var(--color-text-muted)' }}>
+              {L('Sampaikan keluhan, masukan, atau saran kapan saja dari ponsel Anda. Identitas dapat disamarkan, tanpa antre di loket, tanpa biaya.',
+                'Send a complaint, feedback, or suggestion any time from your phone. Identity can stay anonymous, no queue at the desk, no cost.')}
+            </p>
+            <div className="mt-auto border-l pl-5" style={{ borderColor: 'var(--color-border)' }}><Wave /></div>
+          </article>
+
+          <article className="reveal flex min-h-[430px] flex-col border p-8 md:p-9" style={{ borderColor: 'var(--color-primary)', background: 'var(--color-surface)' }}>
+            <h3 className={`${h3} lg:max-w-[15rem]`}>{L('Verifikasi & kategori otomatis', 'Automatic verification & triage')}</h3>
+            <p className={`${p} mb-2`} style={{ color: 'var(--color-text-muted)' }}>
+              {L('Setiap aduan dianalisis NLP untuk menentukan kategori, tingkat urgensi, dan sentimen sebelum diteruskan ke unit yang tepat.',
+                'Every complaint is analyzed with NLP to set category, urgency, and sentiment before reaching the right unit.')}
+            </p>
+            <div className="mt-auto">
+              <div className="ml-auto block w-fit max-w-full rounded-tl-full rounded-tr-full rounded-bl-full px-5 py-2.5 text-left text-[11px] font-medium leading-[1.4] text-white shadow-sm" style={{ background: 'var(--color-primary)' }}>
+                {L('AC ruang lab 3 tidak berfungsi sejak Senin', 'Lab 3 AC has not worked since Monday')}
+              </div>
+              <div className="mt-8 flex items-center gap-1.5 ml-2">
+                {[0, 1, 2].map(i => <span key={i} className="size-2.5 rounded-full animate-pulse-soft" style={{ background: 'var(--color-border-strong)', opacity: 0.4, animationDelay: `${i * 200}ms` }} />)}
+              </div>
+              <p className="mt-3 ml-2 text-[8px] font-medium" style={{ color: 'var(--color-text-muted)' }}>{L('Menganalisis kategori dan urgensi aduan', 'Analyzing category and urgency')}</p>
+            </div>
+          </article>
+
+          <article className="reveal flex min-h-[430px] flex-col border p-8 md:p-9" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+            <h3 className={`${h3} lg:max-w-[15rem]`}>{L('Pantau sampai tuntas', 'Track it to the end')}</h3>
+            <p className={p} style={{ color: 'var(--color-text-muted)' }}>
+              {L('Lihat status dan tenggat SLA secara langsung. Unit pengelola menindaklanjuti dengan bukti dan jejak yang transparan bagi semua pihak.',
+                'See status and SLA deadlines live. Handling units follow up with evidence and an audit trail visible to everyone.')}
+            </p>
+            <IconMarquee />
+          </article>
         </div>
-        <ul className="grid sm:grid-cols-2 gap-3">
-          {items.map(([Icon, l]) => <li key={l} className="flex items-center gap-3 rounded-2xl bg-[var(--color-surface)] ring-1 ring-[var(--color-border)] px-4 py-4 text-sm font-semibold"><Icon size={18} className="text-[var(--color-primary)]" />{l}</li>)}
-        </ul>
       </div>
     </section>
   )
 }
 
-function FinalCTA() {
-  const { t } = useTranslation()
+/* ---------- Banner CTA ---------- */
+function StoreBtn({ to, icon: Icon, small, big }) {
+  return (
+    <Link to={to} className="flex items-center gap-3 border border-white/70 bg-black px-5 py-2.5 text-left text-white transition-colors hover:bg-black/80">
+      <Icon size={26} />
+      <span className="flex flex-col leading-tight">
+        <span className="text-[10px] uppercase tracking-wider text-white/70">{small}</span>
+        <span className="text-lg font-semibold tracking-tight">{big}</span>
+      </span>
+    </Link>
+  )
+}
+
+function CTA() {
   const L = useL()
   return (
-    <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-14">
-      <div className="l-reveal relative overflow-hidden rounded-[2rem] px-6 py-14 md:py-20 text-center text-white l-grad">
-        <div className="absolute -top-24 -right-16 w-72 h-72 rounded-full blur-3xl opacity-30 bg-[var(--color-accent)]" aria-hidden="true" />
-        <h2 className="relative text-3xl md:text-5xl font-extrabold tracking-tight max-w-2xl mx-auto leading-[1.1]">{L('Siap membuat pengelolaan aduan lebih baik?', 'Ready to make complaint management better?')}</h2>
-        <p className="relative mt-4 text-white/80 max-w-xl mx-auto">{L('Beri setiap aduan jalur yang jelas dari pengajuan sampai penyelesaian.', 'Give every complaint a clear path from submission to resolution.')}</p>
-        <div className="relative mt-9 flex flex-col sm:flex-row gap-3 justify-center">
-          <Link to="/signup-user" className={`${BTN} bg-white text-[#0B7F54] hover:bg-white/90 hover:-translate-y-0.5`}>{t('landing.cta_submit', L('Ajukan Aduan', 'Submit a Complaint'))}<ArrowRight size={17} /></Link>
-          <Link to="/signin" className={`${BTN} ring-1 ring-white/50 text-white hover:bg-white/10`}>{t('landing.cta_stakeholder', L('Masuk sebagai Stakeholder', 'Sign in as Stakeholder'))}</Link>
+    <section id="about" className="relative w-full flex flex-col items-center justify-center py-40 overflow-hidden">
+      <div className="hero-grad absolute inset-0 -z-0" />
+      <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-center px-4 md:px-8 relative z-10">
+        <h2 className="reveal text-center text-4xl font-bold tracking-tight text-white md:text-6xl lg:text-[4.5rem] mb-10 drop-shadow-sm">
+          {L('Platform Aduan Kampus', 'The Campus Complaint')}<br />{L('yang Didengar', 'Platform That Listens')}
+        </h2>
+        <div className="reveal flex flex-row flex-wrap items-center justify-center gap-4">
+          <StoreBtn to="/signup-user" icon={FileEdit} small={L('Sebagai pelapor', 'As a reporter')} big={L('Ajukan Aduan', 'Submit Complaint')} />
+          <StoreBtn to="/signin" icon={ShieldCheck} small={L('Sebagai pengelola', 'As a handler')} big={L('Masuk Stakeholder', 'Stakeholder Sign In')} />
         </div>
       </div>
     </section>
   )
 }
 
+/* ---------- Footer ---------- */
 function Footer() {
   const L = useL()
-  const cols = [
-    ['Product', [['Features', '#features'], [L('Cara Kerja', 'How It Works'), '#workflow'], ['Analytics', '#analytics']]],
-    [L('Sumber Daya', 'Resources'), [['FAQ', '#'], [L('Bantuan', 'Help'), '#'], [L('Kontak', 'Contact'), '#']]],
-    ['Legal', [[L('Kebijakan Privasi', 'Privacy Policy'), '#'], [L('Syarat & Ketentuan', 'Terms'), '#']]],
-  ]
-  return (
-    <footer className="border-t border-[var(--color-border)] py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid sm:grid-cols-2 lg:grid-cols-5 gap-8">
-        <div className="lg:col-span-2">
-          <div className="flex items-center gap-2.5"><div className="w-6 h-6 rounded-md l-grad" /><span className="font-bold">SuaraLens</span></div>
-          <p className="text-sm text-[var(--color-text-muted)] mt-3">Complaint Management Platform</p>
-        </div>
-        {cols.map(([h, links]) => (
-          <div key={h}>
-            <div className="text-sm font-semibold mb-3">{h}</div>
-            <ul className="space-y-2 text-sm text-[var(--color-text-muted)]">
-              {links.map(([l, href]) => <li key={l}><a href={href} className="hover:text-[var(--color-text)] transition-colors">{l}</a></li>)}
-            </ul>
-          </div>
+  const [sent, setSent] = useState(false)
+  const col = (title, items) => (
+    <div>
+      <h3 className="text-3xl font-normal tracking-[-0.035em]">{title}</h3>
+      <ul className="mt-5 space-y-3">
+        {items.map(([label, href]) => (
+          <li key={label}><a href={href} className="text-2xl font-normal tracking-[-0.04em] transition-colors hover:opacity-100 opacity-40">{label}</a></li>
         ))}
-      </div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 pt-6 border-t border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">
-        SuaraLens © {new Date().getFullYear()} — PENS, Politeknik Elektronika Negeri Surabaya
+      </ul>
+    </div>
+  )
+  return (
+    <footer id="contact" className="w-full px-6 pb-28 pt-20 md:px-12 lg:px-28 lg:pb-44 lg:pt-24" style={{ background: 'var(--color-bg)' }}>
+      <div className="grid gap-16 lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)] lg:gap-24">
+        <div className="flex min-h-[280px] flex-col justify-between gap-20">
+          <div>
+            <h2 className="text-3xl font-normal tracking-[-0.035em]">{L('Kabar Terbaru', 'Newsletter')}</h2>
+            <form className="mt-4 flex max-w-[390px] items-center gap-2" onSubmit={e => { e.preventDefault(); setSent(true) }}>
+              <label className="sr-only" htmlFor="footer-email">Email</label>
+              <input id="footer-email" type="email" required placeholder={L('Masukkan email Anda', 'Enter Your Email')} className="input-field h-12 min-w-0 flex-1 text-lg" />
+              <button type="submit" className="h-12 px-4 text-lg font-normal transition-colors hover:opacity-85" style={{ background: 'var(--color-btn)', color: 'var(--color-btn-text)' }}>{sent ? '✓' : L('Kirim', 'Submit')}</button>
+            </form>
+          </div>
+          <div>
+            <p className="text-lg font-normal tracking-[-0.03em]" style={{ color: 'var(--color-text-muted)' }}>© 2026 SuaraLens · EEPIS. {L('Hak cipta dilindungi.', 'All rights reserved.')}</p>
+          </div>
+        </div>
+        <nav className="grid grid-cols-2 gap-14 lg:gap-20" aria-label="Footer">
+          {col(L('Produk', 'Brand'), [[L('Tentang', 'About'), '#about'], [L('Fitur', 'Features'), '#features'], [L('Unit Layanan', 'Units'), '#units'], [L('Masuk', 'Sign In'), '/signin']])}
+          {col(L('Bantuan', 'Support'), [[L('Bantuan', 'Help'), '#contact'], [L('Panduan', 'Guidelines'), '#features'], ['FAQ', '#features'], [L('Privasi', 'Privacy'), '#contact']])}
+        </nav>
       </div>
     </footer>
   )
 }
 
-/* ---------- page ---------- */
 export default function LandingPage() {
-  const { t, i18n } = useTranslation() // dipertahankan agar mekanisme i18n tetap sama
-  void t; void i18n
-  // Scroll-snap per halaman: aktif hanya selama landing page tampil.
-  useEffect(() => {
-    const root = document.documentElement
-    root.classList.add('landing-snap')
-    const desktop = window.matchMedia('(min-width: 1024px)')
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const px = (v) => (v.endsWith('rem') ? parseFloat(v) * 16 : parseFloat(v) || 0)
-    let locked = false
-    // Pindah satu halaman. Return false bila halaman aktif masih punya isi (biarkan scroll normal).
-    const go = (dir) => {
-      const pages = [...document.querySelectorAll('.landing-page')]
-      const top = px(getComputedStyle(root).getPropertyValue('--nav-h').trim())
-      let cur = 0
-      pages.forEach((el, i) => { if (el.getBoundingClientRect().top <= top + 8) cur = i })
-      const r = pages[cur].getBoundingClientRect()
-      if (dir > 0 && r.bottom > window.innerHeight + 8) return false
-      if (dir < 0 && r.top < top - 8) return false
-      const next = pages[cur + dir]
-      if (!next) return false
-      locked = true
-      next.scrollIntoView({ behavior: reduce.matches ? 'auto' : 'smooth', block: 'start' })
-      setTimeout(() => { locked = false }, 900)
-      return true
-    }
-    const onWheel = (e) => {
-      if (!desktop.matches || e.ctrlKey || Math.abs(e.deltaY) < 4) return
-      if (locked) { e.preventDefault(); return }
-      if (go(Math.sign(e.deltaY))) e.preventDefault()
-    }
-    const onKey = (e) => {
-      if (!desktop.matches || locked || e.target.closest?.('input,textarea,select,button,a,[contenteditable]')) return
-      const dir = e.key === 'ArrowDown' || e.key === 'PageDown' ? 1 : e.key === 'ArrowUp' || e.key === 'PageUp' ? -1 : e.key === ' ' ? (e.shiftKey ? -1 : 1) : 0
-      if (dir && go(dir)) e.preventDefault()
-    }
-    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target) } }), { threshold: 0.15 })
-    document.querySelectorAll('.l-reveal').forEach((el) => io.observe(el))
-    window.addEventListener('wheel', onWheel, { passive: false })
-    window.addEventListener('keydown', onKey)
-    return () => {
-      root.classList.remove('landing-snap')
-      io.disconnect()
-      window.removeEventListener('wheel', onWheel)
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [])
+  const rootRef = useReveal()
+  useEffect(() => { document.title = 'SuaraLens — Platform Aduan Kampus' }, [])
   return (
-    <div className="landing-root min-h-screen bg-[var(--color-bg)] text-[var(--color-text)] overflow-x-clip transition-colors duration-300">
-      <style>{THEME_CSS + `
-        @keyframes landing-rise { from { opacity: 0; transform: translateY(24px) } to { opacity: 1; transform: none } }
-        .landing-rise { animation: landing-rise .8s ease-out both; }
-        @media (prefers-reduced-motion: reduce) { .landing-rise { animation: none } }
-      `}</style>
-      <Navbar variant="public" />
-      <Hero />
-      <Problem />
-      <HowItWorks />
-      <Analytics />
-      <Roles />
-      <Security />
-      <div className="landing-page"><FinalCTA /><Footer /></div>
+    <div ref={rootRef} className="min-h-screen w-full flex flex-col" style={{ background: 'var(--color-bg)', color: 'var(--color-text)' }}>
+      <main className="mx-auto w-full max-w-[1400px] border-x flex flex-col flex-1 relative z-10" style={{ borderColor: 'var(--color-border)' }}>
+        <div className="relative w-full flex flex-col">
+          <div className="hero-grad absolute top-0 left-1/2 -translate-x-1/2 w-[100vw] h-full z-[-1]" />
+          <div className="absolute inset-0 border-x border-white/30 pointer-events-none z-50" />
+          <Header />
+          <Hero />
+        </div>
+        <Units />
+        <Features />
+        <Hatch className="h-8 border-y" opacity="opacity-10" />
+        <CTA />
+        <Footer />
+      </main>
     </div>
   )
 }

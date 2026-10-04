@@ -10,13 +10,13 @@ import { User, Bell, Palette, Globe, Save, Check } from 'lucide-react'
 const SAVED_MESSAGE_MS = 2000
 
 const inputCls =
-    'w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-sm text-[var(--color-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]'
+    'input-field w-full text-xs font-mono'
 
 function SectionCard({ icon: Icon, title, children }) {
     return (
-        <section className="card-elevated rounded-xl p-6">
-            <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-[var(--color-text)]">
-                <Icon size={16} className="text-[var(--color-primary)]" aria-hidden="true" /> {title}
+        <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+            <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wider font-mono text-[var(--color-text)]">
+                <Icon size={15} className="text-[var(--color-primary)]" aria-hidden="true" /> {title}
             </h3>
             {children}
         </section>
@@ -25,8 +25,8 @@ function SectionCard({ icon: Icon, title, children }) {
 
 function SettingRow({ label, icon: Icon, children }) {
     return (
-        <div className="flex items-center justify-between gap-4 py-2">
-            <span className="flex items-center gap-2 text-sm text-[var(--color-text)]">
+        <div className="flex items-center justify-between gap-4 py-2.5">
+            <span className="flex items-center gap-2 text-xs font-medium text-[var(--color-text)]">
                 {Icon && <Icon size={14} aria-hidden="true" />} {label}
             </span>
             {children}
@@ -70,51 +70,51 @@ export default function Settings() {
             />
 
             {/* Ringkasan akun */}
-            <div className="card-elevated flex items-center gap-4 rounded-xl p-5">
+            <div className="flex items-center gap-4 border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
                 <div
-                    className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-xl font-bold text-white"
+                    className="flex h-12 w-12 flex-shrink-0 items-center justify-center border border-[var(--color-border)] bg-[var(--color-primary)] text-lg font-bold font-mono text-white"
                     aria-hidden="true"
                 >
                     {(form.name || user?.email || '?').charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0">
-                    <div className="truncate font-semibold text-[var(--color-text)]">{form.name || '—'}</div>
-                    <div className="truncate text-sm text-[var(--color-text-muted)]">
+                    <div className="truncate font-semibold text-sm text-[var(--color-text)]">{form.name || '—'}</div>
+                    <div className="truncate text-xs text-[var(--color-text-muted)] mt-0.5">
                         {[form.position, t('stk.settings.role', 'Stakeholder')].filter(Boolean).join(' · ')}
                     </div>
-                    <div className="truncate text-xs text-[var(--color-text-muted)]">{form.email}</div>
+                    <div className="truncate text-xs font-mono text-[var(--color-text-muted)] mt-0.5">{form.email}</div>
                 </div>
             </div>
 
             {/* Profil */}
-            <form onSubmit={handleSave} className="card-elevated rounded-xl p-6">
-                <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-[var(--color-text)]">
-                    <User size={16} className="text-[var(--color-primary)]" aria-hidden="true" /> {t('nav.profile')}
+            <form onSubmit={handleSave} className="border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+                <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wider font-mono text-[var(--color-text)]">
+                    <User size={15} className="text-[var(--color-primary)]" aria-hidden="true" /> {t('nav.profile')}
                 </h3>
                 <div className="space-y-4">
                     <div>
-                        <label htmlFor="settings-name" className="mb-1.5 block text-xs font-medium text-[var(--color-text-muted)]">{t('auth.name')}</label>
+                        <label htmlFor="settings-name" className="mb-1.5 block text-xs font-mono uppercase text-[var(--color-text-muted)]">{t('auth.name')}</label>
                         <input id="settings-name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputCls} />
                     </div>
                     <div>
-                        <label htmlFor="settings-position" className="mb-1.5 block text-xs font-medium text-[var(--color-text-muted)]">{t('auth.position')}</label>
+                        <label htmlFor="settings-position" className="mb-1.5 block text-xs font-mono uppercase text-[var(--color-text-muted)]">{t('auth.position')}</label>
                         <input id="settings-position" value={form.position} onChange={e => setForm(f => ({ ...f, position: e.target.value }))} className={inputCls} />
                     </div>
                     <div>
-                        <label htmlFor="settings-email" className="mb-1.5 block text-xs font-medium text-[var(--color-text-muted)]">{t('auth.email')}</label>
+                        <label htmlFor="settings-email" className="mb-1.5 block text-xs font-mono uppercase text-[var(--color-text-muted)]">{t('auth.email')}</label>
                         <input id="settings-email" value={form.email} disabled className={`${inputCls} cursor-not-allowed opacity-60`} />
                     </div>
                 </div>
-                <div className="mt-5 flex items-center gap-3">
+                <div className="mt-5 flex items-center gap-3 pt-4 border-t border-[var(--color-border)]">
                     <button
                         type="submit"
-                        className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-primary)] px-5 py-2.5 text-sm font-semibold text-white transition-smooth hover:bg-[var(--color-primary-dark)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]"
+                        className="btn-solid inline-flex items-center gap-2 text-xs py-2 px-4 font-medium"
                     >
-                        <Save size={15} aria-hidden="true" /> {t('common.save')}
+                        <Save size={14} aria-hidden="true" /> {t('common.save')}
                     </button>
                     {saved && (
-                        <span role="status" className="inline-flex items-center gap-1.5 text-sm text-[var(--color-status-success)]">
-                            <Check size={14} aria-hidden="true" /> {t('stk.settings.saved', 'Perubahan disimpan')}
+                        <span role="status" className="inline-flex items-center gap-1.5 text-xs font-mono text-[var(--color-status-success)]">
+                            <Check size={13} aria-hidden="true" /> {t('stk.settings.saved', 'Perubahan disimpan')}
                         </span>
                     )}
                 </div>
@@ -122,7 +122,7 @@ export default function Settings() {
 
             {/* Notifikasi */}
             <SectionCard icon={Bell} title={t('stk.settings.notifications', 'Notifikasi')}>
-                <div className="space-y-1">
+                <div className="space-y-1 divide-y divide-[var(--color-border)]">
                     {notifOptions.map(({ key, label }) => (
                         <SettingRow key={key} label={label}>
                             <ToggleSwitch
@@ -137,23 +137,25 @@ export default function Settings() {
 
             {/* Tampilan & bahasa */}
             <SectionCard icon={Palette} title={t('stk.settings.appearance', 'Tampilan & bahasa')}>
-                <SettingRow label={t('stk.settings.dark_mode', 'Mode gelap')}>
-                    <ToggleSwitch label={t('stk.settings.dark_mode', 'Mode gelap')} checked={dark} onChange={() => toggle()} />
-                </SettingRow>
-                <SettingRow label={t('stk.settings.language', 'Bahasa')} icon={Globe}>
-                    <select
-                        aria-label={t('stk.settings.language', 'Bahasa')}
-                        value={currentLang}
-                        onChange={e => {
-                            i18n.changeLanguage(e.target.value)
-                            localStorage.setItem('suaralens_lang', e.target.value)
-                        }}
-                        className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-1.5 text-sm text-[var(--color-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
-                    >
-                        <option value="id">Bahasa Indonesia</option>
-                        <option value="en">English</option>
-                    </select>
-                </SettingRow>
+                <div className="divide-y divide-[var(--color-border)]">
+                    <SettingRow label={t('stk.settings.dark_mode', 'Mode gelap')}>
+                        <ToggleSwitch label={t('stk.settings.dark_mode', 'Mode gelap')} checked={dark} onChange={() => toggle()} />
+                    </SettingRow>
+                    <SettingRow label={t('stk.settings.language', 'Bahasa')} icon={Globe}>
+                        <select
+                            aria-label={t('stk.settings.language', 'Bahasa')}
+                            value={currentLang}
+                            onChange={e => {
+                                i18n.changeLanguage(e.target.value)
+                                localStorage.setItem('suaralens_lang', e.target.value)
+                            }}
+                            className="border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
+                        >
+                            <option value="id">Bahasa Indonesia</option>
+                            <option value="en">English</option>
+                        </select>
+                    </SettingRow>
+                </div>
             </SectionCard>
         </StakeholderLayout>
     )

@@ -80,10 +80,9 @@ export default function ComplaintsPage() {
       render: v => (
         <Link
           to={`/stakeholder/complaints/${v}`}
-          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
-          style={{ color: 'var(--color-primary)', background: 'var(--color-primary-soft)' }}
+          className="btn-outline inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono transition-colors"
         >
-          <Eye size={13} aria-hidden="true" /> {t('complaints.view_detail')}
+          <Eye size={12} aria-hidden="true" /> {t('complaints.view_detail')}
         </Link>
       ),
     },
@@ -94,7 +93,7 @@ export default function ComplaintsPage() {
       aria-label={t('complaints.type')}
       value={type}
       onChange={e => { setType(e.target.value); setPage(1) }}
-      className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+      className="border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
     >
       <option value="">{t('stk.complaints.all_types', 'Semua jenis')}</option>
       {COMPLAINT_TYPES.map(key => <option key={key} value={key}>{typeLabel(key)}</option>)}

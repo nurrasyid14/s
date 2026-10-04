@@ -30,18 +30,18 @@ function UrgencyHighlight({ count }) {
   return (
     <Link
       to="/stakeholder/followups"
-      className={`flex flex-col justify-between rounded-xl border p-5 transition-smooth hover:shadow-md ${focusRing}`}
+      className={`flex flex-col justify-between border p-5 transition-colors hover:border-[var(--color-status-danger)] ${focusRing}`}
       style={{
-        background: 'color-mix(in srgb, var(--color-status-danger) 8%, var(--color-surface))',
-        borderColor: 'color-mix(in srgb, var(--color-status-danger) 30%, var(--color-border))',
+        background: 'color-mix(in srgb, var(--color-status-danger) 6%, var(--color-surface))',
+        borderColor: 'color-mix(in srgb, var(--color-status-danger) 25%, var(--color-border))',
       }}
     >
-      <div className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-muted)]">
-        <AlertTriangle size={16} className="text-[var(--color-status-danger)]" aria-hidden="true" />
+      <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-[var(--color-status-danger)] font-semibold">
+        <AlertTriangle size={15} className="text-[var(--color-status-danger)]" aria-hidden="true" />
         {t('dashboard.high_urgency')}
       </div>
-      <div className="mt-2 text-3xl font-bold text-[var(--color-status-danger)]">{count}</div>
-      <div className="mt-3 flex items-center justify-between gap-2 text-xs">
+      <div className="mt-3 text-3xl font-bold text-[var(--color-status-danger)] font-mono">{count}</div>
+      <div className="mt-3 flex items-center justify-between gap-2 text-xs pt-3 border-t border-[var(--color-border)]">
         <span className="text-[var(--color-text-muted)]">
           {t('stk.dashboard.needs_attention', 'Perlu perhatian')}
         </span>
@@ -64,18 +64,18 @@ function UrgentItem({ complaint }) {
   return (
     <Link
       to={`/stakeholder/complaints/${complaint.id}`}
-      className={`flex flex-col gap-2 rounded-lg border border-[var(--color-border)] p-3.5 transition-smooth hover:bg-[var(--color-card-hover)] sm:flex-row sm:items-center sm:gap-4 ${focusRing}`}
+      className={`flex flex-col gap-2 border border-[var(--color-border)] bg-[var(--color-surface)] p-3.5 transition-colors hover:bg-[var(--color-bg-secondary)] sm:flex-row sm:items-center sm:gap-4 ${focusRing}`}
     >
       <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
         {complaint.ticket_id && (
-          <span className="font-mono text-xs text-[var(--color-text-muted)]">{complaint.ticket_id}</span>
+          <span className="font-mono text-xs px-2 py-0.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)]">{complaint.ticket_id}</span>
         )}
         <UrgencyBadge score={complaint.urgency_score} />
         {complaint.status && <StatusBadge status={complaint.status} />}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm text-[var(--color-text)]">{complaint.description}</p>
-        {meta && <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{meta}</p>}
+        <p className="truncate text-sm font-medium text-[var(--color-text)]">{complaint.description}</p>
+        {meta && <p className="mt-0.5 text-xs text-[var(--color-text-muted)] font-mono">{meta}</p>}
       </div>
       <span className="flex-shrink-0 text-xs font-semibold text-[var(--color-primary)]">
         {t('dashboard.review')} →
@@ -139,10 +139,10 @@ export default function StakeholderDashboard() {
         actions={
           <Link
             to="/stakeholder/complaints"
-            className={`inline-flex items-center gap-2 rounded-lg border border-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-primary)] transition-smooth hover:bg-[var(--color-primary-soft)] ${focusRing}`}
+            className={`btn-outline inline-flex items-center gap-2 text-xs py-2 px-3.5 font-medium ${focusRing}`}
           >
             {t('stk.dashboard.view_all', 'Lihat semua aduan')}
-            <ArrowRight size={14} aria-hidden="true" />
+            <ArrowRight size={13} aria-hidden="true" />
           </Link>
         }
       />
@@ -157,7 +157,7 @@ export default function StakeholderDashboard() {
             className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
           >
             {loading ? (
-              [1, 2, 3, 4].map(i => <div key={i} className="skeleton h-28 rounded-xl" />)
+              [1, 2, 3, 4].map(i => <div key={i} className="skeleton h-28 border border-[var(--color-border)]" />)
             ) : (
               <>
                 <StatCard
@@ -185,9 +185,9 @@ export default function StakeholderDashboard() {
 
           {/* Charts */}
           <section className="grid gap-4 lg:grid-cols-3">
-            <div className="card-elevated rounded-xl p-5 lg:col-span-2">
+            <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5 lg:col-span-2">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-base font-semibold text-[var(--color-text)]">{t('dashboard.trend_title')}</h3>
+                <h3 className="text-sm font-bold uppercase tracking-wider font-mono text-[var(--color-text)]">{t('dashboard.trend_title')}</h3>
                 <SegmentedControl
                   label={t('stk.dashboard.period_label', 'Rentang tren')}
                   options={periodOptions}
@@ -196,7 +196,7 @@ export default function StakeholderDashboard() {
                 />
               </div>
               {loading ? (
-                <div className="skeleton h-[240px] rounded-lg" />
+                <div className="skeleton h-[240px] border border-[var(--color-border)]" />
               ) : visibleTrend.length === 0 ? (
                 <NoData>{t('stk.common.no_data', 'Belum ada data.')}</NoData>
               ) : (
@@ -220,12 +220,12 @@ export default function StakeholderDashboard() {
               )}
             </div>
 
-            <div className="card-elevated rounded-xl p-5">
-              <h3 className="mb-4 text-base font-semibold text-[var(--color-text)]">
+            <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+              <h3 className="mb-4 text-sm font-bold uppercase tracking-wider font-mono text-[var(--color-text)]">
                 {t('dashboard.distribution_title')}
               </h3>
               {loading ? (
-                <div className="skeleton h-[240px] rounded-lg" />
+                <div className="skeleton h-[240px] border border-[var(--color-border)]" />
               ) : dist.length === 0 ? (
                 <NoData>{t('stk.common.no_data', 'Belum ada data.')}</NoData>
               ) : (
@@ -248,22 +248,22 @@ export default function StakeholderDashboard() {
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-2xl font-bold text-[var(--color-text)]">{distTotal.toLocaleString()}</span>
-                      <span className="text-xs text-[var(--color-text-muted)]">{t('stk.dashboard.total', 'Total')}</span>
+                      <span className="text-2xl font-bold text-[var(--color-text)] font-mono">{distTotal.toLocaleString()}</span>
+                      <span className="text-xs text-[var(--color-text-muted)] font-mono uppercase">{t('stk.dashboard.total', 'Total')}</span>
                     </div>
                   </div>
-                  <ul className="mt-3 space-y-1.5">
+                  <ul className="mt-4 space-y-2 pt-3 border-t border-[var(--color-border)]">
                     {dist.map((d, i) => (
-                      <li key={i} className="flex items-center justify-between gap-2 text-sm">
+                      <li key={i} className="flex items-center justify-between gap-2 text-xs">
                         <span className="flex min-w-0 items-center gap-2 text-[var(--color-text)]">
                           <span
-                            className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                            className="h-2 w-2 flex-shrink-0"
                             style={{ background: SERIES_COLORS[i % SERIES_COLORS.length] }}
                             aria-hidden="true"
                           />
                           <span className="truncate">{d.role}</span>
                         </span>
-                        <span className="flex-shrink-0 text-xs text-[var(--color-text-muted)]">
+                        <span className="flex-shrink-0 font-mono text-[var(--color-text-muted)]">
                           {d.count} · {distTotal ? Math.round((d.count / distTotal) * 100) : 0}%
                         </span>
                       </li>
@@ -275,26 +275,26 @@ export default function StakeholderDashboard() {
           </section>
 
           {/* Aduan yang memerlukan perhatian */}
-          <section className="card-elevated rounded-xl p-5">
+          <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h3 className="flex items-center gap-2 text-base font-semibold text-[var(--color-text)]">
-                <AlertTriangle size={16} className="text-[var(--color-status-danger)]" aria-hidden="true" />
+              <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider font-mono text-[var(--color-text)]">
+                <AlertTriangle size={15} className="text-[var(--color-status-danger)]" aria-hidden="true" />
                 {t('dashboard.attention_title')}
               </h3>
               <Link
                 to="/stakeholder/followups"
-                className={`rounded text-xs font-medium text-[var(--color-primary)] hover:underline ${focusRing}`}
+                className={`text-xs font-mono font-medium text-[var(--color-primary)] hover:underline ${focusRing}`}
               >
-                {t('common.see_all')}
+                {t('common.see_all')} →
               </Link>
             </div>
             {loading ? (
               <div className="space-y-2">
-                {[1, 2, 3].map(i => <div key={i} className="skeleton h-14 rounded-lg" />)}
+                {[1, 2, 3].map(i => <div key={i} className="skeleton h-14 border border-[var(--color-border)]" />)}
               </div>
             ) : urgent.length === 0 ? (
               <div className="py-8 text-center text-[var(--color-text-muted)]">
-                <CheckCircle2 size={28} className="mx-auto mb-2 text-[var(--color-status-success)]" aria-hidden="true" />
+                <CheckCircle2 size={24} className="mx-auto mb-2 text-[var(--color-status-success)]" aria-hidden="true" />
                 <p className="text-sm">
                   {t('stk.dashboard.urgent_empty', 'Tidak ada aduan yang memerlukan perhatian segera.')}
                 </p>

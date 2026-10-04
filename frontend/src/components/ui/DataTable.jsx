@@ -1,28 +1,16 @@
 import { useState } from 'react'
-import { ChevronUp, ChevronDown, Search, Filter, ChevronLeft, ChevronRight, Inbox } from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Search, Filter, Inbox } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-/**
- * DataTable — reusable, sortable, searchable table
- * @param {Array}     columns - [{ key, label, render?, sortable? }]
- * @param {Array}     data    - array of row objects
- * @param {boolean}   loading
- * @param {number}    total   - total records (for pagination)
- * @param {number}    page
- * @param {number}    limit
- * @param {function}  onPageChange
- * @param {string}    searchValue
- * @param {function}  onSearchChange
- * @param {node}      filterSlot   - extra filter controls (optional)
- */
 export default function DataTable({
   columns = [],
   data = [],
-  loading = false,
   total = 0,
   page = 1,
   limit = 10,
+  loading = false,
   onPageChange,
+  onSortChange,
   searchValue = '',
   onSearchChange,
   filterSlot,
@@ -36,17 +24,20 @@ export default function DataTable({
   const totalPages = Math.ceil(total / limit)
 
   function handleSort(key) {
+    let nextDir = 'asc'
     if (sortKey === key) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortKey(key)
-      setSortDir('asc')
+      if (sortDir === 'asc') nextDir = 'desc'
+      else { setSortKey(null); onSortChange?.(null, 'asc'); return }
     }
+    setSortKey(key)
+    setSortDir(nextDir)
+    onSortChange?.(key, nextDir)
   }
 
   const sorted = sortKey
     ? [...data].sort((a, b) => {
-      const va = a[sortKey], vb = b[sortKey]
+      const va = a[sortKey]
+      const vb = b[sortKey]
       if (va == null) return 1
       if (vb == null) return -1
       const cmp = va < vb ? -1 : va > vb ? 1 : 0
@@ -66,7 +57,7 @@ export default function DataTable({
               value={searchValue}
               onChange={e => onSearchChange(e.target.value)}
               placeholder={t('complaints.search_placeholder')}
-              className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-sm text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-smooth"
+              className="input-field pl-9 pr-4 py-2.5"
             />
           </div>
         )}
@@ -79,7 +70,7 @@ export default function DataTable({
       </div>
 
       {/* Table */}
-      <div className="card-elevated overflow-hidden">
+      <div className="card-elevated border border-[var(--color-border)] bg-[var(--color-surface)]">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -106,7 +97,7 @@ export default function DataTable({
                   <tr key={i} className="border-b border-[var(--color-border)]">
                     {columns.map(col => (
                       <td key={col.key} className="px-4 py-3.5">
-                        <div className="skeleton h-4 w-full rounded" />
+                        <div className="skeleton h-4 w-full" />
                       </td>
                     ))}
                   </tr>
@@ -144,9 +135,10 @@ export default function DataTable({
               <button
                 onClick={() => onPageChange?.(page - 1)}
                 disabled={page <= 1}
-                className="p-1.5 rounded hover:bg-[var(--color-card-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="w-8 h-8 flex items-center justify-center border border-[var(--color-border)] hover:bg-[var(--color-card-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                aria-label="Previous page"
               >
-                <ChevronLeft size={16} className="text-[var(--color-text-muted)]" />
+                <ChevronLeft size={16} className="text-[var(--color-text)]" />
               </button>
               {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                 const p = page <= 3 ? i + 1 : page - 2 + i
@@ -155,7 +147,7 @@ export default function DataTable({
                   <button
                     key={p}
                     onClick={() => onPageChange?.(p)}
-                    className={`w-8 h-8 rounded text-xs font-medium transition-colors ${p === page ? 'bg-[var(--color-primary)] text-white' : 'hover:bg-[var(--color-card-hover)] text-[var(--color-text-muted)]'}`}
+                    className={`w-8 h-8 border text-xs font-medium transition-colors ${p === page ? 'bg-[var(--color-btn)] text-[var(--color-btn-text)] border-[var(--color-btn)]' : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-card-hover)] text-[var(--color-text)]'}`}
                   >
                     {p}
                   </button>
@@ -164,9 +156,10 @@ export default function DataTable({
               <button
                 onClick={() => onPageChange?.(page + 1)}
                 disabled={page >= totalPages}
-                className="p-1.5 rounded hover:bg-[var(--color-card-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="w-8 h-8 flex items-center justify-center border border-[var(--color-border)] hover:bg-[var(--color-card-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                aria-label="Next page"
               >
-                <ChevronRight size={16} className="text-[var(--color-text-muted)]" />
+                <ChevronRight size={16} className="text-[var(--color-text)]" />
               </button>
             </div>
           </div>

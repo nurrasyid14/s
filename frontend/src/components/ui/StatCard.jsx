@@ -1,20 +1,14 @@
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 
 /**
- * StatCard — summary metric card for dashboard
- * @param {string}  title    - Label
- * @param {string}  value    - Main metric value
- * @param {string}  subtitle - Unit/description below value
- * @param {number}  trend    - % change (positive=up, negative=down)
- * @param {node}    icon     - Lucide icon component
- * @param {string}  color    - 'blue' | 'amber' | 'red' | 'emerald'
+ * StatCard — summary metric card for dashboard (square, border-led styling)
  */
 
 const COLOR_MAP = {
-  blue: { icon: 'bg-[var(--color-primary-soft)] text-[var(--color-primary)]' },
-  amber: { icon: 'bg-[color-mix(in_srgb,var(--color-status-warning)_15%,transparent)] text-[var(--color-status-warning)]' },
-  red: { icon: 'bg-[color-mix(in_srgb,var(--color-status-danger)_15%,transparent)] text-[var(--color-status-danger)]' },
-  emerald: { icon: 'bg-[color-mix(in_srgb,var(--color-status-success)_15%,transparent)] text-[var(--color-status-success)]' },
+  blue: { icon: 'bg-[var(--color-primary-soft)] text-[var(--color-primary)] border-[var(--color-primary)]/20' },
+  amber: { icon: 'bg-[color-mix(in_srgb,var(--color-status-warning)_15%,transparent)] text-[var(--color-status-warning)] border-[var(--color-status-warning)]/20' },
+  red: { icon: 'bg-[color-mix(in_srgb,var(--color-status-danger)_15%,transparent)] text-[var(--color-status-danger)] border-[var(--color-status-danger)]/20' },
+  emerald: { icon: 'bg-[color-mix(in_srgb,var(--color-status-success)_15%,transparent)] text-[var(--color-status-success)] border-[var(--color-status-success)]/20' },
 }
 
 export default function StatCard({ title, value, subtitle, trend, icon: Icon, color = 'blue', onClick }) {
@@ -24,12 +18,12 @@ export default function StatCard({ title, value, subtitle, trend, icon: Icon, co
 
   return (
     <div
-      className={`card-elevated rounded-xl p-5 cursor-${onClick ? 'pointer' : 'default'}`}
+      className={`card-elevated border border-[var(--color-border)] bg-[var(--color-surface)] p-5 transition-colors hover:bg-[var(--color-card-hover)] ${onClick ? 'cursor-pointer' : ''}`}
       onClick={onClick}
     >
       <div className="flex items-start justify-between">
         {/* Icon */}
-        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${colors.icon}`}>
+        <div className={`w-10 h-10 border flex items-center justify-center ${colors.icon}`}>
           {Icon && <Icon size={20} strokeWidth={1.8} />}
         </div>
         {/* Trend */}
@@ -48,12 +42,12 @@ export default function StatCard({ title, value, subtitle, trend, icon: Icon, co
 
       {/* Value */}
       <div className="mt-3">
-        <div className="text-2xl font-bold text-[var(--color-text)] leading-none">{value}</div>
+        <div className="text-3xl font-bold tracking-tight text-[var(--color-text)]">{value}</div>
         {subtitle && <div className="text-xs text-[var(--color-text-muted)] mt-0.5">{subtitle}</div>}
       </div>
 
       {/* Title */}
-      <div className="text-sm text-[var(--color-text-muted)] mt-2 font-medium">{title}</div>
+      <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] mt-2 font-medium">{title}</div>
     </div>
   )
 }

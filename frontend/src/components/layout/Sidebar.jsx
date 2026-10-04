@@ -1,8 +1,8 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, MessageSquare, BarChart3, ListChecks,
-  Paperclip, Settings, LogOut, ChevronDown, ChevronUp,
-  Sun, Moon, Globe,
+  Paperclip, Settings, LogOut, ChevronsLeft, ChevronsRight,
+  Sun, Moon, Globe, ScanSearch,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext.jsx'
@@ -18,18 +18,14 @@ const NAV_ITEMS = [
   { key: 'settings', to: '/stakeholder/settings', icon: Settings },
 ]
 
-// Panel selalu biru institusional solid, terlepas dari mode terang/gelap
-// konten utama — ini pilihan desain (bukan token tema), jadi warnanya
-// ditulis langsung, bukan lewat var(--color-bg) dsb.
-const PANEL_BG = '#163B68' // sedikit lebih gelap dari --color-primary, kontras cukup untuk teks putih
-const PANEL_BORDER = 'rgba(255,255,255,0.08)'
+const itemCls =
+  'flex items-center gap-3 px-3 py-2.5 w-full text-sm font-medium transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-card-hover)]'
 
 export default function Sidebar({ notifCount = 0 }) {
   const { t, i18n } = useTranslation()
   const { user, logout } = useAuth()
   const { dark, toggle } = useTheme()
   const location = useLocation()
-  const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState(false)
 
   function switchLang() {
@@ -40,39 +36,52 @@ export default function Sidebar({ notifCount = 0 }) {
 
   return (
     <aside
-      className={`h-screen sticky top-0 flex flex-col transition-all duration-300 ${collapsed ? 'w-16' : 'w-60'}`}
-      style={{ background: PANEL_BG, borderRight: `1px solid ${PANEL_BORDER}` }}
+      className={`h-screen sticky top-0 flex flex-col transition-all duration-300 z-30 bg-[var(--color-surface)] border-r border-[var(--color-border)] ${collapsed ? 'w-16' : 'w-60'}`}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-5" style={{ borderBottom: `1px solid ${PANEL_BORDER}` }}>
+      <div className="flex items-center gap-3 px-4 h-14 border-b border-[var(--color-border)]">
+        <Link to="/" className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 flex items-center justify-center flex-shrink-0 bg-[var(--color-btn)] text-[var(--color-btn-text)]">
+            <ScanSearch size={16} strokeWidth={2.2} />
+          </div>
+          {!collapsed && <span className="font-bold text-[var(--color-text)] text-xl tracking-tight truncate">SuaraLens</span>}
+        </Link>
         {!collapsed && (
-          <span className="font-bold text-white text-lg tracking-tight">SuaraLens</span>
+          <button
+            onClick={() => setCollapsed(true)}
+            className="ml-auto text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors p-1"
+            aria-label="Perkecil sidebar"
+          >
+            <ChevronsLeft size={16} />
+          </button>
         )}
-        <button
-          onClick={() => setCollapsed(c => !c)}
-          className="ml-auto text-white/60 hover:text-white transition-colors"
-        >
-          {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-        </button>
       </div>
+      {collapsed && (
+        <button
+          onClick={() => setCollapsed(false)}
+          className="mx-auto mt-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] p-1"
+          aria-label="Perluas sidebar"
+        >
+          <ChevronsRight size={16} />
+        </button>
+      )}
 
       {/* Nav */}
-      <nav className="flex-1 py-4 px-2 space-y-0.5">
+      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
         {NAV_ITEMS.map(({ key, to, icon: Icon }) => {
           const active = location.pathname === to || (to !== '/stakeholder' && location.pathname.startsWith(to))
           return (
             <Link
               key={key}
               to={to}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-smooth border-l-4 ${active
-                ? 'bg-white/10 text-white border-l-[var(--color-accent)]'
-                : 'text-white/60 hover:bg-white/5 hover:text-white border-l-transparent'
-                }`}
+              className={active
+                ? 'flex items-center gap-3 px-3 py-2.5 text-sm font-medium bg-[var(--color-btn)] text-[var(--color-btn-text)]'
+                : itemCls}
             >
               <Icon size={18} strokeWidth={1.8} className="flex-shrink-0" />
               {!collapsed && <span>{t(`nav.${key}`)}</span>}
               {!collapsed && key === 'followups' && notifCount > 0 && (
-                <span className="ml-auto bg-[var(--color-accent)] text-[#163B68] text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                <span className="ml-auto bg-[var(--color-primary)] text-white text-xs font-bold w-5 h-5 flex items-center justify-center">
                   {notifCount}
                 </span>
               )}
@@ -82,25 +91,16 @@ export default function Sidebar({ notifCount = 0 }) {
       </nav>
 
       {/* Bottom actions */}
-      <div className="px-2 py-3 space-y-1" style={{ borderTop: `1px solid ${PANEL_BORDER}` }}>
-        <button
-          onClick={toggle}
-          className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-white/60 hover:bg-white/5 hover:text-white transition-smooth text-sm"
-        >
+      <div className="px-2 py-3 space-y-1 border-t border-[var(--color-border)]">
+        <button onClick={toggle} className={itemCls}>
           {dark ? <Sun size={16} /> : <Moon size={16} />}
           {!collapsed && <span>{dark ? 'Light Mode' : 'Dark Mode'}</span>}
         </button>
-        <button
-          onClick={switchLang}
-          className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-white/60 hover:bg-white/5 hover:text-white transition-smooth text-sm"
-        >
+        <button onClick={switchLang} className={itemCls}>
           <Globe size={16} />
           {!collapsed && <span>{i18n.language === 'id' ? 'English' : 'Bahasa'}</span>}
         </button>
-        <button
-          onClick={logout}
-          className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-white/70 hover:bg-white/5 hover:text-white transition-smooth text-sm"
-        >
+        <button onClick={logout} className={`${itemCls} !text-[var(--color-status-danger)]`}>
           <LogOut size={16} />
           {!collapsed && <span>{t('nav.logout')}</span>}
         </button>
@@ -108,14 +108,14 @@ export default function Sidebar({ notifCount = 0 }) {
 
       {/* User info */}
       {!collapsed && user && (
-        <div className="px-3 py-3" style={{ borderTop: `1px solid ${PANEL_BORDER}` }}>
+        <div className="px-3 py-3 border-t border-[var(--color-border)]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[var(--color-accent)] flex items-center justify-center flex-shrink-0">
-              <span className="text-[#163B68] text-xs font-bold">{user.name?.charAt(0) || 'S'}</span>
+            <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 bg-[var(--color-primary)] text-white font-bold text-xs">
+              {user.name?.charAt(0) || 'S'}
             </div>
             <div className="min-w-0">
-              <div className="text-white text-xs font-semibold truncate">{user.name}</div>
-              <div className="text-white/50 text-xs truncate">{user.position || user.email}</div>
+              <div className="text-[var(--color-text)] text-xs font-semibold truncate">{user.name}</div>
+              <div className="text-[var(--color-text-muted)] text-xs truncate">{user.position || user.email}</div>
             </div>
           </div>
         </div>
