@@ -134,6 +134,7 @@ def _get_client():
     global _client
     if _client is None:
         try:
+            # pyrefly: ignore [missing-import]
             from openai import OpenAI
         except ImportError:
             raise ImportError(
@@ -191,99 +192,304 @@ def check_ollama_status() -> dict:
         }
 
 
-def _call_ollama(prompt: str, model: str, temperature: float = 0.1) -> Optional[str]:
+def _call_ollama(
+    prompt: str,
+    model: str,
+    temperature: float = 0.1
+) -> Optional[str]:
     """
     Panggil Ollama via OpenAI-compatible Chat Completions API.
-
-    Parameters
-    ----------
-    prompt      : user prompt (system prompt sudah terpisah)
-    model       : nama model Ollama
-    temperature : rendah untuk output lebih deterministik
-
-    Returns
-    -------
-    str atau None jika gagal
     """
+
     try:
-        client   = _get_client()
+        client = _get_client()
+
         response = client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system",  "content": SYSTEM_PROMPT},
-                {"role": "user",    "content": prompt},
+                {
+                    "role": "system",
+                    "content": SYSTEM_PROMPT
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                },
             ],
             temperature=temperature,
-            max_tokens=256,    # batasi output supaya tidak ngelantur
+            max_tokens=512,
         )
-        return response.choices[0].message.content.strip()
+
+        content = response.choices[0].message.content
+
+        print("\n========== RAW QWEN RESPONSE ==========")
+        print(repr(content))
+        print("========================================\n")
+
+        return content.strip()
+
     except Exception as e:
         print(f"[ERROR] LLM call failed: {e}")
         return None
 
-
 def _parse_and_validate(raw: str) -> Optional[dict]:
     """
-    Parse JSON dari response LLM dan validasi schema + nilai.
+    Parse dan validasi response JSON dari Qwen.
 
-    Returns
-    -------
-    dict atau None jika parsing/validasi gagal
+    Parser dibuat lebih toleran terhadap:
+    - <think>...</think>
+    - ```json ... ```
+    - teks tambahan sebelum/sesudah JSON
+    - JSON yang memiliki whitespace/newline
     """
+
     if not raw:
         return None
 
-    # Bersihkan thinking tags (qwen3 kadang pakai <think>...</think>)
     import re
-    raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL).strip()
 
-    # Coba ekstrak JSON dari response (kadang ada teks sebelum/sesudah)
-    json_match = None
-    for start in [raw.find('{'), 0]:
-        if start < 0:
-            continue
-        try:
-            end   = raw.rfind('}') + 1
-            chunk = raw[start:end]
-            json_match = json.loads(chunk)
-            break
-        except json.JSONDecodeError:
-            continue
+    # ========================================================
+    # 1. HAPUS THINKING TAG
+    # ========================================================
 
-    if json_match is None:
+    raw = re.sub(
+        r"<think>.*?</think>",
+        "",
+        raw,
+        flags=re.DOTALL | re.IGNORECASE
+    ).strip()
+
+    # ========================================================
+    # 2. HAPUS MARKDOWN CODE BLOCK
+    # ========================================================
+
+    raw = re.sub(
+        r"```json\s*",
+        "",
+        raw,
+        flags=re.IGNORECASE
+    )
+
+    raw = re.sub(
+        r"```\s*",
+        "",
+        raw
+    ).strip()
+
+    # ========================================================
+    # 3. CARI BLOK JSON
+    # ========================================================
+
+    start = raw.find("{")
+    end = raw.rfind("}")
+
+    if start == -1 or end == -1 or end <= start:
+        print("[ERROR] Tidak ditemukan blok JSON dalam response Qwen.")
+        print("RAW RESPONSE:")
+        print(raw)
         return None
 
-    # Validasi field wajib
-    required = ["kategori", "urgency_label", "urgency_score", "urgency_reason", "confidence"]
-    if not all(k in json_match for k in required):
-        return None
+    json_text = raw[start:end + 1].strip()
 
-    # Validasi nilai kategori
-    if json_match["kategori"] not in VALID_CATEGORIES:
-        # Fuzzy match
-        for cat in VALID_CATEGORIES:
-            if cat.lower() in str(json_match["kategori"]).lower():
-                json_match["kategori"] = cat
-                break
-        else:
-            json_match["kategori"] = "Lainnya"   # fallback
+    # ========================================================
+    # 4. PARSE JSON
+    # ========================================================
 
-    # Validasi urgency label
-    if json_match["urgency_label"] not in VALID_URGENCY:
-        json_match["urgency_label"] = "Medium"   # fallback
-
-    # Clamp float values
     try:
-        json_match["urgency_score"] = max(0.0, min(1.0, float(json_match["urgency_score"])))
-        json_match["confidence"]    = max(0.0, min(1.0, float(json_match["confidence"])))
-    except (ValueError, TypeError):
-        json_match["urgency_score"] = 0.5
-        json_match["confidence"]    = 0.5
 
-    return json_match
+        result = json.loads(json_text)
 
+    except json.JSONDecodeError as e:
 
-# ── Fungsi Utama ─────────────────────────────────────────────────────────────
+        print("[ERROR] JSON parsing gagal.")
+        print(f"[ERROR] {e}")
+
+        print("\n========== RAW QWEN RESPONSE ==========")
+        print(raw)
+        print("========================================\n")
+
+        return None
+
+    # ========================================================
+    # 5. VALIDASI OBJECT
+    # ========================================================
+
+    if not isinstance(result, dict):
+        print("[ERROR] Response JSON bukan object.")
+        return None
+
+    # ========================================================
+    # 6. VALIDASI FIELD
+    # ========================================================
+
+    required = [
+        "kategori",
+        "urgency_label",
+        "urgency_score",
+        "urgency_reason",
+        "confidence"
+    ]
+
+    missing = [
+        field
+        for field in required
+        if field not in result
+    ]
+
+    if missing:
+
+        print(
+            f"[ERROR] Field JSON tidak lengkap: {missing}"
+        )
+
+        print("\n========== PARSED JSON ==========")
+        print(
+            json.dumps(
+                result,
+                ensure_ascii=False,
+                indent=2
+            )
+        )
+        print("=================================\n")
+
+        return None
+
+    # ========================================================
+    # 7. NORMALISASI KATEGORI
+    # ========================================================
+
+    kategori = str(
+        result["kategori"]
+    ).strip()
+
+    # Exact match
+
+    if kategori in VALID_CATEGORIES:
+
+        result["kategori"] = kategori
+
+    else:
+
+        # Fuzzy sederhana
+
+        kategori_lower = kategori.lower()
+
+        matched_category = None
+
+        for cat in VALID_CATEGORIES:
+
+            if cat.lower() in kategori_lower:
+
+                matched_category = cat
+                break
+
+        if matched_category:
+
+            result["kategori"] = matched_category
+
+        else:
+
+            print(
+                f"[WARN] Kategori '{kategori}' "
+                f"tidak dikenali. Menggunakan Lainnya."
+            )
+
+            result["kategori"] = "Lainnya"
+
+    # ========================================================
+    # 8. NORMALISASI URGENCY
+    # ========================================================
+
+    urgency = str(
+        result["urgency_label"]
+    ).strip().capitalize()
+
+    if urgency not in VALID_URGENCY:
+
+        urgency_lower = urgency.lower()
+
+        urgency_mapping = {
+            "low": "Low",
+            "medium": "Medium",
+            "moderate": "Medium",
+            "high": "High",
+            "critical": "Critical"
+        }
+
+        urgency = urgency_mapping.get(
+            urgency_lower,
+            "Medium"
+        )
+
+    result["urgency_label"] = urgency
+
+    # ========================================================
+    # 9. VALIDASI URGENCY SCORE
+    # ========================================================
+
+    try:
+
+        urgency_score = float(
+            result["urgency_score"]
+        )
+
+        urgency_score = max(
+            0.0,
+            min(1.0, urgency_score)
+        )
+
+    except (
+        ValueError,
+        TypeError
+    ):
+
+        print(
+            "[WARN] urgency_score tidak valid. "
+            "Menggunakan 0.5."
+        )
+
+        urgency_score = 0.5
+
+    result["urgency_score"] = urgency_score
+
+    # ========================================================
+    # 10. VALIDASI CONFIDENCE
+    # ========================================================
+
+    try:
+
+        confidence = float(
+            result["confidence"]
+        )
+
+        confidence = max(
+            0.0,
+            min(1.0, confidence)
+        )
+
+    except (
+        ValueError,
+        TypeError
+    ):
+
+        print(
+            "[WARN] confidence tidak valid. "
+            "Menggunakan 0.5."
+        )
+
+        confidence = 0.5
+
+    result["confidence"] = confidence
+
+    # ========================================================
+    # 11. NORMALISASI URGENCY REASON
+    # ========================================================
+
+    result["urgency_reason"] = str(
+        result["urgency_reason"]
+    ).strip()
+
+    return result
 
 def classify_llm(teks_aduan: str,
                  model: Optional[str] = None,
