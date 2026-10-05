@@ -160,10 +160,8 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[var(--color-primary)] flex items-center justify-center">
-              <span className="text-white font-bold text-sm">SL</span>
-            </div>
-            <span className="font-bold text-[var(--color-text)] text-lg">SuaraLens</span>
+            <img src="/logo.png" alt="SuaraLens" className="h-9 w-auto object-contain" />
+            <span className="font-bold text-[var(--color-text)] text-lg hidden sm:inline">SuaraLens</span>
           </Link>
 
           {/* Desktop */}
@@ -172,7 +170,7 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
               <Globe size={13} /> {i18n.language === 'id' ? 'EN' : 'ID'}
             </button>
 
-            {user ? (
+            {user && variant !== 'public' ? (
               <>
                 <Link to={user.role === 'stakeholder' ? '/stakeholder' : '/user/dashboard'} className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">
                   {t('nav.dashboard')}
@@ -205,14 +203,16 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
             <button onClick={switchLang} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
               <Globe size={15} /> {i18n.language === 'id' ? 'Switch to English' : 'Ganti ke Bahasa Indonesia'}
             </button>
-            {!user && (
+            {user && variant !== 'public' ? (
+              <>
+                <Link to={user.role === 'stakeholder' ? '/stakeholder' : '/user/dashboard'} onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)]">{t('nav.dashboard')}</Link>
+                <button onClick={logout} className="block px-4 py-2 text-sm text-[var(--color-status-danger)] w-full text-left">{t('nav.logout')}</button>
+              </>
+            ) : (
               <>
                 <Link to="/signin" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)]">{t('nav.login')}</Link>
                 <Link to="/signup-user" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-[var(--color-primary)] font-semibold">{t('nav.register')}</Link>
               </>
-            )}
-            {user && (
-              <button onClick={logout} className="block px-4 py-2 text-sm text-[var(--color-status-danger)] w-full text-left">{t('nav.logout')}</button>
             )}
           </div>
         )}

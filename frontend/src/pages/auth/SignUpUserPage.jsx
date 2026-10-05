@@ -40,8 +40,10 @@ export default function SignUpUserPage() {
       const { user } = await signUpUser({ ...form, role: 'user' })
       login(user)
       navigate('/user/dashboard')
-    } catch {
-      setError('Gagal mendaftar. Coba lagi.')
+    } catch (err) {
+      const msg = err.response?.data?.message || err.response?.data?.error || err.message || 'Gagal mendaftar. Coba lagi.'
+      const details = err.response?.data?.errors ? Object.values(err.response.data.errors).join(', ') : ''
+      setError(details ? `${msg} (${details})` : msg)
     } finally {
       setLoading(false)
     }
@@ -53,10 +55,8 @@ export default function SignUpUserPage() {
     <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <Link to="/" className="flex items-center gap-2.5 justify-center mb-8">
-          <div className="w-9 h-9 rounded-lg bg-[var(--color-primary)] flex items-center justify-center">
-            <span className="text-white font-bold">SL</span>
-          </div>
-          <span className="text-[var(--color-text)] font-bold text-xl">SuaraLens</span>
+          <img src="/logo.png" alt="SuaraLens" className="h-12 w-auto object-contain" />
+          <span className="text-[var(--color-text)] font-bold text-2xl">SuaraLens</span>
         </Link>
 
         <div className="card-elevated rounded-xl p-8">
