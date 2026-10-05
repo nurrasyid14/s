@@ -29,7 +29,7 @@ export default function SignInPage() {
       login(user)
       navigate(user.role === 'stakeholder' ? '/stakeholder' : '/user/dashboard')
     } catch (err) {
-      setError('Email atau kata sandi salah.')
+      setError(err.response?.data?.message || err.message || 'Email atau kata sandi salah.')
     } finally {
       setLoading(false)
     }
@@ -42,10 +42,8 @@ export default function SignInPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2.5 justify-center mb-8">
-          <div className="w-9 h-9 rounded-lg bg-[var(--color-primary)] flex items-center justify-center">
-            <span className="text-white font-bold">SL</span>
-          </div>
-          <span className="text-[var(--color-text)] font-bold text-xl">SuaraLens</span>
+          <img src="/logo.png" alt="SuaraLens" className="h-12 w-auto object-contain" />
+          <span className="text-[var(--color-text)] font-bold text-2xl">SuaraLens</span>
         </Link>
 
         <div className="card-elevated rounded-xl p-8">

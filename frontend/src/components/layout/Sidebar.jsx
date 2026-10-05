@@ -44,16 +44,16 @@ export default function Sidebar({ notifCount = 0 }) {
       style={{ background: PANEL_BG, borderRight: `1px solid ${PANEL_BORDER}` }}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-5" style={{ borderBottom: `1px solid ${PANEL_BORDER}` }}>
-        <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
-          <span className="text-[#163B68] font-bold text-sm">SL</span>
-        </div>
-        {!collapsed && (
-          <span className="font-bold text-white text-lg tracking-tight">SuaraLens</span>
-        )}
+      <div className="flex items-center gap-2.5 px-4 py-4" style={{ borderBottom: `1px solid ${PANEL_BORDER}` }}>
+        <Link to="/stakeholder" className="flex items-center gap-2 min-w-0">
+          <img src="/logo.png" alt="SuaraLens" className="h-8 w-auto object-contain bg-white rounded-md p-0.5 flex-shrink-0" />
+          {!collapsed && (
+            <span className="font-bold text-white text-base tracking-tight truncate">SuaraLens</span>
+          )}
+        </Link>
         <button
           onClick={() => setCollapsed(c => !c)}
-          className="ml-auto text-white/60 hover:text-white transition-colors"
+          className="ml-auto text-white/60 hover:text-white transition-colors flex-shrink-0"
         >
           {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
         </button>

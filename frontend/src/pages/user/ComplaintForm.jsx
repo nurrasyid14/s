@@ -57,11 +57,13 @@ export default function ComplaintForm() {
 
   async function handleSubmit() {
     setLoading(true)
+    setError('')
     try {
       const result = await submitComplaint(form)
       setSubmitted(result)
-    } catch {
-      setError('Gagal mengirim aduan. Coba lagi.')
+    } catch (err) {
+      const msg = err.response?.data?.message || err.response?.data?.error || err.message || 'Gagal mengirim aduan. Coba lagi.'
+      setError(msg)
     } finally {
       setLoading(false)
     }
@@ -285,7 +287,12 @@ export default function ComplaintForm() {
             </button>
           ) : (
             <button onClick={handleSubmit} disabled={loading} className="flex-1 py-3 bg-[var(--color-status-success)] hover:opacity-90 disabled:opacity-60 text-white font-semibold rounded-lg text-sm transition-smooth flex items-center justify-center gap-2">
-              {loading ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t('form.submit')}
+              {loading ? (
+                <>
+                  <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Memproses & Menganalisis AI...</span>
+                </>
+              ) : t('form.submit')}
             </button>
           )}
         </div>
