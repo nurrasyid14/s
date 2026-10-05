@@ -11,11 +11,20 @@ import ErrorState from '../../components/ui/ErrorState.jsx'
 import { getComplaints } from '../../services/complaintApi.js'
 import { formatDate } from '../../utils/formatter.js'
 import { COMPLAINT_TYPES, useComplaintLabels } from '../../utils/complaintLabels.js'
+import { UNITS } from '../../data/units.js'
 import { Eye, Inbox } from 'lucide-react'
 
 const PAGE_SIZE = 10
 const SEARCH_DEBOUNCE_MS = 350
-const STATUS_KEYS = ['new', 'process', 'done', 'escalate']
+const STATUS_KEYS = [
+  'received',
+  'verified',
+  'dispatched',
+  'in_progress',
+  'action_taken',
+  'answered',
+  'resolved',
+]
 
 export default function ComplaintsPage() {
   const { t } = useTranslation()
@@ -30,8 +39,8 @@ export default function ComplaintsPage() {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
   const [type, setType] = useState('')
+  const [unit, setUnit] = useState('')
 
-  // Pencarian di-debounce agar tidak memanggil API di setiap ketikan.
   useEffect(() => {
     const timer = setTimeout(() => {
       setQuery(search.trim())
@@ -44,7 +53,7 @@ export default function ComplaintsPage() {
     let active = true
     setLoading(true)
     setError(false)
-    getComplaints({ page, limit: PAGE_SIZE, search: query, status, type })
+    getComplaints({ page, limit: PAGE_SIZE, search: query, status, type, unit })
       .then(res => {
         if (!active) return
         setData(res.items)
@@ -53,10 +62,10 @@ export default function ComplaintsPage() {
       .catch(() => { if (active) setError(true) })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [page, query, status, type, reloadKey])
+  }, [page, query, status, type, unit, reloadKey])
 
   const statusTabs = [
-    { key: '', label: t('stk.common.all', 'Semua') },
+    { key: '', label: 'Semua Status' },
     ...STATUS_KEYS.map(key => ({ key, label: t(`status.${key}`) })),
   ]
 
@@ -64,7 +73,15 @@ export default function ComplaintsPage() {
     { key: 'ticket_id', label: t('complaints.id'), sortable: true },
     { key: 'created_at', label: t('complaints.date'), sortable: true, render: v => formatDate(v) },
     { key: 'type', label: t('complaints.type'), render: v => typeLabel(v) },
-    { key: 'category', label: t('complaints.category'), render: v => categoryLabel(v) },
+    {
+      key: 'target_unit',
+      label: 'Unit Tujuan',
+      render: (_, row) => (
+        <span className="font-semibold text-xs text-[var(--color-text)]">
+          {row.target_unit || row.unit}
+        </span>
+      ),
+    },
     {
       key: 'sender_name', label: t('complaints.sender'),
       render: (_, row) => (
@@ -89,15 +106,27 @@ export default function ComplaintsPage() {
   ]
 
   const filterSlot = (
-    <select
-      aria-label={t('complaints.type')}
-      value={type}
-      onChange={e => { setType(e.target.value); setPage(1) }}
-      className="border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
-    >
-      <option value="">{t('stk.complaints.all_types', 'Semua jenis')}</option>
-      {COMPLAINT_TYPES.map(key => <option key={key} value={key}>{typeLabel(key)}</option>)}
-    </select>
+    <div className="flex items-center gap-2">
+      <select
+        aria-label="Pilih Unit"
+        value={unit}
+        onChange={e => { setUnit(e.target.value); setPage(1) }}
+        className="border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-2 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
+      >
+        <option value="">Semua Unit (14)</option>
+        {UNITS.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+      </select>
+
+      <select
+        aria-label={t('complaints.type')}
+        value={type}
+        onChange={e => { setType(e.target.value); setPage(1) }}
+        className="border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-2 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
+      >
+        <option value="">{t('stk.complaints.all_types', 'Semua jenis')}</option>
+        {COMPLAINT_TYPES.map(key => <option key={key} value={key}>{typeLabel(key)}</option>)}
+      </select>
+    </div>
   )
 
   return (
@@ -110,12 +139,14 @@ export default function ComplaintsPage() {
             : t('stk.complaints.subtitle', { n: total, defaultValue: '{{n}} aduan ditemukan' })
         }
         actions={
-          <SegmentedControl
-            label={t('complaints.filter_status')}
-            options={statusTabs}
-            value={status}
-            onChange={key => { setStatus(key); setPage(1) }}
-          />
+          <div className="overflow-x-auto max-w-full">
+            <SegmentedControl
+              label={t('complaints.filter_status')}
+              options={statusTabs}
+              value={status}
+              onChange={key => { setStatus(key); setPage(1) }}
+            />
+          </div>
         }
       />
 

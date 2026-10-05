@@ -51,14 +51,35 @@ export function formatDays(days, locale = 'id') {
 }
 
 /**
- * Map status key ke label & warna Tailwind
+ * Map 7 status alur kerja resmi SuaraLens:
+ * Diterima -> Diverifikasi -> Didisposisikan -> Diproses -> Ditindaklanjuti -> Dijawab -> Selesai
  */
 export const STATUS_MAP = {
-  new:      { label: 'Baru',       labelEn: 'New',         color: 'blue'   },
-  process:  { label: 'Diproses',   labelEn: 'In Progress', color: 'amber'  },
-  done:     { label: 'Selesai',    labelEn: 'Resolved',    color: 'emerald'},
-  escalate: { label: 'Dieskalasi', labelEn: 'Escalated',   color: 'red'    },
+  // 7 Status Resmi
+  received:     { label: 'Diterima',       labelEn: 'Received',     color: 'sky',    step: 1 },
+  verified:     { label: 'Diverifikasi',   labelEn: 'Verified',     color: 'purple', step: 2 },
+  dispatched:   { label: 'Didisposisikan', labelEn: 'Dispatched',   color: 'amber',  step: 3 },
+  in_progress:  { label: 'Diproses',       labelEn: 'In Progress',  color: 'orange', step: 4 },
+  action_taken: { label: 'Ditindaklanjuti',labelEn: 'Action Taken', color: 'teal',   step: 5 },
+  answered:     { label: 'Dijawab',        labelEn: 'Answered',     color: 'indigo', step: 6 },
+  resolved:     { label: 'Selesai',        labelEn: 'Resolved',     color: 'emerald',step: 7 },
+
+  // Kompatibilitas mundur
+  new:          { label: 'Diterima',       labelEn: 'Received',     color: 'sky',    step: 1 },
+  process:      { label: 'Diproses',       labelEn: 'In Progress',  color: 'orange', step: 4 },
+  done:         { label: 'Selesai',        labelEn: 'Resolved',     color: 'emerald',step: 7 },
+  escalate:     { label: 'Didisposisikan', labelEn: 'Dispatched',   color: 'amber',  step: 3 },
 }
+
+export const WORKFLOW_STEPS = [
+  { key: 'received',     label: 'Diterima',       labelEn: 'Received' },
+  { key: 'verified',     label: 'Diverifikasi',   labelEn: 'Verified' },
+  { key: 'dispatched',   label: 'Didisposisikan', labelEn: 'Dispatched' },
+  { key: 'in_progress',  label: 'Diproses',       labelEn: 'In Progress' },
+  { key: 'action_taken', label: 'Ditindaklanjuti',labelEn: 'Action Taken' },
+  { key: 'answered',     label: 'Dijawab',        labelEn: 'Answered' },
+  { key: 'resolved',     label: 'Selesai',        labelEn: 'Resolved' },
+]
 
 export function getStatusInfo(status) {
   return STATUS_MAP[status] || { label: status, labelEn: status, color: 'gray' }

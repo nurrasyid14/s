@@ -19,7 +19,7 @@ const NAV_ITEMS = [
 ]
 
 const itemCls =
-  'flex items-center gap-3 px-3 py-2.5 w-full text-sm font-medium transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-card-hover)]'
+  'flex items-center gap-3 px-3 py-2.5 w-full text-sm font-medium transition-colors text-[var(--color-sidebar-text-muted)] hover:text-[var(--color-sidebar-text)] hover:bg-[var(--color-sidebar-hover)]'
 
 export default function Sidebar({ notifCount = 0 }) {
   const { t, i18n } = useTranslation()
@@ -36,20 +36,20 @@ export default function Sidebar({ notifCount = 0 }) {
 
   return (
     <aside
-      className={`h-screen sticky top-0 flex flex-col transition-all duration-300 z-30 bg-[var(--color-surface)] border-r border-[var(--color-border)] ${collapsed ? 'w-16' : 'w-60'}`}
+      className={`h-screen sticky top-0 flex flex-col transition-all duration-300 z-30 bg-[var(--color-sidebar-bg)] border-r border-[var(--color-sidebar-border)] ${collapsed ? 'w-16' : 'w-60'}`}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 h-14 border-b border-[var(--color-border)]">
+      <div className="flex items-center gap-3 px-4 h-14 border-b border-[var(--color-sidebar-border)]">
         <Link to="/" className="flex items-center gap-2 min-w-0">
-          <div className="w-7 h-7 flex items-center justify-center flex-shrink-0 bg-[var(--color-btn)] text-[var(--color-btn-text)]">
+          <div className="w-7 h-7 flex items-center justify-center flex-shrink-0 bg-[var(--color-sidebar-active-bg)] text-[var(--color-sidebar-active-text)]">
             <ScanSearch size={16} strokeWidth={2.2} />
           </div>
-          {!collapsed && <span className="font-bold text-[var(--color-text)] text-xl tracking-tight truncate">SuaraLens</span>}
+          {!collapsed && <span className="font-bold text-[var(--color-sidebar-text)] text-xl tracking-tight truncate font-sans">SuaraLens</span>}
         </Link>
         {!collapsed && (
           <button
             onClick={() => setCollapsed(true)}
-            className="ml-auto text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors p-1"
+            className="ml-auto text-[var(--color-sidebar-text-muted)] hover:text-[var(--color-sidebar-text)] transition-colors p-1"
             aria-label="Perkecil sidebar"
           >
             <ChevronsLeft size={16} />
@@ -59,7 +59,7 @@ export default function Sidebar({ notifCount = 0 }) {
       {collapsed && (
         <button
           onClick={() => setCollapsed(false)}
-          className="mx-auto mt-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] p-1"
+          className="mx-auto mt-2 text-[var(--color-sidebar-text-muted)] hover:text-[var(--color-sidebar-text)] p-1"
           aria-label="Perluas sidebar"
         >
           <ChevronsRight size={16} />
@@ -75,13 +75,13 @@ export default function Sidebar({ notifCount = 0 }) {
               key={key}
               to={to}
               className={active
-                ? 'flex items-center gap-3 px-3 py-2.5 text-sm font-medium bg-[var(--color-btn)] text-[var(--color-btn-text)]'
+                ? 'flex items-center gap-3 px-3 py-2.5 text-sm font-medium bg-[var(--color-sidebar-active-bg)] text-[var(--color-sidebar-active-text)]'
                 : itemCls}
             >
               <Icon size={18} strokeWidth={1.8} className="flex-shrink-0" />
               {!collapsed && <span>{t(`nav.${key}`)}</span>}
               {!collapsed && key === 'followups' && notifCount > 0 && (
-                <span className="ml-auto bg-[var(--color-primary)] text-white text-xs font-bold w-5 h-5 flex items-center justify-center">
+                <span className="ml-auto bg-[var(--color-primary)] text-white text-xs font-bold w-5 h-5 flex items-center justify-center font-mono">
                   {notifCount}
                 </span>
               )}
@@ -91,7 +91,7 @@ export default function Sidebar({ notifCount = 0 }) {
       </nav>
 
       {/* Bottom actions */}
-      <div className="px-2 py-3 space-y-1 border-t border-[var(--color-border)]">
+      <div className="px-2 py-3 space-y-1 border-t border-[var(--color-sidebar-border)]">
         <button onClick={toggle} className={itemCls}>
           {dark ? <Sun size={16} /> : <Moon size={16} />}
           {!collapsed && <span>{dark ? 'Light Mode' : 'Dark Mode'}</span>}
@@ -108,14 +108,14 @@ export default function Sidebar({ notifCount = 0 }) {
 
       {/* User info */}
       {!collapsed && user && (
-        <div className="px-3 py-3 border-t border-[var(--color-border)]">
+        <div className="px-3 py-3 border-t border-[var(--color-sidebar-border)]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 bg-[var(--color-primary)] text-white font-bold text-xs">
+            <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 bg-[var(--color-primary)] text-white font-bold text-xs font-mono">
               {user.name?.charAt(0) || 'S'}
             </div>
             <div className="min-w-0">
-              <div className="text-[var(--color-text)] text-xs font-semibold truncate">{user.name}</div>
-              <div className="text-[var(--color-text-muted)] text-xs truncate">{user.position || user.email}</div>
+              <div className="text-[var(--color-sidebar-text)] text-xs font-semibold truncate">{user.name}</div>
+              <div className="text-[var(--color-sidebar-text-muted)] text-xs truncate">{user.position || user.email}</div>
             </div>
           </div>
         </div>

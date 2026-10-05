@@ -56,6 +56,16 @@
   --phone-bezel: #262626;
   --phone-screen: #111111;
   --hatch: #0A1220;
+
+  /* Sidebar Soft Slate-Blue */
+  --color-sidebar-bg: #EBF1F8;
+  --color-sidebar-border: rgba(10, 18, 32, 0.12);
+  --color-sidebar-text: #0A1220;
+  --color-sidebar-text-muted: rgba(10, 18, 32, 0.62);
+  --color-sidebar-hover: rgba(10, 18, 32, 0.06);
+  --color-sidebar-active-bg: #0B1F3A;
+  --color-sidebar-active-text: #FFFFFF;
+
   color-scheme: light;
 }
 
@@ -90,6 +100,16 @@
   --phone-bezel: #000000;
   --phone-screen: #F5F5F5;
   --hatch: #FFFFFF;
+
+  /* Sidebar Deep Midnight */
+  --color-sidebar-bg: #040812;
+  --color-sidebar-border: rgba(255, 255, 255, 0.12);
+  --color-sidebar-text: #F5F7FB;
+  --color-sidebar-text-muted: rgba(245, 247, 251, 0.58);
+  --color-sidebar-hover: rgba(255, 255, 255, 0.06);
+  --color-sidebar-active-bg: #2563EB;
+  --color-sidebar-active-text: #FFFFFF;
+
   color-scheme: dark;
 }
 
@@ -297,4 +317,32 @@ button:not(:disabled),
   .blur-in, .phone-rise { opacity: 1; animation: none; }
   .reveal { opacity: 1; transform: none; filter: none; transition: none; }
   .animate-fade-in, .animate-fade-in-up, .animate-pulse-soft, .animate-marquee, .animate-wave, .skeleton { animation: none; }
+}
+
+/* ============================================================
+   Print & PDF Export Styles (Official A4 Format)
+   ============================================================ */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  nav, aside, header, footer, .print\:hidden {
+    display: none !important;
+  }
+  #printable-report, #printable-sheet {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 10mm 15mm !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
 }

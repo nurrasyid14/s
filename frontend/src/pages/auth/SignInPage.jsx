@@ -28,7 +28,13 @@ export default function SignInPage() {
     try {
       const { user } = await signIn(form)
       login(user)
-      navigate(user.role === 'stakeholder' ? '/stakeholder' : '/user/dashboard')
+      if (user.role === 'admin') {
+        navigate('/admin/dashboard')
+      } else if (user.role === 'stakeholder') {
+        navigate('/stakeholder')
+      } else {
+        navigate('/user/dashboard')
+      }
     } catch {
       setError('Email atau kata sandi salah.')
     } finally {
@@ -41,12 +47,19 @@ export default function SignInPage() {
       title={t('auth.signin')}
       subtitle="Masuk ke akun SuaraLens Anda"
       footer={
-        <>
-          {t('auth.no_account')}{' '}
-          <Link to="/signup-user" className="font-semibold text-[var(--color-primary)] hover:underline">{t('auth.as_user')}</Link>
-          {' '}/{' '}
-          <Link to="/signup-stakeholder" className="font-semibold text-[var(--color-primary)] hover:underline">{t('auth.as_stakeholder')}</Link>
-        </>
+        <div className="space-y-2">
+          <div>
+            {t('auth.no_account')}{' '}
+            <Link to="/signup-user" className="font-semibold text-[var(--color-primary)] hover:underline">{t('auth.as_user')}</Link>
+            {' '}/{' '}
+            <Link to="/signup-stakeholder" className="font-semibold text-[var(--color-primary)] hover:underline">{t('auth.as_stakeholder')}</Link>
+          </div>
+          <div className="pt-2 border-t border-[var(--color-border)] text-center">
+            <Link to="/admin/signin" className="text-xs font-mono font-semibold text-[var(--color-primary)] hover:underline">
+              Portal Khusus Administrator Sentral →
+            </Link>
+          </div>
+        </div>
       }
     >
       {error && (

@@ -105,10 +105,17 @@ export default {
 
     // Status
     status: {
-      new: 'Baru',
+      received: 'Diterima',
+      verified: 'Diverifikasi',
+      dispatched: 'Didisposisikan',
+      in_progress: 'Diproses',
+      action_taken: 'Ditindaklanjuti',
+      answered: 'Dijawab',
+      resolved: 'Selesai',
+      new: 'Diterima',
       process: 'Diproses',
       done: 'Selesai',
-      escalate: 'Dieskalasi',
+      escalate: 'Didisposisikan',
       pending: 'Menunggu',
     },
 

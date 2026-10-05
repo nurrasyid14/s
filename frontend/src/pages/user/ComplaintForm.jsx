@@ -19,10 +19,7 @@ const CATEGORIES = [
   { key: 'other', labelKey: 'form.category_other' },
 ]
 
-const UNITS = [
-  'Bagian Akademik', 'Sarana & Prasarana', 'Kemahasiswaan',
-  'Keuangan', 'IT Center', 'Perpustakaan', 'Lainnya',
-]
+import { UNITS } from '../../data/units.js'
 
 const TOTAL_STEPS = 5
 
@@ -85,7 +82,7 @@ export default function ComplaintForm() {
             {submitted.ticket_id}
           </div>
           <div className="flex gap-3 justify-center">
-            <button onClick={() => navigate('/user/complaints')} className="btn-solid">
+            <button onClick={() => navigate(`/user/complaints/${submitted.id}`)} className="btn-solid">
               {t('form.track_status')}
             </button>
             <button
@@ -181,8 +178,8 @@ export default function ComplaintForm() {
                 <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5">{t('form.unit')}</label>
                 <select value={form.unit} onChange={e => setField('unit', e.target.value)}
                   className="input-field">
-                  <option value="">-- Pilih Unit --</option>
-                  {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                  <option value="">-- Rekomendasi Sistem (Otomatis) atau Pilih Unit --</option>
+                  {UNITS.map(u => <option key={u.id} value={u.name}>{u.name} ({u.code})</option>)}
                 </select>
               </div>
             </div>
@@ -218,11 +215,16 @@ export default function ComplaintForm() {
                 <p className="text-sm font-medium text-[var(--color-text)]">Klik atau tarik file ke sini</p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">JPG, PNG, PDF — maksimal 5MB</p>
               </div>
-              <div className="mt-5 flex items-start gap-3 p-4 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
-                <ShieldCheck size={18} className="text-[var(--color-primary)] flex-shrink-0 mt-0.5" />
+              <div className="mt-5 flex items-start gap-3 p-4 border border-[var(--color-primary)] bg-[var(--color-primary-soft)]">
+                <ShieldCheck size={20} className="text-[var(--color-primary)] flex-shrink-0 mt-0.5" />
                 <div>
-                  <div className="text-sm font-semibold text-[var(--color-text)]">{t('form.anon_toggle')}</div>
-                  <div className="text-xs text-[var(--color-text-muted)] mt-0.5 leading-relaxed">{t('form.anon_desc')}</div>
+                  <div className="text-sm font-bold text-[var(--color-text)] flex items-center gap-2">
+                    <span>Nilai Inti SuaraLens: Anonimitas Mutlak (Wajib)</span>
+                    <span className="px-2 py-0.5 text-[10px] font-mono uppercase bg-[var(--color-primary)] text-white font-semibold">100% Terenkripsi</span>
+                  </div>
+                  <div className="text-xs text-[var(--color-text-muted)] mt-1 leading-relaxed">
+                    SuaraLens dibangun di atas prinsip anonimitas mutlak. Identitas pribadi Anda tidak pernah disimpan atau diberikan kepada Admin Verifikator, Unit Kerja, maupun pihak mana pun. Aduan Anda ditindaklanjuti secara objektif dan transparan melalui Nomor Tiket Unik Anda.
+                  </div>
                 </div>
               </div>
             </div>
