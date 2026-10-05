@@ -1,17 +1,96 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import Sidebar from '../../components/layout/Sidebar.jsx'
-import Navbar from '../../components/layout/Navbar.jsx'
+import StakeholderLayout from '../../components/layout/StakeholderLayout.jsx'
 import StatCard from '../../components/ui/StatCard.jsx'
-import { MessageSquare, Clock, Frown, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { StatusBadge, UrgencyBadge } from '../../components/ui/StatusBadge.jsx'
+import PageHeader from '../../components/ui/PageHeader.jsx'
+import SegmentedControl from '../../components/ui/SegmentedControl.jsx'
+import ErrorState from '../../components/ui/ErrorState.jsx'
+import { formatDate } from '../../utils/formatter.js'
+import { AXIS_TICK, SERIES_COLORS, TOOLTIP_STYLE } from '../../utils/chartTheme.js'
+import { MessageSquare, Clock, Frown, AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react'
 import {
   getSummary, getTrend, getDistribution, getUrgentComplaints,
 } from '../../services/analyticsApi.js'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  PieChart, Pie, Cell, Legend,
+  PieChart, Pie, Cell,
 } from 'recharts'
+
+const URGENT_PREVIEW_LIMIT = 5
+
+const focusRing =
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]'
+
+/** Kartu sorotan (setara kartu "overdue" pada referensi): jumlah aduan urgency tinggi + jalan pintas ke Tindak Lanjut. */
+function UrgencyHighlight({ count }) {
+  const { t } = useTranslation()
+
+  return (
+    <Link
+      to="/stakeholder/followups"
+      className={`flex flex-col justify-between border p-5 transition-colors hover:border-[var(--color-status-danger)] ${focusRing}`}
+      style={{
+        background: 'color-mix(in srgb, var(--color-status-danger) 6%, var(--color-surface))',
+        borderColor: 'color-mix(in srgb, var(--color-status-danger) 25%, var(--color-border))',
+      }}
+    >
+      <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-[var(--color-status-danger)] font-semibold">
+        <AlertTriangle size={15} className="text-[var(--color-status-danger)]" aria-hidden="true" />
+        {t('dashboard.high_urgency')}
+      </div>
+      <div className="mt-3 text-3xl font-bold text-[var(--color-status-danger)] font-mono">{count}</div>
+      <div className="mt-3 flex items-center justify-between gap-2 text-xs pt-3 border-t border-[var(--color-border)]">
+        <span className="text-[var(--color-text-muted)]">
+          {t('stk.dashboard.needs_attention', 'Perlu perhatian')}
+        </span>
+        <span className="inline-flex items-center gap-1 font-semibold text-[var(--color-primary)]">
+          {t('stk.dashboard.view_followups', 'Lihat tindak lanjut')}
+          <ArrowRight size={12} aria-hidden="true" />
+        </span>
+      </div>
+    </Link>
+  )
+}
+
+function UrgentItem({ complaint }) {
+  const { t } = useTranslation()
+  const meta = [
+    complaint.sender_role && `${t('complaints.anonymous')} · ${complaint.sender_role}`,
+    complaint.created_at && formatDate(complaint.created_at),
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <Link
+      to={`/stakeholder/complaints/${complaint.id}`}
+      className={`flex flex-col gap-2 border border-[var(--color-border)] bg-[var(--color-surface)] p-3.5 transition-colors hover:bg-[var(--color-bg-secondary)] sm:flex-row sm:items-center sm:gap-4 ${focusRing}`}
+    >
+      <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
+        {complaint.ticket_id && (
+          <span className="font-mono text-xs px-2 py-0.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)]">{complaint.ticket_id}</span>
+        )}
+        <UrgencyBadge score={complaint.urgency_score} />
+        {complaint.status && <StatusBadge status={complaint.status} />}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-[var(--color-text)]">{complaint.description}</p>
+        {meta && <p className="mt-0.5 text-xs text-[var(--color-text-muted)] font-mono">{meta}</p>}
+      </div>
+      <span className="flex-shrink-0 text-xs font-semibold text-[var(--color-primary)]">
+        {t('dashboard.review')} →
+      </span>
+    </Link>
+  )
+}
+
+function NoData({ children }) {
+  return (
+    <div className="flex h-[220px] items-center justify-center text-sm text-[var(--color-text-muted)]">
+      {children}
+    </div>
+  )
+}
 
 export default function StakeholderDashboard() {
   const { t } = useTranslation()
@@ -20,122 +99,214 @@ export default function StakeholderDashboard() {
   const [dist, setDist] = useState([])
   const [urgent, setUrgent] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
+  const [period, setPeriod] = useState('30')
 
   useEffect(() => {
+    let active = true
+    setLoading(true)
+    setError(false)
     Promise.all([getSummary(), getTrend(), getDistribution(), getUrgentComplaints()])
-      .then(([s, tr, d, u]) => { setSummary(s); setTrend(tr); setDist(d); setUrgent(u) })
-      .finally(() => setLoading(false))
-  }, [])
+      .then(([s, tr, d, u]) => {
+        if (!active) return
+        setSummary(s)
+        setTrend(tr)
+        setDist(d)
+        setUrgent(u)
+      })
+      .catch(() => { if (active) setError(true) })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [reloadKey])
 
-  // Palet donat dibatasi ke keluarga brand: biru institusional, kuning
-  // aksen, lalu dua turunan netral — bukan roda warna acak (ungu/teal).
-  const DONUT_COLORS = ['#1D4E89', '#F2B705', '#7FA6CE', '#16223A']
+  const periodOptions = [
+    { key: '7', label: t('stk.dashboard.period_7', '7 hari') },
+    { key: '30', label: t('stk.dashboard.period_30', '30 hari') },
+    { key: 'all', label: t('stk.dashboard.period_all', 'Semua') },
+  ]
 
-  const ttStyle = {
-    background: 'var(--color-surface)',
-    border: '1px solid var(--color-border)',
-    borderRadius: '8px',
-    fontSize: '12px',
-    color: 'var(--color-text)',
-  }
+  // getTrend() tidak menerima parameter periode, jadi rentang dipotong di sisi klien
+  // (asumsi: satu titik data per hari, urut dari terlama ke terbaru).
+  const visibleTrend = period === 'all' ? trend : trend.slice(-Number(period))
+  const distTotal = dist.reduce((sum, d) => sum + d.count, 0)
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--color-bg)]">
-      <Sidebar notifCount={urgent.length} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Navbar variant="stakeholder" title={t('dashboard.title')} notifCount={urgent.length} />
-        <main className="flex-1 overflow-y-auto p-6">
+    <StakeholderLayout title={t('dashboard.title')} notifCount={urgent.length}>
+      <PageHeader
+        heading={t('stk.dashboard.heading', 'Ringkasan aduan')}
+        description={t('stk.dashboard.description', 'Pantau kondisi, SLA, dan aduan prioritas dalam satu tampilan.')}
+        actions={
+          <Link
+            to="/stakeholder/complaints"
+            className={`btn-outline inline-flex items-center gap-2 text-xs py-2 px-3.5 font-medium ${focusRing}`}
+          >
+            {t('stk.dashboard.view_all', 'Lihat semua aduan')}
+            <ArrowRight size={13} aria-hidden="true" />
+          </Link>
+        }
+      />
 
-          {/* Stat Cards */}
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-            <StatCard
-              title={t('dashboard.total_complaints')}
-              value={loading ? '—' : summary?.total_complaints.toLocaleString()}
-              trend={summary?.total_complaints_trend}
-              icon={MessageSquare} color="blue"
-            />
-            <StatCard
-              title={t('dashboard.avg_sla')}
-              value={loading ? '—' : `${summary?.avg_sla_days} ${t('dashboard.days')}`}
-              trend={summary?.avg_sla_trend}
-              icon={Clock} color="blue"
-            />
-            <StatCard
-              title={t('dashboard.negative_sentiment')}
-              value={loading ? '—' : `${Math.round((summary?.negative_sentiment_pct || 0) * 100)}%`}
-              trend={summary?.negative_sentiment_trend}
-              icon={Frown} color="amber"
-            />
-            <StatCard
-              title={t('dashboard.high_urgency')}
-              value={loading ? '—' : String(summary?.high_urgency_pending)}
-              icon={AlertTriangle} color="red"
-            />
-          </div>
+      {error ? (
+        <ErrorState onRetry={() => setReloadKey(k => k + 1)} />
+      ) : (
+        <>
+          {/* KPI */}
+          <section
+            aria-label={t('stk.dashboard.kpi_label', 'Indikator utama')}
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+          >
+            {loading ? (
+              [1, 2, 3, 4].map(i => <div key={i} className="skeleton h-28 border border-[var(--color-border)]" />)
+            ) : (
+              <>
+                <StatCard
+                  title={t('dashboard.total_complaints')}
+                  value={summary?.total_complaints?.toLocaleString() ?? '—'}
+                  trend={summary?.total_complaints_trend}
+                  icon={MessageSquare} color="blue"
+                />
+                <StatCard
+                  title={t('dashboard.avg_sla')}
+                  value={`${summary?.avg_sla_days ?? '—'} ${t('dashboard.days')}`}
+                  trend={summary?.avg_sla_trend}
+                  icon={Clock} color="blue"
+                />
+                <StatCard
+                  title={t('dashboard.negative_sentiment')}
+                  value={`${Math.round((summary?.negative_sentiment_pct || 0) * 100)}%`}
+                  trend={summary?.negative_sentiment_trend}
+                  icon={Frown} color="amber"
+                />
+                <UrgencyHighlight count={summary?.high_urgency_pending ?? 0} />
+              </>
+            )}
+          </section>
 
-          {/* Charts row */}
-          <div className="grid lg:grid-cols-3 gap-4 mb-6">
-            {/* Trend chart */}
-            <div className="lg:col-span-2 card-elevated rounded-xl p-5">
-              <h3 className="font-semibold text-[var(--color-text)] mb-4">{t('dashboard.trend_title')}</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={trend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} tickLine={false} axisLine={false} interval={4} />
-                  <YAxis tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={ttStyle} labelStyle={{ color: 'var(--color-text-muted)' }} itemStyle={{ color: '#1D4E89' }} />
-                  <Line type="monotone" dataKey="count" stroke="#1D4E89" strokeWidth={2.5} dot={false} activeDot={{ r: 4, fill: '#F2B705' }} />
-                </LineChart>
-              </ResponsiveContainer>
+          {/* Charts */}
+          <section className="grid gap-4 lg:grid-cols-3">
+            <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5 lg:col-span-2">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <h3 className="text-sm font-bold uppercase tracking-wider font-mono text-[var(--color-text)]">{t('dashboard.trend_title')}</h3>
+                <SegmentedControl
+                  label={t('stk.dashboard.period_label', 'Rentang tren')}
+                  options={periodOptions}
+                  value={period}
+                  onChange={setPeriod}
+                />
+              </div>
+              {loading ? (
+                <div className="skeleton h-[240px] border border-[var(--color-border)]" />
+              ) : visibleTrend.length === 0 ? (
+                <NoData>{t('stk.common.no_data', 'Belum ada data.')}</NoData>
+              ) : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <LineChart data={visibleTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                    <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={false} minTickGap={24} />
+                    <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} allowDecimals={false} width={32} />
+                    <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: 'var(--color-text-muted)' }} />
+                    <Line
+                      type="monotone"
+                      dataKey="count"
+                      name={t('stk.dashboard.count', 'Aduan')}
+                      stroke="var(--color-primary)"
+                      strokeWidth={2.5}
+                      dot={false}
+                      activeDot={{ r: 4, fill: 'var(--color-accent)' }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </div>
 
-            {/* Donut chart */}
-            <div className="card-elevated rounded-xl p-5">
-              <h3 className="font-semibold text-[var(--color-text)] mb-4">{t('dashboard.distribution_title')}</h3>
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={dist} dataKey="count" nameKey="role" cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={3}>
-                    {dist.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={ttStyle} formatter={(v, n) => [v, n]} />
-                  <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', color: 'var(--color-text-muted)' }} />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+              <h3 className="mb-4 text-sm font-bold uppercase tracking-wider font-mono text-[var(--color-text)]">
+                {t('dashboard.distribution_title')}
+              </h3>
+              {loading ? (
+                <div className="skeleton h-[240px] border border-[var(--color-border)]" />
+              ) : dist.length === 0 ? (
+                <NoData>{t('stk.common.no_data', 'Belum ada data.')}</NoData>
+              ) : (
+                <>
+                  <div className="relative">
+                    <ResponsiveContainer width="100%" height={180}>
+                      <PieChart>
+                        <Pie
+                          data={dist}
+                          dataKey="count"
+                          nameKey="role"
+                          cx="50%" cy="50%"
+                          innerRadius={52} outerRadius={78}
+                          paddingAngle={3}
+                          stroke="none"
+                        >
+                          {dist.map((_, i) => <Cell key={i} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />)}
+                        </Pie>
+                        <Tooltip contentStyle={TOOLTIP_STYLE} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-2xl font-bold text-[var(--color-text)] font-mono">{distTotal.toLocaleString()}</span>
+                      <span className="text-xs text-[var(--color-text-muted)] font-mono uppercase">{t('stk.dashboard.total', 'Total')}</span>
+                    </div>
+                  </div>
+                  <ul className="mt-4 space-y-2 pt-3 border-t border-[var(--color-border)]">
+                    {dist.map((d, i) => (
+                      <li key={i} className="flex items-center justify-between gap-2 text-xs">
+                        <span className="flex min-w-0 items-center gap-2 text-[var(--color-text)]">
+                          <span
+                            className="h-2 w-2 flex-shrink-0"
+                            style={{ background: SERIES_COLORS[i % SERIES_COLORS.length] }}
+                            aria-hidden="true"
+                          />
+                          <span className="truncate">{d.role}</span>
+                        </span>
+                        <span className="flex-shrink-0 font-mono text-[var(--color-text-muted)]">
+                          {d.count} · {distTotal ? Math.round((d.count / distTotal) * 100) : 0}%
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </div>
-          </div>
+          </section>
 
-          {/* Urgent complaints */}
-          <div className="card-elevated rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-[var(--color-text)] flex items-center gap-2">
-                <AlertTriangle size={16} className="text-[var(--color-status-danger)]" />
+          {/* Aduan yang memerlukan perhatian */}
+          <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider font-mono text-[var(--color-text)]">
+                <AlertTriangle size={15} className="text-[var(--color-status-danger)]" aria-hidden="true" />
                 {t('dashboard.attention_title')}
               </h3>
-              <Link to="/stakeholder/followups" className="text-xs text-[var(--color-primary)] hover:underline">{t('common.see_all')}</Link>
+              <Link
+                to="/stakeholder/followups"
+                className={`text-xs font-mono font-medium text-[var(--color-primary)] hover:underline ${focusRing}`}
+              >
+                {t('common.see_all')} →
+              </Link>
             </div>
-            {urgent.length === 0 ? (
-              <div className="text-center py-10 text-[var(--color-text-muted)]">
-                <CheckCircle2 size={28} className="text-[var(--color-status-success)] mx-auto mb-2" />
-                <p className="text-sm">Tidak ada aduan yang memerlukan perhatian segera.</p>
+            {loading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map(i => <div key={i} className="skeleton h-14 border border-[var(--color-border)]" />)}
+              </div>
+            ) : urgent.length === 0 ? (
+              <div className="py-8 text-center text-[var(--color-text-muted)]">
+                <CheckCircle2 size={24} className="mx-auto mb-2 text-[var(--color-status-success)]" aria-hidden="true" />
+                <p className="text-sm">
+                  {t('stk.dashboard.urgent_empty', 'Tidak ada aduan yang memerlukan perhatian segera.')}
+                </p>
               </div>
             ) : (
               <div className="space-y-2">
-                {urgent.map(c => (
-                  <Link to={`/stakeholder/complaints/${c.id}`} key={c.id}
-                    className="flex items-center gap-4 p-3.5 rounded-lg hover:bg-[var(--color-card-hover)] transition-smooth border border-[var(--color-border)]">
-                    <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex-shrink-0"
-                      style={{ color: 'var(--color-status-danger)', background: 'color-mix(in srgb, var(--color-status-danger) 12%, transparent)' }}>
-                      URGENCY {c.urgency_score}
-                    </span>
-                    <span className="text-sm text-[var(--color-text)] flex-1 truncate">{c.description}</span>
-                    <span className="text-xs text-[var(--color-primary)] flex-shrink-0">{t('dashboard.review')} →</span>
-                  </Link>
-                ))}
+                {urgent.slice(0, URGENT_PREVIEW_LIMIT).map(c => <UrgentItem key={c.id} complaint={c} />)}
               </div>
             )}
-          </div>
-        </main>
-      </div>
-    </div>
+          </section>
+        </>
+      )}
+    </StakeholderLayout>
   )
 }

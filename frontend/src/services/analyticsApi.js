@@ -1,7 +1,7 @@
 import api from './api.js'
 import dayjs from 'dayjs'
 
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
+const USE_MOCK = true
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)) }
 

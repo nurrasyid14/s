@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { Bell, Globe, Sun, Moon, Menu, X, AlertTriangle, CheckCircle2, Clock } from 'lucide-react'
+import { Bell, Globe, Sun, Moon, Menu, X, AlertTriangle, CheckCircle2, Clock, ScanSearch } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext.jsx'
@@ -51,7 +51,7 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
   // ---- Stakeholder variant (inside sidebar layout) ----
   if (variant === 'stakeholder') {
     return (
-      <header className="h-14 flex items-center justify-between px-6 bg-[var(--color-bg)] border-b border-[var(--color-border)] sticky top-0 z-20">
+      <header className="h-14 flex items-center justify-between px-6 bg-[var(--color-surface)] border-b border-[var(--color-border)] sticky top-0 z-20">
         <h1 className="font-semibold text-[var(--color-text)] text-lg">{title}</h1>
 
         <div className="flex items-center gap-3">
@@ -140,7 +140,7 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
           </div>
 
           {/* Dark mode */}
-          <button onClick={toggle} className="p-2 rounded-lg hover:bg-[var(--color-card-hover)] transition-colors">
+          <button onClick={toggle} className="p-2 rounded-lg hover:bg-[var(--color-card-hover)] transition-colors" aria-label="Toggle theme">
             {dark ? <Sun size={18} className="text-[var(--color-accent)]" /> : <Moon size={18} className="text-[var(--color-text-muted)]" />}
           </button>
 
@@ -155,36 +155,49 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
 
   // ---- Public / User variant ----
   return (
-    <nav className="sticky top-0 z-50 bg-[var(--color-surface)]/95 backdrop-blur-sm border-b border-[var(--color-border)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="sticky top-0 z-50 bg-[var(--color-surface)] border-b border-[var(--color-border)]">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5">
-            <img src="/logo.png" alt="SuaraLens" className="h-9 w-auto object-contain" />
-            <span className="font-bold text-[var(--color-text)] text-lg hidden sm:inline">SuaraLens</span>
+          <Link to="/" className="flex items-center gap-2">
+            <div className="w-7 h-7 flex items-center justify-center bg-[var(--color-btn)] text-[var(--color-btn-text)]">
+              <ScanSearch size={16} strokeWidth={2.2} />
+            </div>
+            <span className="font-bold text-[var(--color-text)] text-xl tracking-tight">SuaraLens</span>
           </Link>
 
           {/* Desktop */}
           <div className="hidden md:flex items-center gap-3">
-            <button onClick={switchLang} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text)] border border-[var(--color-border)] hover:border-[var(--color-primary)]/40 transition-colors">
-              <Globe size={13} /> {i18n.language === 'id' ? 'EN' : 'ID'}
+            <button
+              onClick={toggle}
+              className="p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+              aria-label="Toggle theme"
+            >
+              {dark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
 
-            {user && variant !== 'public' ? (
+            <button
+              onClick={switchLang}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-[var(--color-text)] border border-[var(--color-border-strong)] hover:bg-[var(--color-card-hover)] transition-colors"
+            >
+              <Globe size={14} /> {i18n.language === 'id' ? 'EN' : 'ID'}
+            </button>
+
+            {user ? (
               <>
-                <Link to={user.role === 'stakeholder' ? '/stakeholder' : '/user/dashboard'} className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">
+                <Link to={user.role === 'stakeholder' ? '/stakeholder' : '/user/dashboard'} className="btn-outline !py-2 !px-4">
                   {t('nav.dashboard')}
                 </Link>
-                <button onClick={logout} className="text-sm text-[var(--color-status-danger)] hover:opacity-80 transition-colors">
+                <button onClick={logout} className="btn-solid !py-2 !px-4">
                   {t('nav.logout')}
                 </button>
               </>
             ) : (
               <>
-                <Link to="/signin" className="px-4 py-2 text-sm font-medium text-[var(--color-text)] border border-[var(--color-border)] rounded-lg hover:border-[var(--color-primary)]/40 transition-colors">
+                <Link to="/signin" className="btn-outline !py-2 !px-4">
                   {t('nav.login')}
                 </Link>
-                <Link to="/signup-user" className="px-4 py-2 text-sm font-semibold text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] rounded-lg transition-colors">
+                <Link to="/signup-user" className="btn-solid !py-2 !px-4">
                   {t('nav.register')}
                 </Link>
               </>
@@ -192,27 +205,35 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
           </div>
 
           {/* Mobile hamburger */}
-          <button className="md:hidden p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)]" onClick={() => setMenuOpen(m => !m)}>
+          <button className="md:hidden p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)]" onClick={() => setMenuOpen(m => !m)} aria-label="Toggle menu">
             {menuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
 
         {/* Mobile menu */}
         {menuOpen && (
-          <div className="md:hidden py-3 border-t border-[var(--color-border)] space-y-1 animate-fade-in">
-            <button onClick={switchLang} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
-              <Globe size={15} /> {i18n.language === 'id' ? 'Switch to English' : 'Ganti ke Bahasa Indonesia'}
-            </button>
-            {user && variant !== 'public' ? (
-              <>
-                <Link to={user.role === 'stakeholder' ? '/stakeholder' : '/user/dashboard'} onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)]">{t('nav.dashboard')}</Link>
-                <button onClick={logout} className="block px-4 py-2 text-sm text-[var(--color-status-danger)] w-full text-left">{t('nav.logout')}</button>
-              </>
-            ) : (
-              <>
+          <div className="md:hidden py-3 border-t border-[var(--color-border)] space-y-2 animate-fade-in">
+            <div className="flex items-center justify-between px-4 py-1">
+              <button onClick={switchLang} className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
+                <Globe size={15} /> {i18n.language === 'id' ? 'English' : 'Bahasa Indonesia'}
+              </button>
+              <button onClick={toggle} className="p-1.5 rounded-lg text-[var(--color-text-muted)]">
+                {dark ? <Sun size={17} className="text-[var(--color-accent)]" /> : <Moon size={17} />}
+              </button>
+            </div>
+            {!user && (
+              <div className="pt-2 border-t border-[var(--color-border)] space-y-1">
                 <Link to="/signin" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)]">{t('nav.login')}</Link>
                 <Link to="/signup-user" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-[var(--color-primary)] font-semibold">{t('nav.register')}</Link>
-              </>
+              </div>
+            )}
+            {user && (
+              <div className="pt-2 border-t border-[var(--color-border)] space-y-1">
+                <Link to={user.role === 'stakeholder' ? '/stakeholder' : '/user/dashboard'} onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-medium text-[var(--color-text)]">
+                  {t('nav.dashboard')}
+                </Link>
+                <button onClick={logout} className="block px-4 py-2 text-sm text-[var(--color-status-danger)] w-full text-left font-medium">{t('nav.logout')}</button>
+              </div>
             )}
           </div>
         )}

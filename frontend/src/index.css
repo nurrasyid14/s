@@ -1,67 +1,101 @@
-@import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 /* ============================================================
-   SuaraLens — Design Tokens
-   Nuansa: institusional & tegas. Palet: putih / biru / kuning.
-   Tipografi: Public Sans (dipakai oleh banyak digital service
-   pemerintahan — cocok tematik untuk layanan publik kampus).
+   SuaraLens — Design System
+   Referensi: Mobile SaaS Template (21st.dev) — bahasa visual:
+   sudut tajam (radius 0), border 1px tipis, tombol solid kotak,
+   divider diagonal (hatch), gradasi hero putih → warna → putih,
+   tipografi Geist dengan tracking rapat.
+   Palet: dominasi biru profesional (royal blue + navy).
    ============================================================ */
 
+@theme {
+  --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+  /* Radius 0 di seluruh aplikasi — sama dengan --radius:0rem pada referensi. */
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+  --radius-4xl: 0;
+}
+
 :root {
-  /* --- Brand --- */
-  --color-primary: #1D4E89;
-  /* biru institusional — aksi utama, link, state aktif */
-  --color-primary-dark: #163B68;
-  /* hover/pressed */
-  --color-primary-soft: #E7EEF6;
-  /* tint biru untuk background terpilih/hover halus */
-  --color-accent: #F2B705;
-  /* kuning — aksen terbatas: highlight, badge penting, fokus sekunder */
-  --color-accent-dark: #C9970A;
-
-  /* --- Surface & text --- */
-  --color-bg: #F5F6F4;
-  /* off-white hangat, bukan putih steril */
-  --color-bg-secondary: #EEF0EC;
+  --color-bg: #FFFFFF;
+  --color-bg-secondary: #F4F7FC;
   --color-surface: #FFFFFF;
-  --color-card-hover: #F1F3EF;
-  --color-border: #DBDFD9;
-  --color-text: #16223A;
-  /* navy-ink, bukan hitam pekat */
-  --color-text-muted: #5B6472;
+  --color-card-hover: #F4F7FC;
+  --color-border: rgba(10, 18, 32, 0.12);
+  --color-border-strong: rgba(10, 18, 32, 0.55);
+  --color-text: #0A1220;
+  --color-text-muted: rgba(10, 18, 32, 0.55);
 
-  /* --- Status (dipakai StatusBadge / StatCard / chart) --- */
-  --color-status-info: var(--color-primary);
-  --color-status-success: #1E7145;
-  --color-status-warning: #B8860B;
-  --color-status-danger: #B3261E;
-  --color-status-neutral: #6B7280;
+  /* Biru: aksen utama + tombol solid navy */
+  --color-primary: #2563EB;
+  --color-primary-dark: #1D4ED8;
+  --color-primary-soft: #E8F0FE;
+  --color-accent: #38BDF8;
+  --color-accent-dark: #0284C7;
+  --color-btn: #0B1F3A;
+  --color-btn-hover: #14305A;
+  --color-btn-text: #FFFFFF;
 
-  --radius: 10px;
-  --font-sans: 'Public Sans', system-ui, -apple-system, sans-serif;
+  --color-status-info: #2563EB;
+  --color-status-success: #15803D;
+  --color-status-warning: #B45309;
+  --color-status-danger: #DC2626;
+  --color-status-neutral: #64748B;
+
+  --hero-grad: linear-gradient(180deg, #FFFFFF 0%, #2563EB 50%, #FFFFFF 100%);
+  --hero-fade: #FFFFFF;
+  --phone-body: #404040;
+  --phone-bezel: #262626;
+  --phone-screen: #111111;
+  --hatch: #0A1220;
+  color-scheme: light;
 }
 
 .dark {
-  --color-primary: #4C82C4;
-  --color-primary-dark: #3A6BA8;
-  --color-primary-soft: #1B2A40;
-  --color-accent: #F2B705;
-  --color-accent-dark: #D9A400;
+  --color-bg: #05080F;
+  --color-bg-secondary: #0A1020;
+  --color-surface: #0A1020;
+  --color-card-hover: #101A33;
+  --color-border: rgba(255, 255, 255, 0.16);
+  --color-border-strong: rgba(255, 255, 255, 0.6);
+  --color-text: #F5F7FB;
+  --color-text-muted: rgba(245, 247, 251, 0.58);
 
-  --color-bg: #0F1B2D;
-  --color-bg-secondary: #16243A;
-  --color-surface: #16243A;
-  --color-card-hover: #1C2E48;
-  --color-border: #2A3B54;
-  --color-text: #EEF1F5;
-  --color-text-muted: #9AA7B8;
+  --color-primary: #4C8DFF;
+  --color-primary-dark: #3B7CF0;
+  --color-primary-soft: #0F1D3D;
+  --color-accent: #7DD3FC;
+  --color-accent-dark: #38BDF8;
+  --color-btn: #FFFFFF;
+  --color-btn-hover: #DCE6F7;
+  --color-btn-text: #0B1F3A;
 
-  --color-status-info: #4C82C4;
-  --color-status-success: #3FA56B;
-  --color-status-warning: #E0B33B;
-  --color-status-danger: #E1564C;
-  --color-status-neutral: #8A93A0;
+  --color-status-info: #6AA3FF;
+  --color-status-success: #4ADE80;
+  --color-status-warning: #FBBF24;
+  --color-status-danger: #F87171;
+  --color-status-neutral: #94A3B8;
+
+  --hero-grad: linear-gradient(180deg, #05080F 0%, #1D4ED8 50%, #05080F 100%);
+  --hero-fade: #05080F;
+  --phone-body: #DADADA;
+  --phone-bezel: #000000;
+  --phone-screen: #F5F5F5;
+  --hatch: #FFFFFF;
+  color-scheme: dark;
+}
+
+html {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
 * {
@@ -71,37 +105,134 @@
 body {
   background: var(--color-bg);
   color: var(--color-text);
+  min-height: 100vh;
 }
 
-/* ---- Structural card: border-led hierarchy, not shadow-led ----
-   Menghindari "SaaS-card kit" generik (rounded seragam + soft shadow
-   di mana-mana). Border tipis + radius kecil, shadow nyaris tak ada. */
+button:not(:disabled),
+[role='button']:not(:disabled) {
+  cursor: pointer;
+}
+
+/* ---- Komponen dasar (selaras template: kotak, border tipis, tanpa bayangan) ---- */
 .card-elevated {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  box-shadow: 0 1px 2px rgba(22, 34, 58, 0.04);
+  border-radius: 0;
+  box-shadow: none;
 }
 
-/* ---- Solid institutional panel (dulu: glassmorphism blur) ---- */
 .glass {
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-surface) 50%, transparent);
   border: 1px solid var(--color-border);
-  backdrop-filter: none;
+  backdrop-filter: blur(8px);
 }
 
-/* ---- Judul aksen: solid, bukan gradient dekoratif ---- */
+/* Tombol solid (navy di mode terang, putih di mode gelap) */
+.btn-solid {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.5rem;
+  background: var(--color-btn);
+  color: var(--color-btn-text);
+  font-weight: 500;
+  font-size: 0.875rem;
+  border: 1px solid var(--color-btn);
+  transition: background-color 150ms ease, opacity 150ms ease;
+}
+
+.btn-solid:hover:not(:disabled) {
+  background: var(--color-btn-hover);
+}
+
+.btn-solid:disabled {
+  opacity: 0.6;
+}
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.5rem;
+  background: transparent;
+  color: var(--color-text);
+  font-weight: 500;
+  font-size: 0.875rem;
+  border: 1px solid var(--color-border-strong);
+  transition: background-color 150ms ease;
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.5rem;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 500;
+  font-size: 0.875rem;
+  border: 1px solid var(--color-primary);
+  transition: background-color 150ms ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.input-field {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 150ms ease;
+}
+
+.input-field::placeholder {
+  color: var(--color-text-muted);
+}
+
+.input-field:focus {
+  border-color: var(--color-text);
+}
+
+/* Hero: gradasi putih → biru → putih (identik struktur referensi) */
+.hero-grad {
+  background: var(--hero-grad);
+}
+
+/* Divider diagonal (hatch) — pola khas referensi */
+.hatch {
+  background-image: repeating-linear-gradient(315deg, currentColor 0, currentColor 1px, transparent 0, transparent 50%);
+  background-size: 10px 10px;
+}
+
+.hatch-45 {
+  background-image: repeating-linear-gradient(45deg, var(--color-primary) 0, var(--color-primary) 1px, transparent 1px, transparent 6px);
+}
+
+.tight-heading {
+  letter-spacing: -0.04em;
+}
+
 .gradient-text {
   color: var(--color-primary);
-  background: none;
-  -webkit-background-clip: unset;
-  background-clip: unset;
 }
 
 .transition-smooth {
-  transition: all 160ms ease;
+  transition: all 150ms ease;
 }
 
+/* Skeleton */
 .skeleton {
   background: linear-gradient(90deg, var(--color-bg-secondary) 25%, var(--color-border) 50%, var(--color-bg-secondary) 75%);
   background-size: 200% 100%;
@@ -109,91 +240,61 @@ body {
 }
 
 @keyframes skeleton-shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-
-  100% {
-    background-position: -200% 0;
-  }
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
-/* Motion dipangkas jadi satu reveal singkat, bukan efek bertumpuk
-   di tiap card — dipertahankan agar file lama tidak patah, tapi
-   durasinya pendek & tidak dipakai berulang di list panjang. */
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
+/* Animasi masuk: fade + blur + naik 12px (seperti hero referensi) */
+@keyframes blur-in {
+  from { opacity: 0; filter: blur(12px); transform: translateY(12px); }
+  to { opacity: 1; filter: blur(0); transform: translateY(0); }
+}
 
-  to {
-    opacity: 1;
-  }
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-fade-in {
-  animation: fade-in 220ms ease both;
+@keyframes phone-rise {
+  from { opacity: 0; transform: translateY(65%) scale(0.85); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.animate-fade-in-up {
-  animation: fade-in-up 220ms ease both;
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 
-.delay-100 {
-  animation-delay: 60ms;
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.45); }
+  50% { transform: scaleY(1); }
 }
 
-.delay-200 {
-  animation-delay: 120ms;
-}
+.blur-in { opacity: 0; animation: blur-in 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.phone-rise { opacity: 0; animation: phone-rise 900ms cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.animate-fade-in { animation: fade-in 220ms ease both; }
+.animate-fade-in-up { animation: fade-in-up 220ms ease both; }
+.animate-marquee { animation: marquee 24s linear infinite; }
+.animate-wave { transform-origin: center; animation: wave 1.4s ease-in-out infinite; }
 
-.delay-300 {
-  animation-delay: 180ms;
-}
+.reveal { opacity: 0; transform: translateY(14px); filter: blur(10px); transition: opacity 0.7s ease-out, transform 0.7s ease-out, filter 0.7s ease-out; }
+.reveal.in { opacity: 1; transform: none; filter: none; }
 
-.delay-400 {
-  animation-delay: 240ms;
-}
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
 
-.animate-pulse-soft {
-  animation: pulse-soft 2.2s ease-in-out infinite;
-}
-
-@keyframes pulse-soft {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.5;
-  }
-}
-
-/* Glow dekoratif dihapus — CTA cukup mengandalkan kontras warna. */
-.glow-primary {
-  box-shadow: none;
-}
+.animate-pulse-soft { animation: pulse-soft 2.2s ease-in-out infinite; }
+@keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
 @media (prefers-reduced-motion: reduce) {
-
-  .animate-fade-in,
-  .animate-fade-in-up,
-  .animate-pulse-soft,
-  .skeleton {
-    animation: none;
-  }
+  .blur-in, .phone-rise { opacity: 1; animation: none; }
+  .reveal { opacity: 1; transform: none; filter: none; transition: none; }
+  .animate-fade-in, .animate-fade-in-up, .animate-pulse-soft, .animate-marquee, .animate-wave, .skeleton { animation: none; }
 }

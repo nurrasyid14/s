@@ -16,15 +16,17 @@ import Complaints from './pages/stakeholder/Complaints.jsx'
 import ComplaintDetail from './pages/stakeholder/ComplaintDetail.jsx'
 import Analytics from './pages/stakeholder/Analytics.jsx'
 import Followups from './pages/stakeholder/Followups.jsx'
-import Evidence from './pages/stakeholder/Evidence.jsx'
-import Settings from './pages/stakeholder/Settings.jsx'
+import Evidence from './pages/stakeholder/evidence.jsx'
+import Settings from './pages/stakeholder/settings.jsx'
 
 /** Route guard — redirect unauthenticated users */
 function ProtectedRoute({ children, role }) {
   const { user, loading } = useAuth()
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#0F172A]">
-    <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
-  </div>
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg)]">
+      <div className="w-8 h-8 border-2 border-[var(--color-primary)]/30 border-t-[var(--color-primary)] rounded-full animate-spin" />
+    </div>
+  )
   if (!user) return <Navigate to="/signin" replace />
   if (role && user.role !== role) return <Navigate to={user.role === 'stakeholder' ? '/stakeholder' : '/user/dashboard'} replace />
   return children
