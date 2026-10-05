@@ -1,4 +1,6 @@
-# Core data
+cd c:\Users\ASUS\Downloads\s-acar\backend
+php spark migrate
+php spark db:seed App\Database\Seeds\UserSeeder# Core data
 pandas>=2.2,<3.0
 numpy>=1.26,<3.0
 
@@ -46,4 +48,4 @@ tqdm>=4.66
 mlxtend>=0.23         # Apriori & association rules
 umap-learn>=0.5       # UMAP dimensionality reduction
 wordcloud>=1.9        # Word cloud visualization
-
+
