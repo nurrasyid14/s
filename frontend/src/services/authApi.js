@@ -26,6 +26,16 @@ const MOCK_STAKEHOLDER = {
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
+const MOCK_ADMIN = {
+  id: 99,
+  name: 'Admin Sentral PENS',
+  email: 'admin@pens.ac.id',
+  role: 'admin',
+  position: 'Administrator Verifikator & Disposisi',
+  institution: 'PENS',
+  created_at: '2024-01-01T08:00:00Z',
+}
+
 // =============================================
 // AUTH API
 // =============================================
@@ -35,9 +45,13 @@ const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
  */
 export async function signIn({ email, password }) {
   if (USE_MOCK) {
-    await delay(800)
-    const isStakeholder = email.includes('stakeholder') || email === 'sari@pens.ac.id'
-    const user = isStakeholder ? MOCK_STAKEHOLDER : MOCK_USER
+    await delay(600)
+    let user = MOCK_USER
+    if (email.includes('admin') || email === 'admin@pens.ac.id') {
+      user = MOCK_ADMIN
+    } else if (email.includes('stakeholder') || email === 'sari@pens.ac.id' || email.includes('@pens.ac.id')) {
+      user = MOCK_STAKEHOLDER
+    }
     const token = 'mock_token_' + Date.now()
     localStorage.setItem('suaralens_token', token)
     localStorage.setItem('suaralens_user', JSON.stringify(user))

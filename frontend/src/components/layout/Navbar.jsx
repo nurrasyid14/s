@@ -51,36 +51,36 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
   // ---- Stakeholder variant (inside sidebar layout) ----
   if (variant === 'stakeholder') {
     return (
-      <header className="h-14 flex items-center justify-between px-6 bg-[var(--color-surface)] border-b border-[var(--color-border)] sticky top-0 z-20">
-        <h1 className="font-semibold text-[var(--color-text)] text-lg">{title}</h1>
+      <header className="h-14 flex items-center justify-between px-6 bg-[var(--color-bg)] border-b border-[var(--color-border)] sticky top-0 z-20">
+        <h1 className="font-bold text-[var(--color-text)] text-base tracking-tight">{title}</h1>
 
         <div className="flex items-center gap-3">
           {/* Bell Notification with dropdown */}
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => setNotifOpen(o => !o)}
-              className="relative p-2 rounded-lg hover:bg-[var(--color-card-hover)] transition-colors"
+              className="relative p-2 border border-transparent hover:border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)] transition-colors"
               aria-label="Notifikasi"
             >
-              <Bell size={18} className={notifOpen ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'} />
+              <Bell size={17} className={notifOpen ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'} />
               {notifCount > 0 && (
-                <span className="absolute top-1 right-1 bg-[var(--color-status-danger)] text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold leading-none">
+                <span className="absolute top-1 right-1 bg-[var(--color-status-danger)] text-white text-[10px] font-mono w-4 h-4 flex items-center justify-center font-bold leading-none">
                   {notifCount > 9 ? '9+' : notifCount}
                 </span>
               )}
             </button>
 
             {notifOpen && (
-              <div className="absolute right-0 top-12 w-80 rounded-xl shadow-lg border border-[var(--color-border)] bg-[var(--color-surface)] z-50 overflow-hidden animate-fade-in">
+              <div className="absolute right-0 top-12 w-80 shadow-lg border border-[var(--color-border)] bg-[var(--color-surface)] z-50 overflow-hidden animate-fade-in">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
                   <div className="flex items-center gap-2">
-                    <Bell size={15} className="text-[var(--color-primary)]" />
-                    <span className="font-semibold text-sm text-[var(--color-text)]">
+                    <Bell size={14} className="text-[var(--color-primary)]" />
+                    <span className="font-semibold text-xs tracking-tight uppercase font-mono text-[var(--color-text)]">
                       {i18n.language === 'id' ? 'Aduan Perlu Perhatian' : 'Needs Attention'}
                     </span>
                   </div>
                   {notifCount > 0 && (
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ color: 'var(--color-status-danger)', background: 'color-mix(in srgb, var(--color-status-danger) 15%, transparent)' }}>
+                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 border border-[var(--color-border)]" style={{ color: 'var(--color-status-danger)', background: 'color-mix(in srgb, var(--color-status-danger) 12%, transparent)' }}>
                       {notifCount} {i18n.language === 'id' ? 'baru' : 'new'}
                     </span>
                   )}

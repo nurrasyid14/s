@@ -7,305 +7,242 @@ import { StatusBadge, UrgencyBadge } from '../../components/ui/StatusBadge.jsx'
 import PageHeader from '../../components/ui/PageHeader.jsx'
 import SegmentedControl from '../../components/ui/SegmentedControl.jsx'
 import ErrorState from '../../components/ui/ErrorState.jsx'
+import UnitReportModal from '../../components/pdf/UnitReportModal.jsx'
 import { formatDate } from '../../utils/formatter.js'
-import { AXIS_TICK, SERIES_COLORS, TOOLTIP_STYLE } from '../../utils/chartTheme.js'
-import { MessageSquare, Clock, Frown, AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react'
+import { UNITS } from '../../data/units.js'
+import { getUnitDashboardStats } from '../../services/complaintApi.js'
 import {
-  getSummary, getTrend, getDistribution, getUrgentComplaints,
-} from '../../services/analyticsApi.js'
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  PieChart, Pie, Cell,
-} from 'recharts'
-
-const URGENT_PREVIEW_LIMIT = 5
+  MessageSquare, Clock, Frown, AlertTriangle, CheckCircle2,
+  ArrowRight, Printer, Star, Building2, CheckSquare, Layers
+} from 'lucide-react'
 
 const focusRing =
   'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]'
 
-/** Kartu sorotan (setara kartu "overdue" pada referensi): jumlah aduan urgency tinggi + jalan pintas ke Tindak Lanjut. */
-function UrgencyHighlight({ count }) {
-  const { t } = useTranslation()
-
-  return (
-    <Link
-      to="/stakeholder/followups"
-      className={`flex flex-col justify-between border p-5 transition-colors hover:border-[var(--color-status-danger)] ${focusRing}`}
-      style={{
-        background: 'color-mix(in srgb, var(--color-status-danger) 6%, var(--color-surface))',
-        borderColor: 'color-mix(in srgb, var(--color-status-danger) 25%, var(--color-border))',
-      }}
-    >
-      <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-[var(--color-status-danger)] font-semibold">
-        <AlertTriangle size={15} className="text-[var(--color-status-danger)]" aria-hidden="true" />
-        {t('dashboard.high_urgency')}
-      </div>
-      <div className="mt-3 text-3xl font-bold text-[var(--color-status-danger)] font-mono">{count}</div>
-      <div className="mt-3 flex items-center justify-between gap-2 text-xs pt-3 border-t border-[var(--color-border)]">
-        <span className="text-[var(--color-text-muted)]">
-          {t('stk.dashboard.needs_attention', 'Perlu perhatian')}
-        </span>
-        <span className="inline-flex items-center gap-1 font-semibold text-[var(--color-primary)]">
-          {t('stk.dashboard.view_followups', 'Lihat tindak lanjut')}
-          <ArrowRight size={12} aria-hidden="true" />
-        </span>
-      </div>
-    </Link>
-  )
-}
-
-function UrgentItem({ complaint }) {
-  const { t } = useTranslation()
-  const meta = [
-    complaint.sender_role && `${t('complaints.anonymous')} · ${complaint.sender_role}`,
-    complaint.created_at && formatDate(complaint.created_at),
-  ].filter(Boolean).join(' · ')
-
-  return (
-    <Link
-      to={`/stakeholder/complaints/${complaint.id}`}
-      className={`flex flex-col gap-2 border border-[var(--color-border)] bg-[var(--color-surface)] p-3.5 transition-colors hover:bg-[var(--color-bg-secondary)] sm:flex-row sm:items-center sm:gap-4 ${focusRing}`}
-    >
-      <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
-        {complaint.ticket_id && (
-          <span className="font-mono text-xs px-2 py-0.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)]">{complaint.ticket_id}</span>
-        )}
-        <UrgencyBadge score={complaint.urgency_score} />
-        {complaint.status && <StatusBadge status={complaint.status} />}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-[var(--color-text)]">{complaint.description}</p>
-        {meta && <p className="mt-0.5 text-xs text-[var(--color-text-muted)] font-mono">{meta}</p>}
-      </div>
-      <span className="flex-shrink-0 text-xs font-semibold text-[var(--color-primary)]">
-        {t('dashboard.review')} →
-      </span>
-    </Link>
-  )
-}
-
-function NoData({ children }) {
-  return (
-    <div className="flex h-[220px] items-center justify-center text-sm text-[var(--color-text-muted)]">
-      {children}
-    </div>
-  )
-}
-
 export default function StakeholderDashboard() {
   const { t } = useTranslation()
-  const [summary, setSummary] = useState(null)
-  const [trend, setTrend] = useState([])
-  const [dist, setDist] = useState([])
-  const [urgent, setUrgent] = useState([])
+  const [selectedUnit, setSelectedUnit] = useState(UNITS[4].name) // Default: Sarpras
+  const [unitStats, setUnitStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
-  const [reloadKey, setReloadKey] = useState(0)
-  const [period, setPeriod] = useState('30')
+  const [showPdfModal, setShowPdfModal] = useState(false)
 
   useEffect(() => {
-    let active = true
+    loadUnitStats(selectedUnit)
+  }, [selectedUnit])
+
+  function loadUnitStats(unitName) {
     setLoading(true)
     setError(false)
-    Promise.all([getSummary(), getTrend(), getDistribution(), getUrgentComplaints()])
-      .then(([s, tr, d, u]) => {
-        if (!active) return
-        setSummary(s)
-        setTrend(tr)
-        setDist(d)
-        setUrgent(u)
-      })
-      .catch(() => { if (active) setError(true) })
-      .finally(() => { if (active) setLoading(false) })
-    return () => { active = false }
-  }, [reloadKey])
+    getUnitDashboardStats(unitName)
+      .then(stats => setUnitStats(stats))
+      .catch(() => setError(true))
+      .finally(() => setLoading(false))
+  }
 
-  const periodOptions = [
-    { key: '7', label: t('stk.dashboard.period_7', '7 hari') },
-    { key: '30', label: t('stk.dashboard.period_30', '30 hari') },
-    { key: 'all', label: t('stk.dashboard.period_all', 'Semua') },
-  ]
-
-  // getTrend() tidak menerima parameter periode, jadi rentang dipotong di sisi klien
-  // (asumsi: satu titik data per hari, urut dari terlama ke terbaru).
-  const visibleTrend = period === 'all' ? trend : trend.slice(-Number(period))
-  const distTotal = dist.reduce((sum, d) => sum + d.count, 0)
+  const urgentComplaints = (unitStats?.items || []).filter(c => c.urgency_score >= 7 || ['dispatched', 'in_progress'].includes(c.status))
 
   return (
-    <StakeholderLayout title={t('dashboard.title')} notifCount={urgent.length}>
-      <PageHeader
-        heading={t('stk.dashboard.heading', 'Ringkasan aduan')}
-        description={t('stk.dashboard.description', 'Pantau kondisi, SLA, dan aduan prioritas dalam satu tampilan.')}
-        actions={
+    <StakeholderLayout title={`Dashboard Unit: ${selectedUnit}`}>
+      {/* Unit Selector & Top Actions Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="p-2 border border-[var(--color-border)] bg-[var(--color-primary)] text-white">
+            <Building2 size={20} />
+          </div>
+          <div>
+            <div className="text-[10px] font-mono uppercase text-[var(--color-primary)] font-bold">
+              PORTAL UNIT KERJA PELAKSANA
+            </div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <label htmlFor="unit-select" className="text-xs font-semibold text-[var(--color-text)]">
+                Pilih Unit:
+              </label>
+              <select
+                id="unit-select"
+                value={selectedUnit}
+                onChange={e => setSelectedUnit(e.target.value)}
+                className="input-field text-xs font-bold font-mono !py-1 !px-2.5 max-w-xs"
+              >
+                {UNITS.map(u => (
+                  <option key={u.id} value={u.name}>{u.name} ({u.code})</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          <button
+            onClick={() => setShowPdfModal(true)}
+            className="btn-solid inline-flex items-center gap-2 text-xs py-2 px-3.5 font-bold tracking-tight shadow-sm"
+          >
+            <Printer size={14} /> Ekspor Laporan PDF Unit
+          </button>
           <Link
             to="/stakeholder/complaints"
-            className={`btn-outline inline-flex items-center gap-2 text-xs py-2 px-3.5 font-medium ${focusRing}`}
+            className="btn-outline inline-flex items-center gap-1.5 text-xs py-2 px-3"
           >
-            {t('stk.dashboard.view_all', 'Lihat semua aduan')}
-            <ArrowRight size={13} aria-hidden="true" />
+            Semua Aduan <ArrowRight size={13} />
           </Link>
-        }
-      />
+        </div>
+      </div>
 
       {error ? (
-        <ErrorState onRetry={() => setReloadKey(k => k + 1)} />
+        <ErrorState onRetry={() => loadUnitStats(selectedUnit)} />
       ) : (
         <>
-          {/* KPI */}
-          <section
-            aria-label={t('stk.dashboard.kpi_label', 'Indikator utama')}
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
-          >
+          {/* Unit KPI Indicators */}
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {loading ? (
               [1, 2, 3, 4].map(i => <div key={i} className="skeleton h-28 border border-[var(--color-border)]" />)
             ) : (
               <>
-                <StatCard
-                  title={t('dashboard.total_complaints')}
-                  value={summary?.total_complaints?.toLocaleString() ?? '—'}
-                  trend={summary?.total_complaints_trend}
-                  icon={MessageSquare} color="blue"
-                />
-                <StatCard
-                  title={t('dashboard.avg_sla')}
-                  value={`${summary?.avg_sla_days ?? '—'} ${t('dashboard.days')}`}
-                  trend={summary?.avg_sla_trend}
-                  icon={Clock} color="blue"
-                />
-                <StatCard
-                  title={t('dashboard.negative_sentiment')}
-                  value={`${Math.round((summary?.negative_sentiment_pct || 0) * 100)}%`}
-                  trend={summary?.negative_sentiment_trend}
-                  icon={Frown} color="amber"
-                />
-                <UrgencyHighlight count={summary?.high_urgency_pending ?? 0} />
+                <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+                  <div className="flex items-center justify-between text-xs font-mono uppercase text-[var(--color-text-muted)] font-semibold">
+                    <span>Total Disposisi Unit</span>
+                    <Layers size={16} className="text-[var(--color-primary)]" />
+                  </div>
+                  <div className="mt-3 text-3xl font-bold font-mono text-[var(--color-text)]">
+                    {unitStats?.total || 0}
+                  </div>
+                  <div className="mt-2 text-[11px] font-mono text-[var(--color-text-muted)] border-t border-[var(--color-border)] pt-2">
+                    Aduan ditujukan ke {selectedUnit}
+                  </div>
+                </div>
+
+                <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+                  <div className="flex items-center justify-between text-xs font-mono uppercase text-[var(--color-text-muted)] font-semibold">
+                    <span>Sedang Ditangani</span>
+                    <Clock size={16} className="text-amber-500" />
+                  </div>
+                  <div className="mt-3 text-3xl font-bold font-mono text-amber-600">
+                    {(unitStats?.dispatched || 0) + (unitStats?.inProgress || 0) + (unitStats?.actionTaken || 0)}
+                  </div>
+                  <div className="mt-2 text-[11px] font-mono text-[var(--color-text-muted)] border-t border-[var(--color-border)] pt-2">
+                    {unitStats?.dispatched || 0} Menunggu · {unitStats?.actionTaken || 0} Ditindaklanjuti
+                  </div>
+                </div>
+
+                <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+                  <div className="flex items-center justify-between text-xs font-mono uppercase text-[var(--color-text-muted)] font-semibold">
+                    <span>Kepatuhan SLA</span>
+                    <CheckCircle2 size={16} className="text-[var(--color-status-success)]" />
+                  </div>
+                  <div className="mt-3 text-3xl font-bold font-mono text-[var(--color-status-success)]">
+                    {unitStats?.slaComplianceRate || 95}%
+                  </div>
+                  <div className="mt-2 text-[11px] font-mono text-[var(--color-text-muted)] border-t border-[var(--color-border)] pt-2">
+                    Standar SLA: {unitStats?.avgResolutionDays || 2} Hari Kerja
+                  </div>
+                </div>
+
+                <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+                  <div className="flex items-center justify-between text-xs font-mono uppercase text-[var(--color-text-muted)] font-semibold">
+                    <span>Skor CSAT Pelapor</span>
+                    <Star size={16} className="text-amber-500 fill-amber-500" />
+                  </div>
+                  <div className="mt-3 text-3xl font-bold font-mono text-[var(--color-text)] flex items-center gap-1.5">
+                    {unitStats?.avgRating || 4.8} <span className="text-sm font-normal text-[var(--color-text-muted)]">/ 5.0</span>
+                  </div>
+                  <div className="mt-2 text-[11px] font-mono text-[var(--color-text-muted)] border-t border-[var(--color-border)] pt-2">
+                    Berdasarkan umpan balik wajib pelapor
+                  </div>
+                </div>
               </>
             )}
           </section>
 
-          {/* Charts */}
-          <section className="grid gap-4 lg:grid-cols-3">
-            <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5 lg:col-span-2">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-sm font-bold uppercase tracking-wider font-mono text-[var(--color-text)]">{t('dashboard.trend_title')}</h3>
-                <SegmentedControl
-                  label={t('stk.dashboard.period_label', 'Rentang tren')}
-                  options={periodOptions}
-                  value={period}
-                  onChange={setPeriod}
-                />
-              </div>
-              {loading ? (
-                <div className="skeleton h-[240px] border border-[var(--color-border)]" />
-              ) : visibleTrend.length === 0 ? (
-                <NoData>{t('stk.common.no_data', 'Belum ada data.')}</NoData>
-              ) : (
-                <ResponsiveContainer width="100%" height={240}>
-                  <LineChart data={visibleTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                    <XAxis dataKey="date" tick={AXIS_TICK} tickLine={false} axisLine={false} minTickGap={24} />
-                    <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} allowDecimals={false} width={32} />
-                    <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: 'var(--color-text-muted)' }} />
-                    <Line
-                      type="monotone"
-                      dataKey="count"
-                      name={t('stk.dashboard.count', 'Aduan')}
-                      stroke="var(--color-primary)"
-                      strokeWidth={2.5}
-                      dot={false}
-                      activeDot={{ r: 4, fill: 'var(--color-accent)' }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-
-            <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-              <h3 className="mb-4 text-sm font-bold uppercase tracking-wider font-mono text-[var(--color-text)]">
-                {t('dashboard.distribution_title')}
-              </h3>
-              {loading ? (
-                <div className="skeleton h-[240px] border border-[var(--color-border)]" />
-              ) : dist.length === 0 ? (
-                <NoData>{t('stk.common.no_data', 'Belum ada data.')}</NoData>
-              ) : (
-                <>
-                  <div className="relative">
-                    <ResponsiveContainer width="100%" height={180}>
-                      <PieChart>
-                        <Pie
-                          data={dist}
-                          dataKey="count"
-                          nameKey="role"
-                          cx="50%" cy="50%"
-                          innerRadius={52} outerRadius={78}
-                          paddingAngle={3}
-                          stroke="none"
-                        >
-                          {dist.map((_, i) => <Cell key={i} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />)}
-                        </Pie>
-                        <Tooltip contentStyle={TOOLTIP_STYLE} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-2xl font-bold text-[var(--color-text)] font-mono">{distTotal.toLocaleString()}</span>
-                      <span className="text-xs text-[var(--color-text-muted)] font-mono uppercase">{t('stk.dashboard.total', 'Total')}</span>
-                    </div>
-                  </div>
-                  <ul className="mt-4 space-y-2 pt-3 border-t border-[var(--color-border)]">
-                    {dist.map((d, i) => (
-                      <li key={i} className="flex items-center justify-between gap-2 text-xs">
-                        <span className="flex min-w-0 items-center gap-2 text-[var(--color-text)]">
-                          <span
-                            className="h-2 w-2 flex-shrink-0"
-                            style={{ background: SERIES_COLORS[i % SERIES_COLORS.length] }}
-                            aria-hidden="true"
-                          />
-                          <span className="truncate">{d.role}</span>
-                        </span>
-                        <span className="flex-shrink-0 font-mono text-[var(--color-text-muted)]">
-                          {d.count} · {distTotal ? Math.round((d.count / distTotal) * 100) : 0}%
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
+          {/* Section: Status Breakdown 7 Tahap Unit */}
+          <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+            <h3 className="text-xs font-mono uppercase tracking-wider font-bold text-[var(--color-text)] mb-3">
+              Distribusi 7 Status Penanganan di Unit {selectedUnit}
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 text-center text-xs">
+              {[
+                { label: '1. Diterima', count: unitStats?.items?.filter(c => c.status === 'received').length || 0, color: 'sky' },
+                { label: '2. Diverifikasi', count: unitStats?.items?.filter(c => c.status === 'verified').length || 0, color: 'purple' },
+                { label: '3. Didisposisikan', count: unitStats?.dispatched || 0, color: 'amber' },
+                { label: '4. Diproses', count: unitStats?.inProgress || 0, color: 'orange' },
+                { label: '5. Ditindaklanjuti', count: unitStats?.actionTaken || 0, color: 'teal' },
+                { label: '6. Dijawab', count: unitStats?.answered || 0, color: 'indigo' },
+                { label: '7. Selesai', count: unitStats?.resolved || 0, color: 'emerald' },
+              ].map(s => (
+                <div key={s.label} className="p-3 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+                  <div className="text-[10px] font-mono text-[var(--color-text-muted)]">{s.label}</div>
+                  <div className="text-xl font-bold font-mono mt-1 text-[var(--color-text)]">{s.count}</div>
+                </div>
+              ))}
             </div>
           </section>
 
-          {/* Aduan yang memerlukan perhatian */}
+          {/* Antrean Prioritas / Tiket Khusus Unit Ini */}
           <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider font-mono text-[var(--color-text)]">
                 <AlertTriangle size={15} className="text-[var(--color-status-danger)]" aria-hidden="true" />
-                {t('dashboard.attention_title')}
+                Daftar Aduan Memerlukan Tindak Lanjut Unit ({urgentComplaints.length})
               </h3>
-              <Link
-                to="/stakeholder/followups"
-                className={`text-xs font-mono font-medium text-[var(--color-primary)] hover:underline ${focusRing}`}
-              >
-                {t('common.see_all')} →
-              </Link>
+              <span className="text-xs font-mono text-[var(--color-text-muted)]">
+                Unit: {selectedUnit}
+              </span>
             </div>
+
             {loading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map(i => <div key={i} className="skeleton h-14 border border-[var(--color-border)]" />)}
               </div>
-            ) : urgent.length === 0 ? (
-              <div className="py-8 text-center text-[var(--color-text-muted)]">
-                <CheckCircle2 size={24} className="mx-auto mb-2 text-[var(--color-status-success)]" aria-hidden="true" />
-                <p className="text-sm">
-                  {t('stk.dashboard.urgent_empty', 'Tidak ada aduan yang memerlukan perhatian segera.')}
+            ) : urgentComplaints.length === 0 ? (
+              <div className="py-10 text-center text-[var(--color-text-muted)] border border-dashed border-[var(--color-border)]">
+                <CheckCircle2 size={26} className="mx-auto mb-2 text-[var(--color-status-success)]" />
+                <p className="text-sm font-semibold text-[var(--color-text)]">
+                  Tidak ada antrean mendesak untuk unit {selectedUnit}.
+                </p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                  Semua aduan disposisi telah ditindaklanjuti dan dijawab dengan baik.
                 </p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {urgent.slice(0, URGENT_PREVIEW_LIMIT).map(c => <UrgentItem key={c.id} complaint={c} />)}
+              <div className="space-y-2.5">
+                {urgentComplaints.map(c => (
+                  <Link
+                    key={c.id}
+                    to={`/stakeholder/complaints/${c.id}`}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] hover:border-[var(--color-primary)] transition-colors group"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <span className="font-mono text-xs font-bold text-[var(--color-primary)]">{c.ticket_id}</span>
+                        <StatusBadge status={c.status} />
+                        <span className="text-[11px] font-mono text-[var(--color-text-muted)]">
+                          Urgensi: <strong className="text-[var(--color-status-danger)]">{c.urgency_score}/10</strong>
+                        </span>
+                      </div>
+                      <p className="text-xs text-[var(--color-text)] font-medium line-clamp-1 group-hover:text-[var(--color-primary)] transition-colors">
+                        {c.description}
+                      </p>
+                      <div className="text-[10px] font-mono text-[var(--color-text-muted)] mt-1">
+                        Masuk: {formatDate(c.created_at)} · PIC: {c.disposition?.assigned_pic || 'Belum ditugaskan'}
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-[var(--color-primary)] flex-shrink-0 flex items-center gap-1">
+                      Proses Aduan <ArrowRight size={12} />
+                    </span>
+                  </Link>
+                ))}
               </div>
             )}
           </section>
         </>
+      )}
+
+      {/* Printable PDF Modal */}
+      {showPdfModal && (
+        <UnitReportModal
+          unitData={unitStats || { unitName: selectedUnit, total: 0 }}
+          complaints={unitStats?.items || []}
+          onClose={() => setShowPdfModal(false)}
+        />
       )}
     </StakeholderLayout>
   )

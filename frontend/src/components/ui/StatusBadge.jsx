@@ -7,12 +7,18 @@ const COLOR_VARS = {
   emerald: 'var(--color-status-success)',
   red: 'var(--color-status-danger)',
   gray: 'var(--color-status-neutral)',
+  sky: '#0284c7',
+  purple: '#8b5cf6',
+  teal: '#0d9488',
+  orange: '#ea580c',
+  indigo: '#4f46e5',
 }
 
 function badgeStyle(colorKey) {
   const c = COLOR_VARS[colorKey] || COLOR_VARS.gray
   return {
     color: c,
+    border: `1px solid color-mix(in srgb, ${c} 35%, transparent)`,
     background: `color-mix(in srgb, ${c} 12%, transparent)`,
   }
 }
