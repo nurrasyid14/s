@@ -41,7 +41,7 @@ const MOCK_ADMIN = {
 // =============================================
 
 /**
- * Sign in — returns { token, user }
+ * Sign in: returns { token, user }
  */
 export async function signIn({ email, password }) {
   if (USE_MOCK) {

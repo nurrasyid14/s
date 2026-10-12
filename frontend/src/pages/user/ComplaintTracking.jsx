@@ -120,9 +120,10 @@ export default function ComplaintTracking() {
           <div className="flex items-center gap-3">
             <Link
               to="/user/complaints"
-              className="p-2 border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+              aria-label="Kembali ke riwayat aduan"
+              className="p-2.5 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors shadow-xs"
             >
-              <ArrowLeft size={16} />
+              <ArrowLeft size={18} />
             </Link>
             <div>
               <div className="text-[11px] font-mono uppercase tracking-wider text-[var(--color-primary)] font-semibold">
@@ -140,7 +141,7 @@ export default function ComplaintTracking() {
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="btn-outline inline-flex items-center gap-1.5 text-xs py-2 px-3"
+              className="btn-outline inline-flex items-center gap-1.5 text-xs py-2 px-3 rounded-xl min-h-[40px]"
             >
               <Printer size={14} /> Cetak Bukti (PDF)
             </button>
@@ -148,7 +149,7 @@ export default function ComplaintTracking() {
         </div>
 
         {/* Banner Jaminan Anonimitas Mutlak */}
-        <div className="mb-6 flex items-start gap-3 p-4 border border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-xs leading-relaxed text-[var(--color-text)]">
+        <div className="mb-6 flex items-start gap-3 p-4 border border-[var(--color-primary)] bg-[var(--color-primary-soft)] rounded-2xl shadow-xs text-xs leading-relaxed text-[var(--color-text)]">
           <ShieldCheck size={20} className="text-[var(--color-primary)] flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <span className="font-bold uppercase tracking-wider font-mono mr-2">Anonimitas Mutlak Terlindungi:</span>
@@ -157,7 +158,7 @@ export default function ComplaintTracking() {
         </div>
 
         {/* Visual Stepper: 7 Status Berurutan */}
-        <div className="mb-8 border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+        <div className="mb-8 border border-[var(--color-border)] bg-[var(--color-surface)] p-5 rounded-2xl shadow-sm">
           <h2 className="text-xs font-mono uppercase tracking-wider font-bold text-[var(--color-text-muted)] mb-4">
             Alur Penanganan 7 Tahap (Live Tracking)
           </h2>
@@ -168,9 +169,9 @@ export default function ComplaintTracking() {
               return (
                 <div
                   key={stepItem.key}
-                  className={`p-3 border text-center transition-all ${
+                  className={`p-3 border text-center rounded-xl transition-all ${
                     isCurrent
-                      ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] shadow-sm'
+                      ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] shadow-xs'
                       : isPast
                       ? 'border-[var(--color-status-success)]/40 bg-[var(--color-bg-secondary)]'
                       : 'border-[var(--color-border)] opacity-60 bg-[var(--color-bg)]'
@@ -201,20 +202,20 @@ export default function ComplaintTracking() {
           {/* Kolom Kiri: Detail Aduan & Riwayat */}
           <div className="space-y-6 lg:col-span-2">
             {/* Detail Isi Aduan */}
-            <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+            <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5 md:p-6 rounded-2xl shadow-sm">
               <h3 className="text-xs font-mono uppercase tracking-wider font-bold text-[var(--color-text-muted)] mb-3">
                 Informasi Masukan Anda
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs mb-4">
-                <div className="p-2.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+                <div className="p-3 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
                   <span className="text-[var(--color-text-muted)] block">Jenis</span>
                   <span className="font-semibold text-[var(--color-text)] capitalize">{data.type}</span>
                 </div>
-                <div className="p-2.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+                <div className="p-3 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
                   <span className="text-[var(--color-text-muted)] block">Kategori</span>
                   <span className="font-semibold text-[var(--color-text)] capitalize">{data.category}</span>
                 </div>
-                <div className="p-2.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+                <div className="p-3 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
                   <span className="text-[var(--color-text-muted)] block">Unit Terkait</span>
                   <span className="font-semibold text-[var(--color-text)]">{data.target_unit || data.unit}</span>
                 </div>
@@ -232,8 +233,8 @@ export default function ComplaintTracking() {
                   <div className="text-xs font-mono text-[var(--color-text-muted)] mb-2">Lampiran Bukti Pengirim:</div>
                   <div className="flex gap-2">
                     {data.attachments.map((a, i) => (
-                      <a key={i} href={a.url} target="_blank" rel="noopener noreferrer" className="border border-[var(--color-border)] p-1 hover:border-[var(--color-primary)]">
-                        <img src={a.url} alt="bukti" className="h-16 w-24 object-cover" />
+                      <a key={i} href={a.url} target="_blank" rel="noopener noreferrer" className="border border-[var(--color-border)] p-1 rounded-xl overflow-hidden hover:border-[var(--color-primary)]">
+                        <img src={a.url} alt="bukti" className="h-16 w-24 object-cover rounded-lg" />
                       </a>
                     ))}
                   </div>
@@ -243,14 +244,14 @@ export default function ComplaintTracking() {
 
             {/* Jawaban Resmi Unit (Jika Sudah Dijawab / Selesai) */}
             {(isAnswered || isResolved) && data.unit_answer && (
-              <section className="border-2 border-[var(--color-primary)] bg-[var(--color-surface)] p-6 shadow-sm">
+              <section className="border-2 border-[var(--color-primary)] bg-[var(--color-surface)] p-6 rounded-2xl shadow-sm">
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="w-2 h-5 bg-[var(--color-primary)] inline-block" />
+                  <span className="w-2.5 h-5 bg-[var(--color-primary)] inline-block rounded-full" />
                   <h3 className="text-sm font-bold uppercase tracking-wider font-mono text-[var(--color-primary)]">
                     Jawaban & Solusi Resmi dari Unit Kerja
                   </h3>
                 </div>
-                <div className="p-4 border border-[var(--color-primary)]/30 bg-[var(--color-primary-soft)] rounded-none mb-3">
+                <div className="p-4 border border-[var(--color-primary)]/30 bg-[var(--color-primary-soft)] rounded-xl mb-3">
                   <p className="text-sm leading-relaxed text-[var(--color-text)] font-medium">
                     {data.unit_answer.answer}
                   </p>
@@ -267,7 +268,7 @@ export default function ComplaintTracking() {
             )}
 
             {/* Riwayat Penanganan Interaktif */}
-            <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+            <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5 md:p-6 rounded-2xl shadow-sm">
               <h3 className="text-xs font-mono uppercase tracking-wider font-bold text-[var(--color-text-muted)] mb-4">
                 Catatan Jejak Audit & Progres Teknis
               </h3>
@@ -316,7 +317,7 @@ export default function ComplaintTracking() {
                     <p className="text-xs text-[var(--color-text)] mt-0.5">{f.note}</p>
                     {f.evidence_url && (
                       <a href={f.evidence_url} target="_blank" rel="noopener noreferrer" className="inline-block mt-1">
-                        <img src={f.evidence_url} alt="bukti perbaikan" className="h-14 w-20 object-cover border border-[var(--color-border)]" />
+                        <img src={f.evidence_url} alt="bukti perbaikan" className="h-14 w-20 object-cover border border-[var(--color-border)] rounded-lg" />
                       </a>
                     )}
                   </li>
@@ -328,7 +329,7 @@ export default function ComplaintTracking() {
           {/* Kolom Kanan: Status & Form Umpan Balik Wajib */}
           <div className="space-y-6">
             {/* Status Panel Ringkas */}
-            <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+            <div className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5 md:p-6 rounded-2xl shadow-sm">
               <div className="text-xs font-mono uppercase tracking-wider text-[var(--color-text-muted)] mb-1">Status Penanganan Saat Ini</div>
               <div className="text-lg font-bold text-[var(--color-text)] mb-3">
                 <StatusBadge status={data.status} />
@@ -351,7 +352,7 @@ export default function ComplaintTracking() {
 
             {/* WAJIB: Form Umpan Balik (Jika status == 'answered') */}
             {isAnswered && (
-              <div className="border-2 border-[var(--color-status-warning)] bg-[var(--color-surface)] p-5 shadow-sm">
+              <div className="border-2 border-[var(--color-status-warning)] bg-[var(--color-surface)] p-5 md:p-6 rounded-2xl shadow-md">
                 <div className="flex items-center gap-2 text-[var(--color-status-warning)] font-bold text-xs font-mono uppercase mb-2">
                   <AlertTriangle size={16} /> Wajib Diisi Pelapor
                 </div>
@@ -363,7 +364,7 @@ export default function ComplaintTracking() {
                 </p>
 
                 {feedbackError && (
-                  <div className="p-2.5 mb-3 border border-[var(--color-status-danger)] text-[var(--color-status-danger)] text-xs">
+                  <div role="alert" aria-live="polite" className="p-3 mb-3 border border-[var(--color-status-danger)] bg-[var(--color-status-danger)]/10 text-[var(--color-status-danger)] text-xs rounded-xl">
                     {feedbackError}
                   </div>
                 )}
@@ -371,10 +372,10 @@ export default function ComplaintTracking() {
                 <form onSubmit={handleFeedbackSubmit} className="space-y-4">
                   {/* Rating Bintang */}
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text)] mb-1.5">
+                    <label id="rating-label" className="block text-xs font-semibold text-[var(--color-text)] mb-1.5">
                       Rating Kepuasan Keseluruhan (1-5 Bintang) *
                     </label>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5" role="radiogroup" aria-labelledby="rating-label">
                       {[1, 2, 3, 4, 5].map(star => (
                         <button
                           type="button"
@@ -382,7 +383,8 @@ export default function ComplaintTracking() {
                           onClick={() => setRating(star)}
                           onMouseEnter={() => setHoverRating(star)}
                           onMouseLeave={() => setHoverRating(0)}
-                          className="p-1 text-[var(--color-border)] hover:text-amber-400 focus:outline-none transition-colors"
+                          aria-label={`Beri nilai ${star} dari 5 bintang`}
+                          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl text-[var(--color-border)] hover:text-amber-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-colors"
                         >
                           <Star
                             size={24}
@@ -390,63 +392,66 @@ export default function ComplaintTracking() {
                           />
                         </button>
                       ))}
-                      <span className="ml-2 font-mono text-xs font-bold text-[var(--color-text)]">
+                      <span className="ml-2 font-mono text-xs font-bold text-[var(--color-text)]" aria-live="polite">
                         {rating} / 5 Bintang
                       </span>
                     </div>
                   </div>
 
                   {/* Aspek-aspek Penilaian */}
-                  <div className="space-y-2 border-t border-[var(--color-border)] pt-3 text-xs">
+                  <div className="space-y-3 border-t border-[var(--color-border)] pt-3 text-xs">
                     <div>
                       <div className="flex justify-between mb-1">
-                        <span className="text-[var(--color-text-muted)]">Kecepatan Respons:</span>
+                        <label htmlFor="aspect-speed" className="text-[var(--color-text-muted)] font-medium">Kecepatan Respons:</label>
                         <span className="font-mono font-bold text-[var(--color-text)]">{aspectSpeed}/5</span>
                       </div>
                       <input
+                        id="aspect-speed"
                         type="range"
                         min="1"
                         max="5"
                         value={aspectSpeed}
                         onChange={e => setAspectSpeed(e.target.value)}
-                        className="w-full accent-[var(--color-primary)]"
+                        className="w-full accent-[var(--color-primary)] cursor-pointer"
                       />
                     </div>
                     <div>
                       <div className="flex justify-between mb-1">
-                        <span className="text-[var(--color-text-muted)]">Kejelasan Jawaban:</span>
+                        <label htmlFor="aspect-clarity" className="text-[var(--color-text-muted)] font-medium">Kejelasan Jawaban:</label>
                         <span className="font-mono font-bold text-[var(--color-text)]">{aspectClarity}/5</span>
                       </div>
                       <input
+                        id="aspect-clarity"
                         type="range"
                         min="1"
                         max="5"
                         value={aspectClarity}
                         onChange={e => setAspectClarity(e.target.value)}
-                        className="w-full accent-[var(--color-primary)]"
+                        className="w-full accent-[var(--color-primary)] cursor-pointer"
                       />
                     </div>
                   </div>
 
                   {/* Ulasan Tertulis Wajib */}
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--color-text)] mb-1">
+                    <label htmlFor="feedback-comment" className="block text-xs font-semibold text-[var(--color-text)] mb-1">
                       Komentar / Ulasan Layanan (Wajib) *
                     </label>
                     <textarea
+                      id="feedback-comment"
                       rows={3}
                       required
                       value={comment}
                       onChange={e => setComment(e.target.value)}
                       placeholder="Bagikan pengalaman atau respon Anda atas solusi yang diberikan oleh unit..."
-                      className="input-field text-xs resize-none"
+                      className="input-field text-xs resize-none rounded-xl"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={submittingFeedback}
-                    className="btn-solid w-full text-xs py-2.5 font-bold flex items-center justify-center gap-1.5"
+                    className="btn-solid w-full text-xs py-2.5 font-bold flex items-center justify-center gap-1.5 rounded-xl min-h-[44px]"
                   >
                     {submittingFeedback ? (
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
@@ -462,7 +467,7 @@ export default function ComplaintTracking() {
 
             {/* Sudah Selesai (Feedback Terpenuhi) */}
             {isResolved && data.feedback && (
-              <div className="border border-[var(--color-status-success)] bg-[var(--color-surface)] p-5">
+              <div className="border border-[var(--color-status-success)] bg-[var(--color-surface)] p-5 rounded-2xl shadow-sm">
                 <div className="flex items-center gap-2 text-[var(--color-status-success)] font-bold text-xs font-mono uppercase mb-2">
                   <CheckCircle2 size={16} /> Tiket Resmi Selesai
                 </div>
@@ -478,7 +483,7 @@ export default function ComplaintTracking() {
                     {data.feedback.rating}/5
                   </span>
                 </div>
-                <p className="text-xs text-[var(--color-text)] italic leading-relaxed bg-[var(--color-bg-secondary)] p-3 border border-[var(--color-border)] mb-2">
+                <p className="text-xs text-[var(--color-text)] italic leading-relaxed bg-[var(--color-bg-secondary)] p-3 border border-[var(--color-border)] rounded-xl mb-2">
                   "{data.feedback.comment}"
                 </p>
                 <div className="text-[11px] font-mono text-[var(--color-text-muted)] text-right">

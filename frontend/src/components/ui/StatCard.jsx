@@ -1,7 +1,7 @@
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 
 /**
- * StatCard — summary metric card for dashboard (square, border-led styling)
+ * StatCard: summary metric card for dashboard (square, border-led styling)
  */
 
 const COLOR_MAP = {
@@ -18,12 +18,12 @@ export default function StatCard({ title, value, subtitle, trend, icon: Icon, co
 
   return (
     <div
-      className={`card-elevated border border-[var(--color-border)] bg-[var(--color-surface)] p-5 transition-colors hover:bg-[var(--color-card-hover)] ${onClick ? 'cursor-pointer' : ''}`}
+      className={`card-elevated rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 transition-all hover:bg-[var(--color-card-hover)] hover:-translate-y-0.5 ${onClick ? 'cursor-pointer' : ''}`}
       onClick={onClick}
     >
       <div className="flex items-start justify-between">
         {/* Icon */}
-        <div className={`w-10 h-10 border flex items-center justify-center ${colors.icon}`}>
+        <div className={`w-11 h-11 rounded-xl border flex items-center justify-center shadow-xs ${colors.icon}`}>
           {Icon && <Icon size={20} strokeWidth={1.8} />}
         </div>
         {/* Trend */}

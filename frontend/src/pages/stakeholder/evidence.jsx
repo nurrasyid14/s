@@ -45,7 +45,7 @@ export default function Evidence() {
                 <ErrorState onRetry={() => setReloadKey(k => k + 1)} />
             ) : loading ? (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true">
-                    {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="skeleton h-56 border border-[var(--color-border)]" />)}
+                    {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="skeleton h-56 border border-[var(--color-border)] rounded-2xl" />)}
                 </div>
             ) : data.length === 0 ? (
                 <EmptyState
@@ -59,19 +59,19 @@ export default function Evidence() {
                         <li key={c.id}>
                             <Link
                                 to={`/stakeholder/complaints/${c.id}`}
-                                className="block h-full border border-[var(--color-border)] bg-[var(--color-surface)] transition-colors hover:border-[var(--color-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+                                className="block h-full border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl shadow-sm overflow-hidden transition-all hover:shadow-md hover:border-[var(--color-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] group"
                             >
                                 <div className="aspect-[16/10] overflow-hidden bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)]">
                                     <img
                                         src={c.attachments[0].url}
                                         alt={c.attachments[0].name}
                                         loading="lazy"
-                                        className="h-full w-full object-cover"
+                                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
                                     />
                                 </div>
                                 <div className="p-4">
                                     <div className="mb-2 flex items-center justify-between gap-2">
-                                        <span className="font-mono text-xs px-2 py-0.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)]">{c.ticket_id}</span>
+                                        <span className="font-mono text-xs px-2.5 py-0.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] rounded-lg font-medium">{c.ticket_id}</span>
                                         <StatusBadge status={c.status} />
                                     </div>
                                     <p className="line-clamp-2 text-sm font-medium text-[var(--color-text)] leading-relaxed">{c.description}</p>

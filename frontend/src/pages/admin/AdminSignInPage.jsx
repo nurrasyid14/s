@@ -50,49 +50,51 @@ export default function AdminSignInPage() {
         </div>
       }
     >
-      <div className="mb-4 flex items-start gap-2.5 border border-[var(--color-primary)] bg-[var(--color-primary-soft)] p-3 text-xs leading-relaxed text-[var(--color-text)]">
+      <div className="mb-4 flex items-start gap-2.5 border border-[var(--color-primary)] bg-[var(--color-primary-soft)] p-3 text-xs leading-relaxed text-[var(--color-text)] rounded-xl">
         <ShieldAlert size={16} className="text-[var(--color-primary)] flex-shrink-0 mt-0.5" />
         <span>Jalur khusus verifikator admin sentral. Akses dibatasi untuk tim pengelola disposisi institusi PENS.</span>
       </div>
 
       {error && (
-        <div className="mb-4 flex items-center gap-2 border border-[var(--color-status-danger)] p-3 text-sm text-[var(--color-status-danger)]">
+        <div role="alert" aria-live="assertive" className="mb-4 flex items-center gap-2 border border-[var(--color-status-danger)] bg-[var(--color-status-danger)]/10 p-3 text-sm text-[var(--color-status-danger)] rounded-xl">
           <AlertCircle size={15} /> {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider font-mono text-[var(--color-text)]">
+          <label htmlFor="admin-email" className="mb-1.5 block text-xs font-bold uppercase tracking-wider font-mono text-[var(--color-text)]">
             Email Administrator
           </label>
           <input
+            id="admin-email"
             name="email"
             type="email"
             required
             value={form.email}
             onChange={handleChange}
             placeholder="admin@pens.ac.id"
-            className="input-field text-xs font-mono"
+            className="input-field text-xs font-mono rounded-xl"
           />
         </div>
 
         <div>
-          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider font-mono text-[var(--color-text)]">
+          <label htmlFor="admin-password" className="mb-1.5 block text-xs font-bold uppercase tracking-wider font-mono text-[var(--color-text)]">
             Kata Sandi
           </label>
           <input
+            id="admin-password"
             name="password"
             type="password"
             required
             value={form.password}
             onChange={handleChange}
             placeholder="••••••••"
-            className="input-field text-xs"
+            className="input-field text-xs rounded-xl"
           />
         </div>
 
-        <button type="submit" disabled={loading} className="btn-solid w-full !py-3 text-xs font-bold tracking-wider uppercase">
+        <button type="submit" disabled={loading} className="btn-solid w-full !py-3 text-xs font-bold tracking-wider uppercase rounded-xl min-h-[44px] flex items-center justify-center gap-2">
           {loading ? (
             <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
           ) : (
@@ -101,7 +103,7 @@ export default function AdminSignInPage() {
         </button>
       </form>
 
-      <div className="mt-5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3 text-[11px] text-[var(--color-text-muted)] font-mono">
+      <div className="mt-5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3.5 text-[11px] text-[var(--color-text-muted)] font-mono rounded-xl shadow-xs">
         <span className="font-bold text-[var(--color-text)] block mb-0.5">Demo Admin Credentials:</span>
         Email: <span className="text-[var(--color-primary)] font-bold">admin@pens.ac.id</span> | Sandi: bebas
       </div>

@@ -1,4 +1,4 @@
-// ID/EN translations — English
+// ID/EN translations: English
 export default {
   translation: {
     nav: {
@@ -85,7 +85,7 @@ export default {
       attachment: 'Evidence Attachments (optional)',
       attachment_desc: 'Upload photos or supporting documents (max 5MB)',
       anon_toggle: 'Your Identity Is Automatically Masked',
-      anon_desc: 'Your name and identity are never shown to stakeholders — the system anonymizes every submission automatically.',
+      anon_desc: 'Your name and identity are never shown to stakeholders; the system anonymizes every submission automatically.',
       preview_title: 'System Analysis Preview',
       preview_note: 'This is an initial system estimate, not a final decision.',
       submit: 'Submit Report',

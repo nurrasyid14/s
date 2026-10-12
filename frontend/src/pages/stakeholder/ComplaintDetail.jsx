@@ -34,6 +34,7 @@ export default function ComplaintDetail() {
   const [showSheetPdf, setShowSheetPdf] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [actionSuccess, setActionSuccess] = useState('')
+  const [actionError, setActionError] = useState('')
 
   // Form states for Unit actions
   const [followUpNote, setFollowUpNote] = useState('')
@@ -60,6 +61,7 @@ export default function ComplaintDetail() {
   // Aksi 1: Terima Disposisi (dispatched -> in_progress)
   async function handleAcceptDisposition() {
     setActionLoading(true)
+    setActionError('')
     try {
       await acceptComplaintByUnit(id, {
         pic_name: `Koordinator ${data.target_unit || data.unit}`,
@@ -69,7 +71,8 @@ export default function ComplaintDetail() {
       setTimeout(() => setActionSuccess(''), 3000)
       setReloadKey(k => k + 1)
     } catch {
-      alert('Gagal menerima disposisi.')
+      setActionError('Gagal menerima disposisi. Silakan coba lagi.')
+      setTimeout(() => setActionError(''), 4000)
     } finally {
       setActionLoading(false)
     }
@@ -80,6 +83,7 @@ export default function ComplaintDetail() {
     e.preventDefault()
     if (!followUpNote.trim()) return
     setActionLoading(true)
+    setActionError('')
     try {
       await addUnitFollowUp(id, {
         action_type: followUpType,
@@ -91,7 +95,8 @@ export default function ComplaintDetail() {
       setTimeout(() => setActionSuccess(''), 3000)
       setReloadKey(k => k + 1)
     } catch {
-      alert('Gagal mencatat tindak lanjut.')
+      setActionError('Gagal mencatat tindak lanjut. Silakan periksa koneksi.')
+      setTimeout(() => setActionError(''), 4000)
     } finally {
       setActionLoading(false)
     }
@@ -102,6 +107,7 @@ export default function ComplaintDetail() {
     e.preventDefault()
     if (!unitAnswerText.trim()) return
     setActionLoading(true)
+    setActionError('')
     try {
       await submitUnitOfficialAnswer(id, {
         answer: unitAnswerText,
@@ -112,7 +118,8 @@ export default function ComplaintDetail() {
       setTimeout(() => setActionSuccess(''), 4000)
       setReloadKey(k => k + 1)
     } catch {
-      alert('Gagal menerbitkan jawaban resmi.')
+      setActionError('Gagal menerbitkan jawaban resmi. Silakan coba lagi.')
+      setTimeout(() => setActionError(''), 4000)
     } finally {
       setActionLoading(false)
     }
@@ -156,9 +163,10 @@ export default function ComplaintDetail() {
         <div className="flex items-center gap-3">
           <Link
             to="/stakeholder/complaints"
-            className={`border border-[var(--color-border)] p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-text)] transition-colors ${focusRing}`}
+            aria-label="Kembali ke daftar aduan"
+            className={`border border-[var(--color-border)] p-2.5 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl text-[var(--color-text-muted)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-text)] transition-colors shadow-xs ${focusRing}`}
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={18} />
           </Link>
           <div>
             <div className="text-[10px] font-mono uppercase text-[var(--color-primary)] font-bold">
@@ -176,7 +184,7 @@ export default function ComplaintDetail() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowSheetPdf(true)}
-            className="btn-outline inline-flex items-center gap-1.5 text-xs py-2 px-3 font-semibold"
+            className="btn-outline inline-flex items-center gap-1.5 text-xs py-2 px-3.5 font-semibold rounded-xl min-h-[40px]"
           >
             <Printer size={14} /> Cetak Lembar Disposisi (PDF)
           </button>
@@ -184,25 +192,31 @@ export default function ComplaintDetail() {
       </div>
 
       {actionSuccess && (
-        <div className="p-3 mb-4 border border-[var(--color-status-success)] bg-[var(--color-status-success)]/10 text-[var(--color-status-success)] text-xs font-semibold flex items-center gap-2">
+        <div role="status" aria-live="polite" className="p-3 mb-4 border border-[var(--color-status-success)] bg-[var(--color-status-success)]/10 text-[var(--color-status-success)] text-xs font-semibold flex items-center gap-2 rounded-xl">
           <Check size={16} /> {actionSuccess}
         </div>
       )}
 
+      {actionError && (
+        <div role="alert" aria-live="assertive" className="p-3 mb-4 border border-[var(--color-status-danger)] bg-[var(--color-status-danger)]/10 text-[var(--color-status-danger)] text-xs font-semibold flex items-center gap-2 rounded-xl">
+          <AlertTriangle size={16} /> {actionError}
+        </div>
+      )}
+
       {/* Visual Workflow Mini-Stepper */}
-      <div className="mb-6 p-4 border border-[var(--color-border)] bg-[var(--color-surface)]">
+      <div className="mb-6 p-4 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl shadow-sm">
         <div className="text-[10px] font-mono uppercase text-[var(--color-text-muted)] mb-2 font-bold">
           Posisi Alur Saat Ini: <span className="text-[var(--color-primary)] font-bold">{currentStep?.label || data.status}</span>
         </div>
-        <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-mono">
+        <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] font-mono">
           {WORKFLOW_STEPS.map((s, idx) => {
             const isMatch = s.key === data.status
             return (
               <div
                 key={s.key}
-                className={`p-1.5 border truncate ${
+                className={`p-2 border truncate rounded-lg transition-all ${
                   isMatch
-                    ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)] font-bold'
+                    ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)] font-bold shadow-xs'
                     : 'border-[var(--color-border)] opacity-60 text-[var(--color-text-muted)]'
                 }`}
               >
@@ -217,35 +231,35 @@ export default function ComplaintDetail() {
         {/* Kolom Kiri: Info Aduan, NLP, Bukti, dan Jawaban */}
         <div className="min-w-0 space-y-5 lg:col-span-2">
           {/* Detail Aduan */}
-          <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+          <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5 md:p-6 rounded-2xl shadow-sm">
             <h3 className="mb-4 text-xs font-bold uppercase tracking-wider font-mono text-[var(--color-text)]">
               Substansi Masukan & Informasi Pelapor
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs mb-4">
-              <div className="p-2.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+              <div className="p-3 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
                 <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-mono">Pelapor</span>
                 <span className="font-semibold text-[var(--color-text)] flex items-center gap-1 mt-0.5">
                   <ShieldCheck size={14} className="text-[var(--color-primary)]" />
                   Sivitas PENS (Anonim)
                 </span>
               </div>
-              <div className="p-2.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+              <div className="p-3 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
                 <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-mono">Peran Pelapor</span>
                 <span className="font-semibold text-[var(--color-text)] mt-0.5 block">{data.sender_role || 'Mahasiswa'}</span>
               </div>
-              <div className="p-2.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+              <div className="p-3 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
                 <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-mono">Unit Tujuan</span>
                 <span className="font-semibold text-[var(--color-primary)] mt-0.5 block">{data.target_unit || data.unit}</span>
               </div>
-              <div className="p-2.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+              <div className="p-3 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
                 <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-mono">Kategori Masukan</span>
                 <span className="font-semibold text-[var(--color-text)] capitalize mt-0.5 block">{categoryLabel(data.category)}</span>
               </div>
-              <div className="p-2.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+              <div className="p-3 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
                 <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-mono">Jenis Aduan</span>
                 <span className="font-semibold text-[var(--color-text)] capitalize mt-0.5 block">{typeLabel(data.type)}</span>
               </div>
-              <div className="p-2.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+              <div className="p-3 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
                 <span className="text-[var(--color-text-muted)] block text-[10px] uppercase font-mono">Tanggal Diajukan</span>
                 <span className="font-mono text-[var(--color-text)] mt-0.5 block">{formatDate(data.created_at)}</span>
               </div>
@@ -261,7 +275,7 @@ export default function ComplaintDetail() {
 
           {/* Catatan Verifikasi & Disposisi Admin */}
           {(data.verification || data.disposition) && (
-            <section className="border border-purple-500/40 bg-[var(--color-surface)] p-5 border-l-4 border-l-purple-500">
+            <section className="border border-purple-500/40 bg-[var(--color-surface)] p-5 md:p-6 border-l-4 border-l-purple-500 rounded-2xl shadow-sm">
               <h3 className="text-xs font-bold uppercase tracking-wider font-mono text-purple-600 mb-3">
                 Instruksi Disposisi dari Administrator Sentral
               </h3>
@@ -288,25 +302,25 @@ export default function ComplaintDetail() {
           )}
 
           {/* Hasil Analisis AI / NLP */}
-          <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5 border-l-4 border-l-[var(--color-primary)]">
+          <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5 md:p-6 border-l-4 border-l-[var(--color-primary)] rounded-2xl shadow-sm">
             <h3 className="text-xs font-bold uppercase tracking-wider font-mono text-[var(--color-text)] mb-3">
               Hasil Analisis Kecerdasan Buatan (NLP SuaraLens)
             </h3>
-            <div className="grid grid-cols-3 gap-3 text-xs">
-              <div className="p-3 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div className="p-3.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
                 <span className="text-[var(--color-text-muted)] block text-[10px] font-mono uppercase">Skor Urgensi</span>
                 <span className="text-xl font-bold font-mono text-[var(--color-status-danger)] block mt-0.5">
                   {data.urgency_score}/10
                 </span>
                 <span className="text-[10px] font-mono text-[var(--color-text-muted)]">{urgency.level} Priority</span>
               </div>
-              <div className="p-3 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+              <div className="p-3.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
                 <span className="text-[var(--color-text-muted)] block text-[10px] font-mono uppercase">Sentimen Analisis</span>
                 <span className="text-sm font-bold text-[var(--color-text)] block mt-1 capitalize">
                   {sentimentLabel(data.sentiment)}
                 </span>
               </div>
-              <div className="p-3 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+              <div className="p-3.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
                 <span className="text-[var(--color-text-muted)] block text-[10px] font-mono uppercase">AI Category Match</span>
                 <span className="text-sm font-bold text-[var(--color-text)] block mt-1 capitalize">
                   {categoryLabel(data.nlp_category)}
@@ -320,14 +334,14 @@ export default function ComplaintDetail() {
 
           {/* Jawaban Resmi Unit (Jika Sudah Terbit) */}
           {data.unit_answer && (
-            <section className="border-2 border-indigo-500 bg-[var(--color-surface)] p-5">
+            <section className="border-2 border-indigo-500 bg-[var(--color-surface)] p-5 md:p-6 rounded-2xl shadow-sm">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle2 size={18} className="text-indigo-600" />
                 <h3 className="text-xs font-bold uppercase tracking-wider font-mono text-indigo-700">
                   Jawaban & Solusi Resmi Unit (Telah Dikirimkan)
                 </h3>
               </div>
-              <p className="text-xs leading-relaxed text-[var(--color-text)] bg-indigo-50/20 p-3 border border-indigo-200 font-medium whitespace-pre-line">
+              <p className="text-xs leading-relaxed text-[var(--color-text)] bg-indigo-50/20 p-3.5 border border-indigo-200 font-medium whitespace-pre-line rounded-xl">
                 {data.unit_answer.answer}
               </p>
               <div className="text-[11px] font-mono text-[var(--color-text-muted)] mt-2 flex justify-between">
@@ -339,7 +353,7 @@ export default function ComplaintDetail() {
 
           {/* Umpan Balik Stakeholder (Jika Sudah Selesai) */}
           {data.feedback && (
-            <section className="border border-[var(--color-status-success)] bg-[var(--color-surface)] p-5">
+            <section className="border border-[var(--color-status-success)] bg-[var(--color-surface)] p-5 md:p-6 rounded-2xl shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-xs font-bold uppercase tracking-wider font-mono text-[var(--color-status-success)]">
                   Penilaian & Ulasan Kepuasan Pelapor (Status Selesai)
@@ -349,7 +363,7 @@ export default function ComplaintDetail() {
                   {data.feedback.rating}/5 Bintang
                 </div>
               </div>
-              <p className="text-xs text-[var(--color-text)] italic p-3 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+              <p className="text-xs text-[var(--color-text)] italic p-3.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
                 "{data.feedback.comment}"
               </p>
               <div className="text-[10px] font-mono text-[var(--color-text-muted)] mt-1.5 text-right">
@@ -362,7 +376,7 @@ export default function ComplaintDetail() {
         {/* Kolom Kanan: Aksi Penanganan Unit (Sesuai Tahap) */}
         <div className="min-w-0 space-y-5">
           {/* Panel Aksi Penanganan Unit */}
-          <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+          <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5 md:p-6 rounded-2xl shadow-sm">
             <h3 className="text-xs font-bold uppercase tracking-wider font-mono text-[var(--color-text)] mb-3 pb-2 border-b border-[var(--color-border)]">
               Aksi Penanganan Unit ({data.target_unit || data.unit})
             </h3>
@@ -370,13 +384,13 @@ export default function ComplaintDetail() {
             {/* Skenario A: Status Didisposisikan -> Terima Tugas */}
             {data.status === 'dispatched' && (
               <div className="space-y-3">
-                <div className="p-3 border border-amber-300 bg-amber-50/30 text-amber-800 text-xs leading-relaxed">
+                <div className="p-3.5 border border-amber-300 bg-amber-50/30 text-amber-800 text-xs leading-relaxed rounded-xl">
                   Aduan ini telah didisposisikan oleh Admin Sentral ke unit Anda. Klik tombol di bawah untuk mengonfirmasi penerimaan tugas.
                 </div>
                 <button
                   onClick={handleAcceptDisposition}
                   disabled={actionLoading}
-                  className="btn-solid w-full text-xs !py-2.5 font-bold flex items-center justify-center gap-2"
+                  className="btn-solid w-full text-xs !py-2.5 font-bold flex items-center justify-center gap-2 rounded-xl min-h-[44px]"
                 >
                   <Check size={14} /> Terima Disposisi & Mulai Proses
                 </button>
@@ -387,18 +401,19 @@ export default function ComplaintDetail() {
             {['in_progress', 'action_taken'].includes(data.status) && (
               <div className="space-y-5">
                 {/* 1. Form Catat Progres Teknis */}
-                <form onSubmit={handleAddFollowUp} className="space-y-3 p-3 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+                <form onSubmit={handleAddFollowUp} className="space-y-3 p-4 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
                   <div className="text-xs font-bold text-[var(--color-text)] flex items-center gap-1.5">
                     <Wrench size={14} /> Catat Progres Tindak Lanjut Teknis
                   </div>
                   <div>
-                    <label className="block text-[10px] font-mono uppercase text-[var(--color-text-muted)] mb-1">
+                    <label htmlFor="followup-type" className="block text-[10px] font-mono uppercase text-[var(--color-text-muted)] font-semibold mb-1">
                       Jenis Tindakan
                     </label>
                     <select
+                      id="followup-type"
                       value={followUpType}
                       onChange={e => setFollowUpType(e.target.value)}
-                      className="input-field text-xs !py-1.5"
+                      className="input-field text-xs !py-1.5 rounded-xl"
                     >
                       <option value="investigation">Investigasi / Pengecekan Lapangan</option>
                       <option value="maintenance">Perbaikan / Penggantian Fisik</option>
@@ -407,61 +422,64 @@ export default function ComplaintDetail() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-mono uppercase text-[var(--color-text-muted)] mb-1">
+                    <label htmlFor="followup-note" className="block text-[10px] font-mono uppercase text-[var(--color-text-muted)] font-semibold mb-1">
                       Catatan Aksi
                     </label>
                     <textarea
+                      id="followup-note"
                       rows={2}
                       required
                       placeholder="Uraikan aksi nyata yang telah dilakukan oleh teknisi/staf..."
                       value={followUpNote}
                       onChange={e => setFollowUpNote(e.target.value)}
-                      className="input-field text-xs resize-none"
+                      className="input-field text-xs resize-none rounded-xl"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={actionLoading}
-                    className="btn-outline w-full text-xs !py-2 font-bold"
+                    className="btn-outline w-full text-xs !py-2 font-bold rounded-xl min-h-[40px]"
                   >
                     Simpan Progres Tindak Lanjut
                   </button>
                 </form>
 
                 {/* 2. Form Penerbitan Jawaban Resmi Unit */}
-                <form onSubmit={handlePublishAnswer} className="space-y-3 p-3 border-2 border-indigo-500/50 bg-[var(--color-surface)]">
+                <form onSubmit={handlePublishAnswer} className="space-y-3 p-4 border-2 border-indigo-500/50 bg-[var(--color-surface)] rounded-xl">
                   <div className="text-xs font-bold text-indigo-700 flex items-center gap-1.5">
                     <MessageSquare size={14} /> Terbitkan Jawaban Resmi Solusi Unit
                   </div>
                   <div>
-                    <label className="block text-[10px] font-mono uppercase text-[var(--color-text-muted)] mb-1">
+                    <label htmlFor="official-pic" className="block text-[10px] font-mono uppercase text-[var(--color-text-muted)] font-semibold mb-1">
                       Nama PIC / Pejabat Penjawab
                     </label>
                     <input
+                      id="official-pic"
                       type="text"
                       placeholder={`Contoh: Kepala Bagian ${data.target_unit || data.unit}`}
                       value={unitAnswerPic}
                       onChange={e => setUnitAnswerPic(e.target.value)}
-                      className="input-field text-xs !py-1.5"
+                      className="input-field text-xs !py-1.5 rounded-xl"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-mono uppercase text-[var(--color-text-muted)] mb-1">
+                    <label htmlFor="official-answer" className="block text-[10px] font-mono uppercase text-[var(--color-text-muted)] font-semibold mb-1">
                       Pernyataan Jawaban & Solusi Resmi (Dilihat Pelapor) *
                     </label>
                     <textarea
+                      id="official-answer"
                       rows={3}
                       required
                       placeholder="Jelaskan solusi tuntas, tindak lanjut, atau klarifikasi resmi..."
                       value={unitAnswerText}
                       onChange={e => setUnitAnswerText(e.target.value)}
-                      className="input-field text-xs resize-none"
+                      className="input-field text-xs resize-none rounded-xl"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={actionLoading}
-                    className="btn-solid w-full text-xs !py-2.5 font-bold flex items-center justify-center gap-1.5"
+                    className="btn-solid w-full text-xs !py-2.5 font-bold flex items-center justify-center gap-1.5 rounded-xl min-h-[44px]"
                   >
                     <Send size={13} /> Terbitkan Jawaban ke Pelapor
                   </button>
@@ -471,7 +489,7 @@ export default function ComplaintDetail() {
 
             {/* Skenario C: Status Dijawab -> Menunggu Feedback Pelapor */}
             {data.status === 'answered' && (
-              <div className="p-4 border border-indigo-300 bg-indigo-50/20 text-xs leading-relaxed space-y-2">
+              <div className="p-4 border border-indigo-300 bg-indigo-50/20 text-xs leading-relaxed space-y-2 rounded-xl">
                 <div className="font-bold text-indigo-800 flex items-center gap-1.5">
                   <Clock size={15} /> Menunggu Feedback Wajib Pelapor
                 </div>
@@ -483,7 +501,7 @@ export default function ComplaintDetail() {
 
             {/* Skenario D: Status Selesai */}
             {data.status === 'resolved' && (
-              <div className="p-4 border border-emerald-300 bg-emerald-50/20 text-xs leading-relaxed space-y-2">
+              <div className="p-4 border border-emerald-300 bg-emerald-50/20 text-xs leading-relaxed space-y-2 rounded-xl">
                 <div className="font-bold text-emerald-800 flex items-center gap-1.5">
                   <CheckCircle2 size={15} /> Tiket Selesai Secara Paripurna
                 </div>
@@ -495,7 +513,7 @@ export default function ComplaintDetail() {
           </section>
 
           {/* Riwayat Catatan Tindak Lanjut */}
-          <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+          <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5 md:p-6 rounded-2xl shadow-sm">
             <h3 className="mb-3 text-xs font-bold uppercase tracking-wider font-mono text-[var(--color-text)]">
               Riwayat Tindak Lanjut ({followups.length})
             </h3>

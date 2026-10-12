@@ -35,20 +35,23 @@ function topBy(items, key) {
   return { label: best[key], count: best.count }
 }
 
-function ChartCard({ title, loading, empty, caption, children }) {
+function ChartCard({ title, loading, empty, caption, srSummary, children }) {
   const { t } = useTranslation()
 
   return (
-    <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+    <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5 md:p-6 rounded-2xl shadow-sm">
       <h3 className="mb-4 text-xs font-bold uppercase tracking-wider font-mono text-[var(--color-text)]">{title}</h3>
       {loading ? (
-        <div className="skeleton h-[220px] border border-[var(--color-border)]" />
+        <div className="skeleton h-[220px] border border-[var(--color-border)] rounded-xl" />
       ) : empty ? (
         <div className="flex h-[220px] items-center justify-center text-xs font-mono text-[var(--color-text-muted)]">
           {t('stk.common.no_data', 'Belum ada data.')}
         </div>
       ) : (
-        children
+        <>
+          {srSummary && <p className="sr-only">{srSummary}</p>}
+          {children}
+        </>
       )}
       {!loading && !empty && caption && (
         <p className="mt-3 pt-3 border-t border-[var(--color-border)] text-xs font-mono text-[var(--color-text-muted)]">{caption}</p>
@@ -125,14 +128,19 @@ export default function Analytics() {
         <ErrorState onRetry={() => setReloadKey(k => k + 1)} />
       ) : (
         <div className="grid gap-5 lg:grid-cols-2">
-          <ChartCard title={t('analytics.sentiment_title')} loading={loading} empty={sentiment.length === 0}>
+          <ChartCard
+            title={t('analytics.sentiment_title')}
+            loading={loading}
+            empty={sentiment.length === 0}
+            srSummary={`Ringkasan sentimen aduan: ${sentiment.map(s => `${s.name}: ${s.value}`).join(', ')}`}
+          >
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
-                <Pie data={sentiment} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} stroke="none">
+                <Pie data={sentiment} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} stroke="none">
                   {sentiment.map((s, i) => <Cell key={i} fill={sentimentColor(s)} />)}
                 </Pie>
                 <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Legend iconType="square" iconSize={8} wrapperStyle={{ fontSize: '12px', fontFamily: 'monospace', color: 'var(--color-text-muted)' }} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '12px', fontFamily: 'monospace', color: 'var(--color-text-muted)' }} />
               </PieChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -141,6 +149,7 @@ export default function Analytics() {
             title={t('analytics.issue_title')}
             loading={loading}
             empty={issues.length === 0}
+            srSummary={`Kategori masalah: ${issues.map(i => `${i.category}: ${i.count}`).join(', ')}`}
             caption={<Insight label={t('stk.analytics.top_issue', 'Paling sering')} top={topBy(issues, 'category')} />}
           >
             <ResponsiveContainer width="100%" height={220}>
@@ -149,16 +158,21 @@ export default function Analytics() {
                 <XAxis type="number" tick={AXIS_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
                 <YAxis dataKey="category" type="category" tick={AXIS_TICK} tickLine={false} axisLine={false} width={90} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'var(--color-card-hover)' }} />
-                <Bar dataKey="count" fill="var(--color-primary)" radius={0} />
+                <Bar dataKey="count" fill="var(--color-primary)" radius={[0, 6, 6, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
 
-          <ChartCard title={t('analytics.sla_title')} loading={loading} empty={!sla}>
+          <ChartCard
+            title={t('analytics.sla_title')}
+            loading={loading}
+            empty={!sla}
+            srSummary={`Kepatuhan SLA: ${sla?.compliant}% terpenuhi, ${sla?.non_compliant}% melanggar SLA.`}
+          >
             <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-8">
               <ResponsiveContainer width={160} height={160}>
                 <RadialBarChart cx="50%" cy="50%" innerRadius="60%" outerRadius="100%" data={slaData} startAngle={90} endAngle={-270}>
-                  <RadialBar dataKey="value" cornerRadius={0} background={{ fill: 'var(--color-bg-secondary)' }} />
+                  <RadialBar dataKey="value" cornerRadius={6} background={{ fill: 'var(--color-bg-secondary)' }} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
                 </RadialBarChart>
               </ResponsiveContainer>
@@ -179,6 +193,7 @@ export default function Analytics() {
             title={t('analytics.unit_title')}
             loading={loading}
             empty={units.length === 0}
+            srSummary={`Distribusi beban unit: ${units.map(u => `${u.unit}: ${u.count}`).join(', ')}`}
             caption={<Insight label={t('stk.analytics.top_unit', 'Unit terbanyak')} top={topBy(units, 'unit')} />}
           >
             <ResponsiveContainer width="100%" height={220}>
@@ -187,7 +202,7 @@ export default function Analytics() {
                 <XAxis dataKey="unit" tick={{ ...AXIS_TICK, fontSize: 10 }} tickLine={false} axisLine={false} />
                 <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} allowDecimals={false} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'var(--color-card-hover)' }} />
-                <Bar dataKey="count" fill="var(--color-accent)" radius={0} />
+                <Bar dataKey="count" fill="var(--color-accent)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>

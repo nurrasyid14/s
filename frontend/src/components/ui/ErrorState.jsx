@@ -6,9 +6,9 @@ export default function ErrorState({ onRetry }) {
     const { t } = useTranslation()
 
     return (
-        <div role="alert" className="card-elevated border border-[var(--color-status-danger)]/40 flex flex-col items-center px-4 py-14 text-center bg-[var(--color-surface)]">
+        <div role="alert" className="card-elevated rounded-2xl border border-[var(--color-status-danger)]/40 flex flex-col items-center px-4 py-14 text-center bg-[var(--color-surface)] shadow-xs">
             <div
-                className="mb-3 flex h-14 w-14 items-center justify-center border border-[var(--color-status-danger)]/30"
+                className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--color-status-danger)]/30 shadow-2xs"
                 style={{ background: 'color-mix(in srgb, var(--color-status-danger) 10%, transparent)' }}
             >
                 <AlertTriangle size={26} className="text-[var(--color-status-danger)]" aria-hidden="true" />

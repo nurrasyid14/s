@@ -62,56 +62,56 @@ export default function SignUpUserPage() {
       }
     >
       {error && (
-        <div className="mb-4 flex items-center gap-2 border border-[var(--color-status-danger)] p-3 text-sm text-[var(--color-status-danger)]">
-          <AlertCircle size={15} /> {error}
+        <div role="alert" className="mb-4 flex items-center gap-2.5 rounded-xl border border-[var(--color-status-danger)]/30 bg-[var(--color-status-danger)]/10 p-3.5 text-sm text-[var(--color-status-danger)]">
+          <AlertCircle size={16} className="shrink-0" /> {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-3.5">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className={label}>{t('auth.name')}</label>
-          <input name="name" required placeholder="Nama Lengkap" value={form.name} onChange={handleChange} className="input-field" />
+          <label htmlFor="user-name" className={label}>{t('auth.name')}</label>
+          <input id="user-name" name="name" required placeholder="Nama Lengkap" value={form.name} onChange={handleChange} className="input-field rounded-xl" />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div>
-            <label className={label}>{t('auth.email')}</label>
-            <input name="email" type="email" required placeholder="email@pens.ac.id" value={form.email} onChange={handleChange} className="input-field" />
+            <label htmlFor="user-email" className={label}>{t('auth.email')}</label>
+            <input id="user-email" name="email" type="email" required placeholder="email@pens.ac.id" value={form.email} onChange={handleChange} className="input-field rounded-xl" />
           </div>
           <div>
-            <label className={label}>{t('auth.nim_nip')}</label>
-            <input name="nim_nip" required placeholder="NIM / NIP" value={form.nim_nip} onChange={handleChange} className="input-field" />
+            <label htmlFor="user-nim-nip" className={label}>{t('auth.nim_nip')}</label>
+            <input id="user-nim-nip" name="nim_nip" required placeholder="NIM / NIP" value={form.nim_nip} onChange={handleChange} className="input-field rounded-xl" />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div>
-            <label className={label}>{t('auth.phone')}</label>
-            <input name="phone" placeholder="08xx..." value={form.phone} onChange={handleChange} className="input-field" />
+            <label htmlFor="user-phone" className={label}>{t('auth.phone')}</label>
+            <input id="user-phone" name="phone" placeholder="08xx..." value={form.phone} onChange={handleChange} className="input-field rounded-xl" />
           </div>
           <div>
-            <label className={label}>{t('auth.role')}</label>
-            <select name="user_role" required value={form.user_role} onChange={handleChange} className="input-field">
+            <label htmlFor="user-role" className={label}>{t('auth.role')}</label>
+            <select id="user-role" name="user_role" required value={form.user_role} onChange={handleChange} className="input-field rounded-xl">
               <option value="">-- Pilih --</option>
               {roles.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div>
-            <label className={label}>{t('auth.password')}</label>
-            <input name="password" type="password" required placeholder="••••••••" value={form.password} onChange={handleChange} className="input-field" />
+            <label htmlFor="user-password" className={label}>{t('auth.password')}</label>
+            <input id="user-password" name="password" type="password" required placeholder="••••••••" value={form.password} onChange={handleChange} className="input-field rounded-xl" />
           </div>
           <div>
-            <label className={label}>{t('auth.confirm_password')}</label>
-            <input name="confirm_password" type="password" required placeholder="••••••••" value={form.confirm_password} onChange={handleChange} className="input-field" />
+            <label htmlFor="user-confirm-password" className={label}>{t('auth.confirm_password')}</label>
+            <input id="user-confirm-password" name="confirm_password" type="password" required placeholder="••••••••" value={form.confirm_password} onChange={handleChange} className="input-field rounded-xl" />
           </div>
         </div>
 
         <label className="flex cursor-pointer items-start gap-2.5 pt-1">
-          <input name="agree" type="checkbox" checked={form.agree} onChange={handleChange} className="mt-0.5 accent-[var(--color-primary)]" />
+          <input name="agree" type="checkbox" checked={form.agree} onChange={handleChange} className="mt-1 h-4 w-4 rounded accent-[var(--color-primary)]" />
           <span className="text-xs leading-relaxed text-[var(--color-text-muted)]">{t('auth.privacy_agree')}</span>
         </label>
 
-        <button type="submit" disabled={loading} className="btn-solid w-full !py-3">
+        <button type="submit" disabled={loading} className="btn-solid w-full min-h-[44px] !py-3 rounded-xl shadow-xs hover:shadow-md transition-all">
           {loading ? (
             <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
           ) : (

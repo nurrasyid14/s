@@ -70,7 +70,7 @@ export default function DataTable({
       </div>
 
       {/* Table */}
-      <div className="card-elevated border border-[var(--color-border)] bg-[var(--color-surface)]">
+      <div className="card-elevated rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -78,15 +78,28 @@ export default function DataTable({
                 {columns.map(col => (
                   <th
                     key={col.key}
-                    className={`px-4 py-3 text-left font-semibold text-[var(--color-text-muted)] text-xs uppercase tracking-wider whitespace-nowrap ${col.sortable ? 'cursor-pointer hover:text-[var(--color-text)] transition-colors select-none' : ''}`}
-                    onClick={() => col.sortable && handleSort(col.key)}
+                    scope="col"
+                    aria-sort={col.sortable ? (sortKey === col.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}
+                    className="px-4 py-3 text-left whitespace-nowrap"
                   >
-                    <div className="flex items-center gap-1">
-                      {col.label}
-                      {col.sortable && sortKey === col.key && (
-                        sortDir === 'asc' ? <ChevronUp size={13} /> : <ChevronDown size={13} />
-                      )}
-                    </div>
+                    {col.sortable ? (
+                      <button
+                        type="button"
+                        onClick={() => handleSort(col.key)}
+                        className="flex items-center gap-1 text-left font-semibold text-[var(--color-text-muted)] text-xs uppercase tracking-wider hover:text-[var(--color-text)] transition-colors select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] rounded-md px-1 py-0.5"
+                      >
+                        <span>{col.label}</span>
+                        {sortKey === col.key ? (
+                          sortDir === 'asc' ? <ChevronUp size={13} aria-hidden="true" /> : <ChevronDown size={13} aria-hidden="true" />
+                        ) : (
+                          <span className="opacity-0 group-hover:opacity-40">↕</span>
+                        )}
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-1 font-semibold text-[var(--color-text-muted)] text-xs uppercase tracking-wider px-1 py-0.5">
+                        {col.label}
+                      </div>
+                    )}
                   </th>
                 ))}
               </tr>
@@ -97,7 +110,7 @@ export default function DataTable({
                   <tr key={i} className="border-b border-[var(--color-border)]">
                     {columns.map(col => (
                       <td key={col.key} className="px-4 py-3.5">
-                        <div className="skeleton h-4 w-full" />
+                        <div className="skeleton h-4 w-full rounded-md" />
                       </td>
                     ))}
                   </tr>
@@ -106,7 +119,7 @@ export default function DataTable({
               {!loading && sorted.length === 0 && (
                 <tr>
                   <td colSpan={columns.length} className="px-4 py-16 text-center">
-                    <Inbox size={28} className="text-[var(--color-text-muted)] mx-auto mb-3" />
+                    <Inbox size={28} className="text-[var(--color-text-muted)] mx-auto mb-3" aria-hidden="true" />
                     <div className="font-semibold text-[var(--color-text)]">{emptyTitle || t('common.empty_state')}</div>
                     <div className="text-sm text-[var(--color-text-muted)] mt-1">{emptyDesc || t('common.empty_desc')}</div>
                   </td>
@@ -127,18 +140,19 @@ export default function DataTable({
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--color-border)]">
-            <span className="text-xs text-[var(--color-text-muted)]">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)]/50">
+            <span className="text-xs text-[var(--color-text-muted)] font-mono">
               {(page - 1) * limit + 1}–{Math.min(page * limit, total)} / {total}
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <button
+                type="button"
                 onClick={() => onPageChange?.(page - 1)}
                 disabled={page <= 1}
-                className="w-8 h-8 flex items-center justify-center border border-[var(--color-border)] hover:bg-[var(--color-card-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                aria-label="Previous page"
+                className="min-h-[44px] min-w-[44px] rounded-xl flex items-center justify-center border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-card-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-2xs focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+                aria-label="Halaman sebelumnya"
               >
-                <ChevronLeft size={16} className="text-[var(--color-text)]" />
+                <ChevronLeft size={16} className="text-[var(--color-text)]" aria-hidden="true" />
               </button>
               {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                 const p = page <= 3 ? i + 1 : page - 2 + i
@@ -146,20 +160,28 @@ export default function DataTable({
                 return (
                   <button
                     key={p}
+                    type="button"
                     onClick={() => onPageChange?.(p)}
-                    className={`w-8 h-8 border text-xs font-medium transition-colors ${p === page ? 'bg-[var(--color-btn)] text-[var(--color-btn-text)] border-[var(--color-btn)]' : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-card-hover)] text-[var(--color-text)]'}`}
+                    aria-current={p === page ? 'page' : undefined}
+                    aria-label={`Halaman ${p}`}
+                    className={`min-h-[44px] min-w-[44px] rounded-xl border text-xs font-mono font-semibold transition-all shadow-2xs focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${
+                      p === page
+                        ? 'bg-[var(--color-btn)] text-[var(--color-btn-text)] border-[var(--color-btn)] shadow-xs'
+                        : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-card-hover)] text-[var(--color-text)]'
+                    }`}
                   >
                     {p}
                   </button>
                 )
               })}
               <button
+                type="button"
                 onClick={() => onPageChange?.(page + 1)}
                 disabled={page >= totalPages}
-                className="w-8 h-8 flex items-center justify-center border border-[var(--color-border)] hover:bg-[var(--color-card-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                aria-label="Next page"
+                className="min-h-[44px] min-w-[44px] rounded-xl flex items-center justify-center border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-card-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-2xs focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+                aria-label="Halaman berikutnya"
               >
-                <ChevronRight size={16} className="text-[var(--color-text)]" />
+                <ChevronRight size={16} className="text-[var(--color-text)]" aria-hidden="true" />
               </button>
             </div>
           </div>

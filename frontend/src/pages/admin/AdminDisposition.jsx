@@ -20,6 +20,7 @@ export default function AdminDisposition() {
   })
   const [submitting, setSubmitting] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
 
   useEffect(() => {
     loadData()
@@ -47,6 +48,7 @@ export default function AdminDisposition() {
     e.preventDefault()
     if (!selectedTicket) return
     setSubmitting(true)
+    setErrorMsg('')
     try {
       await dispatchComplaint(selectedTicket.id, form)
       setSuccessMsg(`Tiket ${selectedTicket.ticket_id} berhasil didisposisikan ke ${form.target_unit}!`)
@@ -54,7 +56,8 @@ export default function AdminDisposition() {
       setSelectedTicket(null)
       loadData()
     } catch {
-      alert('Gagal mendisposisikan tiket.')
+      setErrorMsg('Gagal mendisposisikan tiket. Silakan periksa kembali isian form.')
+      setTimeout(() => setErrorMsg(''), 4000)
     } finally {
       setSubmitting(false)
     }
@@ -80,38 +83,45 @@ export default function AdminDisposition() {
           <input
             type="text"
             placeholder="Cari ID tiket / deskripsi..."
+            aria-label="Cari ID tiket atau deskripsi"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="input-field text-xs !py-2"
+            className="input-field text-xs !py-2 rounded-xl"
           />
         </div>
       </div>
 
       {successMsg && (
-        <div className="p-3 border border-[var(--color-status-success)] bg-[var(--color-status-success)]/10 text-[var(--color-status-success)] text-xs font-semibold flex items-center gap-2">
+        <div role="status" aria-live="polite" className="p-3 border border-[var(--color-status-success)] bg-[var(--color-status-success)]/10 text-[var(--color-status-success)] text-xs font-semibold flex items-center gap-2 rounded-xl">
           <Check size={15} /> {successMsg}
+        </div>
+      )}
+
+      {errorMsg && (
+        <div role="alert" aria-live="assertive" className="p-3 border border-[var(--color-status-danger)] bg-[var(--color-status-danger)]/10 text-[var(--color-status-danger)] text-xs font-semibold flex items-center gap-2 rounded-xl">
+          <AlertCircle size={15} /> {errorMsg}
         </div>
       )}
 
       {loading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map(i => <div key={i} className="skeleton h-24 border border-[var(--color-border)]" />)}
+          {[1, 2, 3].map(i => <div key={i} className="skeleton h-24 border border-[var(--color-border)] rounded-2xl" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="p-12 text-center border border-[var(--color-border)] bg-[var(--color-surface)]">
+        <div className="p-12 text-center border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl shadow-sm">
           <Send size={32} className="mx-auto mb-2 text-purple-500 opacity-70" />
           <h3 className="font-bold text-sm text-[var(--color-text)]">Tidak Ada Tiket yang Menunggu Disposisi</h3>
           <p className="text-xs text-[var(--color-text-muted)] mt-1">Semua tiket yang diverifikasi telah berhasil didisposisikan ke unit terkait.</p>
         </div>
       ) : (
-        <div className="border border-[var(--color-border)] divide-y divide-[var(--color-border)] bg-[var(--color-surface)]">
+        <div className="border border-[var(--color-border)] divide-y divide-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl shadow-sm overflow-hidden">
           {filtered.map(c => (
             <div key={c.id} className="p-5 flex flex-col sm:flex-row items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                   <span className="font-mono text-sm font-bold text-[var(--color-primary)]">{c.ticket_id}</span>
                   <StatusBadge status={c.status} />
-                  <span className="text-xs px-2 py-0.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] font-mono text-[var(--color-text-muted)]">
+                  <span className="text-xs px-2.5 py-0.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] font-mono text-[var(--color-text-muted)] rounded-lg">
                     Kategori: {c.category}
                   </span>
                 </div>
@@ -128,7 +138,7 @@ export default function AdminDisposition() {
               <div className="flex-shrink-0 self-end sm:self-center">
                 <button
                   onClick={() => openDispositionModal(c)}
-                  className="btn-solid !py-2 !px-4 text-xs font-bold flex items-center gap-1.5"
+                  className="btn-solid !py-2 !px-4 text-xs font-bold flex items-center gap-1.5 rounded-xl min-h-[40px]"
                 >
                   <Send size={13} /> Disposisikan ke Unit
                 </button>
@@ -140,74 +150,89 @@ export default function AdminDisposition() {
 
       {/* Modal Disposisi Lengkap */}
       {selectedTicket && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] max-w-xl w-full p-6 space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modal-disposition-title"
+            className="bg-[var(--color-surface)] border border-[var(--color-border)] max-w-xl w-full p-6 space-y-4 rounded-2xl shadow-xl"
+          >
             <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
               <div>
                 <span className="text-[10px] font-mono uppercase tracking-wider text-purple-600 font-bold">
                   LEMBAR DISPOSISI RESMI
                 </span>
-                <h3 className="text-base font-bold text-[var(--color-text)] font-mono">{selectedTicket.ticket_id}</h3>
+                <h3 id="modal-disposition-title" className="text-base font-bold text-[var(--color-text)] font-mono">
+                  {selectedTicket.ticket_id}
+                </h3>
               </div>
-              <button onClick={() => setSelectedTicket(null)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
-                ✕ Tutup
+              <button
+                onClick={() => setSelectedTicket(null)}
+                aria-label="Tutup lembar disposisi"
+                className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-colors"
+              >
+                ✕
               </button>
             </div>
 
-            <div className="p-3 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-xs text-[var(--color-text-muted)] leading-relaxed">
+            <div className="p-3.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-xs text-[var(--color-text-muted)] leading-relaxed rounded-xl">
               <strong className="text-[var(--color-text)] block mb-1">Substansi Keluhan:</strong>
               "{selectedTicket.description}"
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
               <div>
-                <label className="block font-bold text-[var(--color-text)] mb-1">
+                <label htmlFor="disposition-target-unit" className="block font-bold text-[var(--color-text)] mb-1">
                   Pilih Unit Kerja Penerima Disposisi (14 Standar Unit PENS) *
                 </label>
                 <select
+                  id="disposition-target-unit"
                   value={form.target_unit}
                   onChange={e => setForm(f => ({ ...f, target_unit: e.target.value }))}
-                  className="input-field text-xs"
+                  className="input-field text-xs rounded-xl"
                 >
                   {UNITS.map(u => (
-                    <option key={u.id} value={u.name}>{u.name} — [{u.code}] (SLA: {u.slaDays} hari)</option>
+                    <option key={u.id} value={u.name}>{u.name} ({u.code}, SLA: {u.slaDays} hari)</option>
                   ))}
                 </select>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-[var(--color-text)] mb-1">Nama / Jabatan PIC Unit</label>
+                  <label htmlFor="disposition-pic" className="block font-bold text-[var(--color-text)] mb-1">Nama / Jabatan PIC Unit</label>
                   <input
+                    id="disposition-pic"
                     type="text"
                     placeholder="Contoh: Koordinator Lab / Teknisi"
                     value={form.assigned_pic}
                     onChange={e => setForm(f => ({ ...f, assigned_pic: e.target.value }))}
-                    className="input-field text-xs"
+                    className="input-field text-xs rounded-xl"
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-[var(--color-text)] mb-1">Batas Waktu SLA (Opsional)</label>
+                  <label htmlFor="disposition-sla" className="block font-bold text-[var(--color-text)] mb-1">Batas Waktu SLA (Opsional)</label>
                   <input
+                    id="disposition-sla"
                     type="date"
                     value={form.target_sla_date}
                     onChange={e => setForm(f => ({ ...f, target_sla_date: e.target.value }))}
-                    className="input-field text-xs"
+                    className="input-field text-xs rounded-xl"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold text-[var(--color-text)] mb-1">
+                <label htmlFor="disposition-notes" className="block font-bold text-[var(--color-text)] mb-1">
                   Catatan Instruksi / Arahan Disposisi dari Administrator *
                 </label>
                 <textarea
+                  id="disposition-notes"
                   rows={3}
                   required
                   placeholder="Instruksi jelas bagi unit: investigasi, perbaikan segera, atau koordinasi..."
                   value={form.disposition_note}
                   onChange={e => setForm(f => ({ ...f, disposition_note: e.target.value }))}
-                  className="input-field text-xs resize-none"
+                  className="input-field text-xs resize-none rounded-xl"
                 />
               </div>
 
@@ -215,14 +240,14 @@ export default function AdminDisposition() {
                 <button
                   type="button"
                   onClick={() => setSelectedTicket(null)}
-                  className="btn-outline !py-2 !px-4 text-xs"
+                  className="btn-outline !py-2 !px-4 text-xs rounded-xl min-h-[40px]"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="btn-solid !py-2 !px-4 text-xs font-bold flex items-center gap-1.5"
+                  className="btn-solid !py-2 !px-4 text-xs font-bold flex items-center gap-1.5 rounded-xl min-h-[40px]"
                 >
                   {submitting ? 'Mengirimkan...' : (
                     <>

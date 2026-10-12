@@ -24,7 +24,7 @@ function badgeStyle(colorKey) {
 }
 
 /**
- * StatusBadge — displays complaint status with color coding
+ * StatusBadge: displays complaint status with color coding
  * @param {string} status - 'new' | 'process' | 'done' | 'escalate'
  */
 export function StatusBadge({ status }) {
@@ -33,14 +33,14 @@ export function StatusBadge({ status }) {
   const label = i18n.language === 'en' ? info.labelEn : info.label
 
   return (
-    <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold" style={badgeStyle(info.color)}>
+    <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold rounded-full shadow-2xs" style={badgeStyle(info.color)}>
       {label}
     </span>
   )
 }
 
 /**
- * UrgencyBadge — displays urgency level with color coding
+ * UrgencyBadge: displays urgency level with color coding
  * @param {number} score - 0-10
  */
 export function UrgencyBadge({ score }) {
@@ -49,7 +49,7 @@ export function UrgencyBadge({ score }) {
   const label = i18n.language === 'en' ? `${info.levelEn} (${score})` : `${info.level} (${score})`
 
   return (
-    <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold" style={badgeStyle(info.color)}>
+    <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold rounded-full shadow-2xs" style={badgeStyle(info.color)}>
       {label}
     </span>
   )

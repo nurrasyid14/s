@@ -1,4 +1,4 @@
-// ID/EN translations — Bahasa Indonesia
+// ID/EN translations: Bahasa Indonesia
 export default {
   translation: {
     // Navigation
@@ -92,7 +92,7 @@ export default {
       attachment: 'Lampiran Bukti (opsional)',
       attachment_desc: 'Upload foto atau dokumen pendukung (max 5MB)',
       anon_toggle: 'Identitas Anda Otomatis Disamarkan',
-      anon_desc: 'Nama dan identitas Anda tidak pernah ditampilkan ke stakeholder — sistem menyamarkannya secara otomatis untuk setiap aduan yang masuk.',
+      anon_desc: 'Nama dan identitas Anda tidak pernah ditampilkan ke stakeholder, sistem menyamarkannya secara otomatis untuk setiap aduan yang masuk.',
       preview_title: 'Pratinjau Analisis Sistem',
       preview_note: 'Ini adalah estimasi awal sistem, bukan keputusan final.',
       submit: 'Kirim Aduan',
