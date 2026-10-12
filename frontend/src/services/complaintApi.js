@@ -1,7 +1,7 @@
 import api from './api.js'
 import dayjs from 'dayjs'
 
-const USE_MOCK = true
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 // =============================================
 // MOCK DATA
@@ -67,8 +67,9 @@ export async function submitComplaint(formData) {
     const newId = MOCK_COMPLAINTS.length + 1
     return { success: true, ticket_id: `ADS-2024-${String(newId).padStart(4, '0')}`, id: newId }
   }
+  const isFormData = typeof FormData !== 'undefined' && formData instanceof FormData
   const res = await api.post('/complaints', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
   })
   return res.data
 }

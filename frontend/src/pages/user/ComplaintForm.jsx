@@ -289,7 +289,12 @@ export default function ComplaintForm() {
             </button>
           ) : (
             <button onClick={handleSubmit} disabled={loading} className="btn-primary flex-1 !py-3">
-              {loading ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t('form.submit')}
+              {loading ? (
+                <>
+                  <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Memproses &amp; Menganalisis AI...</span>
+                </>
+              ) : t('form.submit')}
             </button>
           )}
         </div>

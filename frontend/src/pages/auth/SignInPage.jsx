@@ -29,8 +29,8 @@ export default function SignInPage() {
       const { user } = await signIn(form)
       login(user)
       navigate(user.role === 'stakeholder' ? '/stakeholder' : '/user/dashboard')
-    } catch {
-      setError('Email atau kata sandi salah.')
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Email atau kata sandi salah.')
     } finally {
       setLoading(false)
     }

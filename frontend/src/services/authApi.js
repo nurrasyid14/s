@@ -24,7 +24,7 @@ const MOCK_STAKEHOLDER = {
   created_at: '2024-01-05T08:00:00Z',
 }
 
-const USE_MOCK = true // toggle ke false saat backend siap
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 // =============================================
 // AUTH API
@@ -45,9 +45,13 @@ export async function signIn({ email, password }) {
   }
   const res = await api.post('/auth/login', { email, password })
   const { token, user } = res.data
-  localStorage.setItem('suaralens_token', token)
-  localStorage.setItem('suaralens_user', JSON.stringify(user))
-  return { token, user }
+  if (token) {
+    localStorage.setItem('suaralens_token', token)
+  }
+  if (user) {
+    localStorage.setItem('suaralens_user', JSON.stringify(user))
+  }
+  return { token, user, ...res.data }
 }
 
 /**
@@ -59,7 +63,14 @@ export async function signUpUser(data) {
     return { success: true, user: { ...MOCK_USER, ...data } }
   }
   const res = await api.post('/auth/register/user', data)
-  return res.data
+  const { token, user } = res.data
+  if (token) {
+    localStorage.setItem('suaralens_token', token)
+  }
+  if (user) {
+    localStorage.setItem('suaralens_user', JSON.stringify(user))
+  }
+  return { token, user, ...res.data }
 }
 
 /**
@@ -71,15 +82,28 @@ export async function signUpStakeholder(data) {
     return { success: true, user: { ...MOCK_STAKEHOLDER, ...data } }
   }
   const res = await api.post('/auth/register/stakeholder', data)
-  return res.data
+  const { token, user } = res.data
+  if (token) {
+    localStorage.setItem('suaralens_token', token)
+  }
+  if (user) {
+    localStorage.setItem('suaralens_user', JSON.stringify(user))
+  }
+  return { token, user, ...res.data }
 }
 
 /**
  * Sign out
  */
-export function signOut() {
-  localStorage.removeItem('suaralens_token')
-  localStorage.removeItem('suaralens_user')
+export async function signOut() {
+  try {
+    await api.post('/auth/logout')
+  } catch (err) {
+    // Ignore error on logout if token already expired
+  } finally {
+    localStorage.removeItem('suaralens_token')
+    localStorage.removeItem('suaralens_user')
+  }
 }
 
 /**
