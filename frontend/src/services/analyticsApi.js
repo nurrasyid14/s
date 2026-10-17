@@ -96,8 +96,12 @@ export async function getIssueTypes() {
 
 export async function getSLAStats() {
   if (USE_MOCK) { await delay(400); return MOCK_SLA }
-  const res = await api.get('/analytics/sla')
-  return res.data
+  try {
+    const res = await api.get('/analytics/sla')
+    return (res.data?.compliant !== null && res.data?.compliant !== undefined) ? res.data : null
+  } catch {
+    return null
+  }
 }
 
 export async function getUnitStats() {

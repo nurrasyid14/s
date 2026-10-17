@@ -35,8 +35,11 @@ export default function SignUpStakeholderPage() {
       const { user } = await signUpStakeholder({ ...form, role: 'stakeholder' })
       login(user)
       navigate('/stakeholder')
-    } catch { setError('Gagal mendaftar. Coba lagi.') }
-    finally { setLoading(false) }
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Gagal mendaftar. Coba lagi.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

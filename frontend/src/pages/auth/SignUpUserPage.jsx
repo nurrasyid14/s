@@ -43,8 +43,8 @@ export default function SignUpUserPage() {
       const { user } = await signUpUser({ ...form, role: 'user' })
       login(user)
       navigate('/user/dashboard')
-    } catch {
-      setError('Gagal mendaftar. Coba lagi.')
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Gagal mendaftar. Coba lagi.')
     } finally {
       setLoading(false)
     }

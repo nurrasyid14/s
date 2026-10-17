@@ -180,7 +180,7 @@ class ComplaintController extends ResourceController
             $startTime = microtime(true);
 
             $response = $client->post(
-                'http://localhost:8000/analyze',
+                'http://127.0.0.1:8000/analyze',
                 [
                     'headers' => [
                         'Content-Type' => 'application/json',
@@ -639,7 +639,7 @@ class ComplaintController extends ResourceController
             $startTime = microtime(true);
 
             $response = $client->post(
-                'http://localhost:8000/analyze',
+                'http://127.0.0.1:8000/analyze',
                 [
                     'headers' => [
                         'Content-Type' => 'application/json',

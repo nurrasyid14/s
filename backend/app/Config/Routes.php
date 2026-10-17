@@ -12,6 +12,7 @@ $routes->group('api', function ($routes) {
 
     $routes->group('auth', function ($routes) {
         $routes->post('register/user', 'AuthController::registerUser');
+        $routes->post('register/stakeholder', 'AuthController::registerStakeholder');
         $routes->post('login', 'AuthController::login');
         $routes->post('logout', 'AuthController::logout', ['filter' => 'authRole']);
     });
@@ -32,6 +33,8 @@ $routes->group('api', function ($routes) {
         $routes->post('(:num)', 'ReviewController::submit/$1');
         $routes->get('(:num)', 'ReviewController::show/$1');
     });
+
+    $routes->get('unit/stats', 'DashboardController::unitStats', ['filter' => 'authRole:stakeholder,admin']);
 
     $routes->group('analytics', ['filter' => 'authRole:stakeholder,admin'], function ($routes) {
         $routes->get('summary', 'AnalyticsController::summary');

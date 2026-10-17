@@ -84,13 +84,17 @@ export default function Analytics() {
     let active = true
     setLoading(true)
     setError(false)
-    Promise.all([getSentiment(), getIssueTypes(), getSLAStats(), getUnitStats()])
-      .then(([s, i, sl, u]) => {
+    Promise.allSettled([getSentiment(), getIssueTypes(), getSLAStats(), getUnitStats()])
+      .then(([resS, resI, resSl, resU]) => {
         if (!active) return
-        setSentiment(s)
-        setIssues(i)
-        setSLA(sl)
-        setUnits(u)
+        if (resS.status === 'fulfilled') setSentiment(resS.value || [])
+        if (resI.status === 'fulfilled') setIssues(resI.value || [])
+        if (resSl.status === 'fulfilled') setSLA(resSl.value)
+        if (resU.status === 'fulfilled') setUnits(resU.value || [])
+
+        if (resS.status === 'rejected' && resI.status === 'rejected' && resU.status === 'rejected') {
+          setError(true)
+        }
       })
       .catch(() => { if (active) setError(true) })
       .finally(() => { if (active) setLoading(false) })

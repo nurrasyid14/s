@@ -169,7 +169,7 @@ class AnalyticsController extends ResourceController
             'message'       => 'SLA belum dapat dihitung: backend belum memiliki target SLA dan waktu penyelesaian per aduan.',
             'compliant'     => null,
             'non_compliant' => null,
-        ], 501);
+        ]);
     }
 
     /** GET /api/analytics/units */
