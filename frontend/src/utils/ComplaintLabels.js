@@ -18,7 +18,7 @@ export function useComplaintLabels() {
     const { t } = useTranslation()
 
     const label = (group, defaults) => value =>
-        value ? t(`stk.${group}.${value}`, defaults[value] ?? value) : '—'
+        value ? t(`stk.${group}.${value}`, defaults[value] ?? value) : '-'
 
     return {
         typeLabel: label('type', TYPE_LABELS),

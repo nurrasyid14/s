@@ -1,5 +1,5 @@
 /**
- * permissions.js — role-based access control utilities
+ * permissions.js: role-based access control utilities
  */
 
 export const ROLES = {
@@ -41,7 +41,7 @@ export function isUser() {
 }
 
 /**
- * HOC / guard — redirect if not authenticated
+ * HOC / guard: redirect if not authenticated
  * Used in React Router loader or component
  */
 export function requireAuth(redirectTo = '/signin') {
@@ -53,7 +53,7 @@ export function requireAuth(redirectTo = '/signin') {
 }
 
 /**
- * HOC / guard — redirect if not stakeholder
+ * HOC / guard: redirect if not stakeholder
  */
 export function requireStakeholder(redirectTo = '/signin') {
   if (!isAuthenticated() || !isStakeholder()) {
@@ -64,7 +64,7 @@ export function requireStakeholder(redirectTo = '/signin') {
 }
 
 /**
- * HOC / guard — redirect if not regular user
+ * HOC / guard: redirect if not regular user
  */
 export function requireUser(redirectTo = '/signin') {
   if (!isAuthenticated() || !isUser()) {

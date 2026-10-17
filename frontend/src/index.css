@@ -2,67 +2,67 @@
 @import "tailwindcss";
 
 /* ============================================================
-   SuaraLens — Design System
-   Referensi: Mobile SaaS Template (21st.dev) — bahasa visual:
-   sudut tajam (radius 0), border 1px tipis, tombol solid kotak,
-   divider diagonal (hatch), gradasi hero putih → warna → putih,
-   tipografi Geist dengan tracking rapat.
-   Palet: dominasi biru profesional (royal blue + navy).
+   SuaraLens: Design System Specification
+   Bahasa visual: sudut tajam (radius 0), border terstruktur,
+   tombol tegas, tipografi Geist, palet Deep Navy institusional.
    ============================================================ */
 
 @theme {
   --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, monospace;
-  /* Radius 0 di seluruh aplikasi — sama dengan --radius:0rem pada referensi. */
-  --radius-xs: 0;
-  --radius-sm: 0;
-  --radius-md: 0;
-  --radius-lg: 0;
-  --radius-xl: 0;
-  --radius-2xl: 0;
-  --radius-3xl: 0;
-  --radius-4xl: 0;
+  /* Sistem radius ergonomis: modern, profesional, dan ramah pengguna */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
+  --radius-4xl: 32px;
 }
 
 :root {
   --color-bg: #FFFFFF;
   --color-bg-secondary: #F4F7FC;
   --color-surface: #FFFFFF;
-  --color-card-hover: #F4F7FC;
-  --color-border: rgba(10, 18, 32, 0.12);
-  --color-border-strong: rgba(10, 18, 32, 0.55);
+  --color-card-hover: #EEF3FA;
+  --color-border: rgba(10, 18, 32, 0.16);
+  --color-border-strong: rgba(10, 18, 32, 0.75);
   --color-text: #0A1220;
-  --color-text-muted: rgba(10, 18, 32, 0.55);
+  /* WCAG AAA: kontras teks redup >= 9.5:1 terhadap background putih */
+  --color-text-muted: #334155;
 
-  /* Biru: aksen utama + tombol solid navy */
-  --color-primary: #2563EB;
-  --color-primary-dark: #1D4ED8;
+  /* Palet Inti Institusional */
+  --color-primary: #1D4ED8;
+  --color-primary-dark: #1E40AF;
   --color-primary-soft: #E8F0FE;
-  --color-accent: #38BDF8;
-  --color-accent-dark: #0284C7;
+  --color-accent: #0284C7;
+  --color-accent-dark: #0369A1;
   --color-btn: #0B1F3A;
   --color-btn-hover: #14305A;
   --color-btn-text: #FFFFFF;
 
-  --color-status-info: #2563EB;
+  /* Status Fungsional */
+  --color-status-info: #1D4ED8;
   --color-status-success: #15803D;
   --color-status-warning: #B45309;
-  --color-status-danger: #DC2626;
-  --color-status-neutral: #64748B;
+  --color-status-danger: #B91C1C;
+  --color-status-neutral: #475569;
 
-  --hero-grad: linear-gradient(180deg, #FFFFFF 0%, #2563EB 50%, #FFFFFF 100%);
+  /* Hero Banner Institusional: kontras tinggi untuk teks putih */
+  --hero-grad: linear-gradient(180deg, #0B1F3A 0%, #11294D 70%, #163666 100%);
   --hero-fade: #FFFFFF;
-  --phone-body: #404040;
-  --phone-bezel: #262626;
-  --phone-screen: #111111;
-  --hatch: #0A1220;
+  --phone-body: #334155;
+  --phone-bezel: #1E293B;
+  --phone-screen: #FFFFFF;
+  --hatch: #0B1F3A;
 
-  /* Sidebar Soft Slate-Blue */
-  --color-sidebar-bg: #EBF1F8;
-  --color-sidebar-border: rgba(10, 18, 32, 0.12);
+  /* Sidebar */
+  --color-sidebar-bg: #F1F5F9;
+  --color-sidebar-border: rgba(10, 18, 32, 0.14);
   --color-sidebar-text: #0A1220;
-  --color-sidebar-text-muted: rgba(10, 18, 32, 0.62);
-  --color-sidebar-hover: rgba(10, 18, 32, 0.06);
+  --color-sidebar-text-muted: #475569;
+  --color-sidebar-hover: rgba(10, 18, 32, 0.07);
   --color-sidebar-active-bg: #0B1F3A;
   --color-sidebar-active-text: #FFFFFF;
 
@@ -70,47 +70,75 @@
 }
 
 .dark {
-  --color-bg: #05080F;
-  --color-bg-secondary: #0A1020;
-  --color-surface: #0A1020;
-  --color-card-hover: #101A33;
+  --color-bg: #070C16;
+  --color-bg-secondary: #0E1726;
+  --color-surface: #0E1726;
+  --color-card-hover: #162238;
   --color-border: rgba(255, 255, 255, 0.16);
-  --color-border-strong: rgba(255, 255, 255, 0.6);
-  --color-text: #F5F7FB;
-  --color-text-muted: rgba(245, 247, 251, 0.58);
+  --color-border-strong: rgba(255, 255, 255, 0.65);
+  --color-text: #F8FAFC;
+  /* WCAG AA: rasio kontras >= 6.0:1 terhadap background gelap */
+  --color-text-muted: #94A3B8;
 
-  --color-primary: #4C8DFF;
-  --color-primary-dark: #3B7CF0;
-  --color-primary-soft: #0F1D3D;
-  --color-accent: #7DD3FC;
-  --color-accent-dark: #38BDF8;
-  --color-btn: #FFFFFF;
-  --color-btn-hover: #DCE6F7;
+  --color-primary: #3B82F6;
+  --color-primary-dark: #2563EB;
+  --color-primary-soft: #12213D;
+  --color-accent: #38BDF8;
+  --color-accent-dark: #0284C7;
+  --color-btn: #F8FAFC;
+  --color-btn-hover: #E2E8F0;
   --color-btn-text: #0B1F3A;
 
-  --color-status-info: #6AA3FF;
-  --color-status-success: #4ADE80;
-  --color-status-warning: #FBBF24;
-  --color-status-danger: #F87171;
+  --color-status-info: #60A5FA;
+  --color-status-success: #22C55E;
+  --color-status-warning: #F59E0B;
+  --color-status-danger: #EF4444;
   --color-status-neutral: #94A3B8;
 
-  --hero-grad: linear-gradient(180deg, #05080F 0%, #1D4ED8 50%, #05080F 100%);
-  --hero-fade: #05080F;
-  --phone-body: #DADADA;
-  --phone-bezel: #000000;
-  --phone-screen: #F5F5F5;
-  --hatch: #FFFFFF;
+  --hero-grad: linear-gradient(180deg, #050B14 0%, #0C1A30 70%, #112646 100%);
+  --hero-fade: #070C16;
+  --phone-body: #475569;
+  --phone-bezel: #0F172A;
+  --phone-screen: #0E1726;
+  --hatch: #F8FAFC;
 
   /* Sidebar Deep Midnight */
-  --color-sidebar-bg: #040812;
-  --color-sidebar-border: rgba(255, 255, 255, 0.12);
-  --color-sidebar-text: #F5F7FB;
-  --color-sidebar-text-muted: rgba(245, 247, 251, 0.58);
-  --color-sidebar-hover: rgba(255, 255, 255, 0.06);
-  --color-sidebar-active-bg: #2563EB;
+  --color-sidebar-bg: #060B14;
+  --color-sidebar-border: rgba(255, 255, 255, 0.14);
+  --color-sidebar-text: #F8FAFC;
+  --color-sidebar-text-muted: #94A3B8;
+  --color-sidebar-hover: rgba(255, 255, 255, 0.08);
+  --color-sidebar-active-bg: #1D4ED8;
   --color-sidebar-active-text: #FFFFFF;
 
   color-scheme: dark;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Aksesibilitas: Skip Link untuk navigasi keyboard langsung ke konten utama */
+.skip-link {
+  position: absolute;
+  top: -999px;
+  left: 1rem;
+  z-index: 100;
+  padding: 0.625rem 1.25rem;
+  background: var(--color-btn);
+  color: var(--color-btn-text);
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  transition: top 150ms ease;
+}
+
+.skip-link:focus {
+  top: 1rem;
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 html {
@@ -133,21 +161,27 @@ button:not(:disabled),
   cursor: pointer;
 }
 
-/* ---- Komponen dasar (selaras template: kotak, border tipis, tanpa bayangan) ---- */
+/* ---- Komponen dasar: modern, ergonomis, berbayangan lembut, tidak kaku ---- */
 .card-elevated {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 0;
-  box-shadow: none;
+  border-radius: 14px;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.card-elevated:hover {
+  box-shadow: 0 10px 25px -3px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04);
 }
 
 .glass {
-  background: color-mix(in srgb, var(--color-surface) 50%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 75%, transparent);
   border: 1px solid var(--color-border);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
 }
 
-/* Tombol solid (navy di mode terang, putih di mode gelap) */
+/* Tombol solid */
 .btn-solid {
   display: inline-flex;
   align-items: center;
@@ -158,12 +192,16 @@ button:not(:disabled),
   color: var(--color-btn-text);
   font-weight: 500;
   font-size: 0.875rem;
+  border-radius: 8px;
   border: 1px solid var(--color-btn);
-  transition: background-color 150ms ease, opacity 150ms ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-solid:hover:not(:disabled) {
   background: var(--color-btn-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(11, 31, 58, 0.15);
 }
 
 .btn-solid:disabled {
@@ -176,16 +214,20 @@ button:not(:disabled),
   justify-content: center;
   gap: 0.5rem;
   padding: 0.625rem 1.5rem;
-  background: transparent;
+  background: var(--color-surface);
   color: var(--color-text);
   font-weight: 500;
   font-size: 0.875rem;
-  border: 1px solid var(--color-border-strong);
-  transition: background-color 150ms ease;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: all 180ms ease;
 }
 
 .btn-outline:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+  background: var(--color-card-hover);
+  border-color: var(--color-text-muted);
+  transform: translateY(-1px);
 }
 
 .btn-primary {
@@ -198,23 +240,29 @@ button:not(:disabled),
   color: #fff;
   font-weight: 500;
   font-size: 0.875rem;
+  border-radius: 8px;
   border: 1px solid var(--color-primary);
-  transition: background-color 150ms ease;
+  box-shadow: 0 1px 3px rgba(29, 78, 216, 0.25);
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-primary:hover:not(:disabled) {
   background: var(--color-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(29, 78, 216, 0.35);
 }
 
 .input-field {
   width: 100%;
   padding: 0.7rem 1rem;
   background: var(--color-surface);
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
   color: var(--color-text);
   font-size: 0.875rem;
   outline: none;
-  transition: border-color 150ms ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: all 150ms ease;
 }
 
 .input-field::placeholder {
@@ -222,15 +270,16 @@ button:not(:disabled),
 }
 
 .input-field:focus {
-  border-color: var(--color-text);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
 }
 
-/* Hero: gradasi putih → biru → putih (identik struktur referensi) */
+/* Hero: gradasi terstruktur institusional */
 .hero-grad {
   background: var(--hero-grad);
 }
 
-/* Divider diagonal (hatch) — pola khas referensi */
+/* Divider diagonal (hatch): pemisah seksi visual */
 .hatch {
   background-image: repeating-linear-gradient(315deg, currentColor 0, currentColor 1px, transparent 0, transparent 50%);
   background-size: 10px 10px;

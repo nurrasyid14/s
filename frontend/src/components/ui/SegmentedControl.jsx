@@ -1,5 +1,5 @@
 /**
- * Kelompok tombol pill untuk memilih satu opsi (periode, tab status).
+ * Kelompok tombol terstruktur untuk memilih satu opsi (periode, tab status).
  * options: [{ key, label }]. Nilai aktif ditandai lewat aria-pressed, bukan hanya warna.
  */
 export default function SegmentedControl({ options, value, onChange, label }) {
@@ -7,7 +7,7 @@ export default function SegmentedControl({ options, value, onChange, label }) {
         <div
             role="group"
             aria-label={label}
-            className="inline-flex max-w-full items-center gap-1 overflow-x-auto border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-1"
+            className="inline-flex max-w-full items-center gap-1 overflow-x-auto border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-1 rounded-xl shadow-xs"
         >
             {options.map(option => {
                 const active = option.key === value
@@ -17,9 +17,9 @@ export default function SegmentedControl({ options, value, onChange, label }) {
                         type="button"
                         aria-pressed={active}
                         onClick={() => onChange(option.key)}
-                        className={`whitespace-nowrap px-3.5 py-1.5 text-sm font-medium transition-smooth focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${active
-                                ? 'bg-[var(--color-btn)] text-[var(--color-btn-text)]'
-                                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-card-hover)]'
+                        className={`whitespace-nowrap px-3.5 py-1.5 text-sm font-medium rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${active
+                                ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-xs font-semibold'
+                                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]/50'
                             }`}
                     >
                         {option.label}

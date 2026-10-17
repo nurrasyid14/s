@@ -97,9 +97,9 @@ export default function ComplaintsPage() {
       render: v => (
         <Link
           to={`/stakeholder/complaints/${v}`}
-          className="btn-outline inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono transition-colors"
+          className="btn-outline inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono transition-colors rounded-xl min-h-[36px]"
         >
-          <Eye size={12} aria-hidden="true" /> {t('complaints.view_detail')}
+          <Eye size={13} aria-hidden="true" /> {t('complaints.view_detail')}
         </Link>
       ),
     },
@@ -111,7 +111,7 @@ export default function ComplaintsPage() {
         aria-label="Pilih Unit"
         value={unit}
         onChange={e => { setUnit(e.target.value); setPage(1) }}
-        className="border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-2 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
+        className="border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs font-mono text-[var(--color-text)] rounded-xl shadow-xs focus:outline-none focus:border-[var(--color-primary)]"
       >
         <option value="">Semua Unit (14)</option>
         {UNITS.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
@@ -121,7 +121,7 @@ export default function ComplaintsPage() {
         aria-label={t('complaints.type')}
         value={type}
         onChange={e => { setType(e.target.value); setPage(1) }}
-        className="border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-2 text-xs font-mono text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
+        className="border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs font-mono text-[var(--color-text)] rounded-xl shadow-xs focus:outline-none focus:border-[var(--color-primary)]"
       >
         <option value="">{t('stk.complaints.all_types', 'Semua jenis')}</option>
         {COMPLAINT_TYPES.map(key => <option key={key} value={key}>{typeLabel(key)}</option>)}

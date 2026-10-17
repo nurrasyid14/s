@@ -7,7 +7,7 @@ import { useTheme } from '../../context/ThemeContext.jsx'
 import { getUrgentComplaints } from '../../services/analyticsApi.js'
 
 /**
- * Navbar — adapts between public/user and stakeholder views
+ * Navbar: adapts between public/user and stakeholder views
  * @param {string}  variant    - 'public' | 'user' | 'stakeholder'
  * @param {number}  notifCount
  * @param {string}  title      - page title (stakeholder only)
@@ -44,34 +44,95 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') {
+        setNotifOpen(false)
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   const URGENCY_COLOR = (score) =>
     score >= 8 ? 'text-[var(--color-status-danger)]' :
       score >= 5 ? 'text-[var(--color-status-warning)]' : 'text-[var(--color-status-success)]'
 
   // ---- Stakeholder variant (inside sidebar layout) ----
   if (variant === 'stakeholder') {
-    return (
-      <header className="h-14 flex items-center justify-between px-6 bg-[var(--color-bg)] border-b border-[var(--color-border)] sticky top-0 z-20">
-        <h1 className="font-bold text-[var(--color-text)] text-base tracking-tight">{title}</h1>
+    const navItems = [
+      { to: '/stakeholder', label: 'Overview' },
+      { to: '/stakeholder/complaints', label: 'Aduan' },
+      { to: '/stakeholder/analytics', label: 'Analitik' },
+      { to: '/stakeholder/followups', label: 'Tindak Lanjut' },
+      { to: '/stakeholder/evidence', label: 'Bukti' },
+      { to: '/stakeholder/settings', label: 'Pengaturan' },
+    ]
 
-        <div className="flex items-center gap-3">
+    return (
+      <header className="h-20 flex items-center justify-between px-4 sm:px-8 bg-[var(--color-surface)] border-b border-[var(--color-border)] sticky top-0 z-20 gap-4">
+        {/* Left: Brand / Title */}
+        <div className="flex items-center gap-3 min-w-0">
+          <Link to="/" className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-2xl bg-[#0B1F3A] dark:bg-[var(--color-primary)] text-white flex items-center justify-center shadow-md shadow-blue-950/20">
+              <ScanSearch size={20} />
+            </div>
+            <div className="hidden sm:block">
+              <span className="font-extrabold text-base tracking-tight text-[var(--color-text)]">SuaraLens</span>
+              <span className="ml-2 text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                Stakeholder
+              </span>
+            </div>
+          </Link>
+        </div>
+
+        {/* Center: Floating Pill Navigation (Finexy Signature) */}
+        <nav className="hidden lg:flex items-center p-1.5 rounded-full bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/80 shadow-2xs">
+          {navItems.map(({ to, label }) => {
+            const active = location.pathname === to || (to !== '/stakeholder' && location.pathname.startsWith(to))
+            return (
+              <Link
+                key={to}
+                to={to}
+                className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+                  active
+                    ? 'bg-[#0B1F3A] text-white shadow-sm dark:bg-[var(--color-primary)] dark:text-white'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]'
+                }`}
+              >
+                {label}
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Right: Search, Notif Dropdown, User Profile Pill */}
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Quick Search */}
+          <Link
+            to="/stakeholder/complaints"
+            className="w-10 h-10 rounded-full border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-all shadow-2xs"
+            title="Cari Aduan"
+          >
+            <ScanSearch size={17} />
+          </Link>
+
           {/* Bell Notification with dropdown */}
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => setNotifOpen(o => !o)}
-              className="relative p-2 border border-transparent hover:border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)] transition-colors"
+              className="relative w-10 h-10 rounded-full border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-all shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
               aria-label="Notifikasi"
             >
               <Bell size={17} className={notifOpen ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'} />
               {notifCount > 0 && (
-                <span className="absolute top-1 right-1 bg-[var(--color-status-danger)] text-white text-[10px] font-mono w-4 h-4 flex items-center justify-center font-bold leading-none">
-                  {notifCount > 9 ? '9+' : notifCount}
-                </span>
+                <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900" />
               )}
             </button>
 
             {notifOpen && (
-              <div className="absolute right-0 top-12 w-80 shadow-lg border border-[var(--color-border)] bg-[var(--color-surface)] z-50 overflow-hidden animate-fade-in">
+              <div className="absolute right-0 top-12 w-80 shadow-xl border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl z-50 overflow-hidden animate-fade-in">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
                   <div className="flex items-center gap-2">
                     <Bell size={14} className="text-[var(--color-primary)]" />
@@ -80,7 +141,7 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
                     </span>
                   </div>
                   {notifCount > 0 && (
-                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 border border-[var(--color-border)]" style={{ color: 'var(--color-status-danger)', background: 'color-mix(in srgb, var(--color-status-danger) 12%, transparent)' }}>
+                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full border border-[var(--color-border)]" style={{ color: 'var(--color-status-danger)', background: 'color-mix(in srgb, var(--color-status-danger) 12%, transparent)' }}>
                       {notifCount} {i18n.language === 'id' ? 'baru' : 'new'}
                     </span>
                   )}
@@ -132,22 +193,27 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
                     onClick={() => { navigate('/stakeholder/followups'); setNotifOpen(false) }}
                     className="text-xs text-[var(--color-primary)] hover:underline font-medium w-full text-center"
                   >
-                    {i18n.language === 'id' ? 'Lihat semua tindak lanjut →' : 'View all follow-ups →'}
+                    {i18n.language === 'id' ? 'Lihat semua tindak lanjut' : 'View all follow-ups'}
                   </button>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Dark mode */}
-          <button onClick={toggle} className="p-2 rounded-lg hover:bg-[var(--color-card-hover)] transition-colors" aria-label="Toggle theme">
-            {dark ? <Sun size={18} className="text-[var(--color-accent)]" /> : <Moon size={18} className="text-[var(--color-text-muted)]" />}
-          </button>
-
-          {/* Language */}
-          <button onClick={switchLang} className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[var(--color-border)] text-xs font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-card-hover)] transition-colors">
-            <Globe size={13} /> {i18n.language.toUpperCase()}
-          </button>
+          {/* User Profile Pill (Finexy Avatar & Dropdown Pill) */}
+          <div className="flex items-center gap-2.5 pl-1.5 pr-3 py-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xs">
+            <div className="w-8 h-8 rounded-full bg-[#1D4ED8] text-white flex items-center justify-center text-xs font-bold font-mono shadow-xs">
+              {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+            </div>
+            <div className="hidden xl:block text-left leading-tight">
+              <div className="text-xs font-bold text-[var(--color-text)] truncate max-w-[120px]">
+                {user?.name || 'Unit Pelaksana'}
+              </div>
+              <div className="text-[10px] font-mono text-[var(--color-text-muted)] truncate max-w-[120px]">
+                {user?.role === 'stakeholder' ? 'Stakeholder' : 'Admin'}
+              </div>
+            </div>
+          </div>
         </div>
       </header>
     )
@@ -159,9 +225,9 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 flex items-center justify-center bg-[var(--color-btn)] text-[var(--color-btn-text)]">
-              <ScanSearch size={16} strokeWidth={2.2} />
+          <Link to="/" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg shadow-xs flex items-center justify-center bg-[var(--color-btn)] text-[var(--color-btn-text)]">
+              <ScanSearch size={18} strokeWidth={2.2} />
             </div>
             <span className="font-bold text-[var(--color-text)] text-xl tracking-tight">SuaraLens</span>
           </Link>
@@ -170,7 +236,7 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
           <div className="hidden md:flex items-center gap-3">
             <button
               onClick={toggle}
-              className="p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+              className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-card-hover)] transition-colors"
               aria-label="Toggle theme"
             >
               {dark ? <Sun size={18} /> : <Moon size={18} />}
@@ -178,26 +244,26 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
 
             <button
               onClick={switchLang}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-[var(--color-text)] border border-[var(--color-border-strong)] hover:bg-[var(--color-card-hover)] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-[var(--color-text)] border border-[var(--color-border)] hover:bg-[var(--color-card-hover)] transition-colors shadow-xs"
             >
               <Globe size={14} /> {i18n.language === 'id' ? 'EN' : 'ID'}
             </button>
 
             {user ? (
               <>
-                <Link to={user.role === 'stakeholder' ? '/stakeholder' : '/user/dashboard'} className="btn-outline !py-2 !px-4">
+                <Link to={user.role === 'stakeholder' ? '/stakeholder' : '/user/dashboard'} className="btn-outline !py-2 !px-4 rounded-lg shadow-xs">
                   {t('nav.dashboard')}
                 </Link>
-                <button onClick={logout} className="btn-solid !py-2 !px-4">
+                <button onClick={logout} className="btn-solid !py-2 !px-4 rounded-lg shadow-xs">
                   {t('nav.logout')}
                 </button>
               </>
             ) : (
               <>
-                <Link to="/signin" className="btn-outline !py-2 !px-4">
+                <Link to="/signin" className="btn-outline !py-2 !px-4 rounded-lg shadow-xs">
                   {t('nav.login')}
                 </Link>
-                <Link to="/signup-user" className="btn-solid !py-2 !px-4">
+                <Link to="/signup-user" className="btn-solid !py-2 !px-4 rounded-lg shadow-xs">
                   {t('nav.register')}
                 </Link>
               </>
@@ -205,7 +271,7 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
           </div>
 
           {/* Mobile hamburger */}
-          <button className="md:hidden p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)]" onClick={() => setMenuOpen(m => !m)} aria-label="Toggle menu">
+          <button className="md:hidden p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg" onClick={() => setMenuOpen(m => !m)} aria-label="Toggle menu">
             {menuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>

@@ -108,19 +108,22 @@ export default function ComplaintForm() {
         </div>
 
         {/* Step Progress */}
-        <div className="flex items-center mb-3">
+        <div className="flex items-center mb-4" role="navigation" aria-label="Progres Pengajuan">
           {Array.from({ length: TOTAL_STEPS }, (_, i) => {
             const n = i + 1
             const done = step > n
             const active = step === n
             return (
               <div key={n} className="flex items-center flex-1 last:flex-none">
-                <div className={`w-8 h-8 flex items-center justify-center text-xs font-bold transition-colors flex-shrink-0
-                  ${done ? 'bg-[var(--color-btn)] text-[var(--color-btn-text)]' : active ? 'bg-[var(--color-primary)] text-white' : 'border border-[var(--color-border)] text-[var(--color-text-muted)] bg-[var(--color-surface)]'}`}>
-                  {done ? <Check size={14} /> : n}
+                <div
+                  aria-current={active ? 'step' : undefined}
+                  aria-label={`Langkah ${n}: ${t(['form.step1_title', 'form.step2_title', 'form.step3_title', 'form.step4_title', 'form.step5_title'][i])}`}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-xs flex-shrink-0
+                  ${done ? 'bg-[var(--color-btn)] text-[var(--color-btn-text)]' : active ? 'bg-[var(--color-primary)] text-white ring-4 ring-[var(--color-primary)]/20' : 'border border-[var(--color-border)] text-[var(--color-text-muted)] bg-[var(--color-surface)]'}`}>
+                  {done ? <Check size={15} aria-hidden="true" /> : n}
                 </div>
                 {n < TOTAL_STEPS && (
-                  <div className={`flex-1 h-0.5 mx-1 transition-colors ${done ? 'bg-[var(--color-btn)]' : 'bg-[var(--color-border)]'}`} />
+                  <div className={`flex-1 h-1 mx-2 rounded-full transition-colors ${done ? 'bg-[var(--color-btn)]' : 'bg-[var(--color-border)]'}`} />
                 )}
               </div>
             )
@@ -134,23 +137,23 @@ export default function ComplaintForm() {
 
         {/* Error */}
         {error && (
-          <div className="flex items-center gap-2 mb-4 p-3 border border-[var(--color-status-danger)] text-[var(--color-status-danger)] text-sm" style={{ background: 'color-mix(in srgb, var(--color-status-danger) 10%, transparent)' }}>
-            <AlertCircle size={15} /> {error}
+          <div role="alert" aria-live="polite" className="flex items-center gap-2 mb-4 p-3.5 border border-[var(--color-status-danger)]/40 rounded-xl text-[var(--color-status-danger)] text-sm shadow-xs" style={{ background: 'color-mix(in srgb, var(--color-status-danger) 10%, transparent)' }}>
+            <AlertCircle size={16} aria-hidden="true" /> {error}
           </div>
         )}
 
         {/* Card */}
-        <div className="card-elevated border border-[var(--color-border)] bg-[var(--color-surface)] p-8 mb-6">
-          {/* Step 1 — Jenis */}
+        <div className="card-elevated rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 md:p-8 mb-6 shadow-sm">
+          {/* Step 1: Jenis */}
           {step === 1 && (
             <div>
               <h3 className="font-semibold text-lg text-[var(--color-text)] mb-4">{t('form.step1_title')}</h3>
               <div className="grid gap-3">
                 {TYPES.map(({ key, icon: Icon, titleKey, descKey }) => (
-                  <button key={key} onClick={() => setField('type', key)}
-                    className={`w-full text-left p-4 border transition-colors flex items-start gap-3
-                      ${form.type === key ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)]' : 'border-[var(--color-border)] hover:border-[var(--color-text)]'}`}>
-                    <Icon size={20} className="flex-shrink-0 mt-0.5" />
+                  <button key={key} type="button" onClick={() => setField('type', key)}
+                    className={`w-full text-left p-4.5 border rounded-xl transition-all flex items-start gap-3.5 shadow-2xs hover:shadow-xs min-h-[44px]
+                      ${form.type === key ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20' : 'border-[var(--color-border)] hover:border-[var(--color-text-muted)] hover:bg-[var(--color-bg-secondary)]'}`}>
+                    <Icon size={20} className="flex-shrink-0 mt-0.5 text-[var(--color-primary)]" aria-hidden="true" />
                     <div>
                       <div className="font-semibold text-[var(--color-text)] text-sm">{t(titleKey)}</div>
                       <div className="text-xs text-[var(--color-text-muted)] mt-0.5">{t(descKey)}</div>
@@ -161,23 +164,27 @@ export default function ComplaintForm() {
             </div>
           )}
 
-          {/* Step 2 — Kategori */}
+          {/* Step 2: Kategori */}
           {step === 2 && (
             <div>
               <h3 className="font-semibold text-lg text-[var(--color-text)] mb-4">{t('form.category')}</h3>
-              <div className="grid grid-cols-2 gap-2 mb-6">
+              <div className="grid grid-cols-2 gap-2.5 mb-6">
                 {CATEGORIES.map(({ key, labelKey }) => (
-                  <button key={key} onClick={() => setField('category', key)}
-                    className={`py-3 px-4 border text-sm font-medium transition-colors
-                      ${form.category === key ? 'border-[var(--color-btn)] bg-[var(--color-btn)] text-[var(--color-btn-text)]' : 'border-[var(--color-border)] text-[var(--color-text)] hover:border-[var(--color-text)]'}`}>
+                  <button key={key} type="button" onClick={() => setField('category', key)}
+                    className={`py-3 px-4 border rounded-xl text-sm font-medium transition-all shadow-2xs min-h-[44px]
+                      ${form.category === key ? 'border-[var(--color-btn)] bg-[var(--color-btn)] text-[var(--color-btn-text)] shadow-xs' : 'border-[var(--color-border)] text-[var(--color-text)] hover:border-[var(--color-text-muted)] hover:bg-[var(--color-bg-secondary)]'}`}>
                     {t(labelKey)}
                   </button>
                 ))}
               </div>
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5">{t('form.unit')}</label>
-                <select value={form.unit} onChange={e => setField('unit', e.target.value)}
-                  className="input-field">
+                <label htmlFor="complaint-unit" className="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5">{t('form.unit')}</label>
+                <select
+                  id="complaint-unit"
+                  value={form.unit}
+                  onChange={e => setField('unit', e.target.value)}
+                  className="input-field rounded-lg"
+                >
                   <option value="">-- Rekomendasi Sistem (Otomatis) atau Pilih Unit --</option>
                   {UNITS.map(u => <option key={u.id} value={u.name}>{u.name} ({u.code})</option>)}
                 </select>
@@ -185,18 +192,22 @@ export default function ComplaintForm() {
             </div>
           )}
 
-          {/* Step 3 — Deskripsi */}
+          {/* Step 3: Deskripsi */}
           {step === 3 && (
             <div>
-              <h3 className="font-semibold text-lg text-[var(--color-text)] mb-4">{t('form.description')}</h3>
+              <label htmlFor="complaint-desc" className="block font-semibold text-lg text-[var(--color-text)] mb-4">
+                {t('form.description')}
+              </label>
               <textarea
+                id="complaint-desc"
+                aria-describedby="desc-hint"
                 value={form.description}
                 onChange={e => setField('description', e.target.value)}
                 placeholder={t('form.description_placeholder')}
                 rows={7}
-                className="input-field resize-none leading-relaxed"
+                className="input-field resize-none leading-relaxed rounded-xl"
               />
-              <div className="flex justify-between mt-2 text-xs">
+              <div className="flex justify-between mt-2 text-xs" id="desc-hint">
                 <span className="text-[var(--color-text-muted)]">{t('form.description_hint')}</span>
                 <span className={`font-mono font-medium ${form.description.length >= 50 ? 'text-[var(--color-status-success)]' : 'text-[var(--color-status-warning)]'}`}>
                   {form.description.length}/500
@@ -205,22 +216,40 @@ export default function ComplaintForm() {
             </div>
           )}
 
-          {/* Step 4 — Lampiran */}
+          {/* Step 4: Lampiran */}
           {step === 4 && (
             <div>
               <h3 className="font-semibold text-lg text-[var(--color-text)] mb-2">{t('form.attachment')}</h3>
               <p className="text-sm text-[var(--color-text-muted)] mb-5">{t('form.attachment_desc')}</p>
-              <div className="border border-dashed border-[var(--color-border-strong)] p-10 text-center hover:border-[var(--color-primary)] transition-colors cursor-pointer bg-[var(--color-bg-secondary)]">
-                <Paperclip size={24} className="text-[var(--color-text-muted)] mx-auto mb-2" />
-                <p className="text-sm font-medium text-[var(--color-text)]">Klik atau tarik file ke sini</p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">JPG, PNG, PDF — maksimal 5MB</p>
-              </div>
-              <div className="mt-5 flex items-start gap-3 p-4 border border-[var(--color-primary)] bg-[var(--color-primary-soft)]">
-                <ShieldCheck size={20} className="text-[var(--color-primary)] flex-shrink-0 mt-0.5" />
+              
+              <label
+                htmlFor="file-upload"
+                className="border-2 border-dashed border-[var(--color-border)] rounded-2xl p-10 text-center hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]/20 transition-all cursor-pointer bg-[var(--color-bg-secondary)] block focus-within:ring-2 focus-within:ring-[var(--color-primary)]"
+              >
+                <input
+                  id="file-upload"
+                  type="file"
+                  accept="image/png,image/jpeg,application/pdf"
+                  className="sr-only"
+                  onChange={e => {
+                    if (e.target.files?.[0]) {
+                      setForm(f => ({ ...f, attachments: [e.target.files[0].name] }))
+                    }
+                  }}
+                />
+                <Paperclip size={24} className="text-[var(--color-text-muted)] mx-auto mb-2" aria-hidden="true" />
+                <p className="text-sm font-medium text-[var(--color-text)]">
+                  {form.attachments.length > 0 ? `File Terpilih: ${form.attachments[0]}` : 'Klik atau tarik file ke sini'}
+                </p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">JPG, PNG, PDF (maksimal 5MB)</p>
+              </label>
+
+              <div className="mt-5 flex items-start gap-3.5 p-4.5 border border-[var(--color-primary)]/30 rounded-xl bg-[var(--color-primary-soft)]">
+                <ShieldCheck size={20} className="text-[var(--color-primary)] flex-shrink-0 mt-0.5" aria-hidden="true" />
                 <div>
                   <div className="text-sm font-bold text-[var(--color-text)] flex items-center gap-2">
                     <span>Nilai Inti SuaraLens: Anonimitas Mutlak (Wajib)</span>
-                    <span className="px-2 py-0.5 text-[10px] font-mono uppercase bg-[var(--color-primary)] text-white font-semibold">100% Terenkripsi</span>
+                    <span className="px-2.5 py-0.5 text-[10px] font-mono uppercase bg-[var(--color-primary)] text-white font-semibold rounded-full shadow-2xs">100% Terenkripsi</span>
                   </div>
                   <div className="text-xs text-[var(--color-text-muted)] mt-1 leading-relaxed">
                     SuaraLens dibangun di atas prinsip anonimitas mutlak. Identitas pribadi Anda tidak pernah disimpan atau diberikan kepada Admin Verifikator, Unit Kerja, maupun pihak mana pun. Aduan Anda ditindaklanjuti secara objektif dan transparan melalui Nomor Tiket Unik Anda.
@@ -230,7 +259,7 @@ export default function ComplaintForm() {
             </div>
           )}
 
-          {/* Step 5 — Konfirmasi */}
+          {/* Step 5: Konfirmasi */}
           {step === 5 && (
             <div className="space-y-5">
               <h3 className="font-semibold text-lg text-[var(--color-text)] mb-4">{t('form.step5_title')}</h3>
@@ -240,31 +269,31 @@ export default function ComplaintForm() {
                   { label: 'Kategori', value: form.category },
                   { label: 'Unit', value: form.unit || '-' },
                 ].map(({ label, value }) => (
-                  <div key={label} className="p-3 border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+                  <div key={label} className="p-3.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
                     <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)]">{label}</div>
                     <div className="font-semibold text-[var(--color-text)] capitalize mt-1">{value}</div>
                   </div>
                 ))}
               </div>
-              <div className="p-4 border border-[var(--color-border)] text-sm">
+              <div className="p-4 border border-[var(--color-border)] text-sm rounded-xl bg-[var(--color-surface)]">
                 <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-1">Deskripsi Aduan</div>
                 <p className="text-[var(--color-text)] leading-relaxed whitespace-pre-line">{form.description}</p>
               </div>
               {/* NLP Preview */}
-              <div className="p-4 border border-[var(--color-primary)] bg-[var(--color-primary-soft)]">
+              <div className="p-4.5 border border-[var(--color-primary)]/30 bg-[var(--color-primary-soft)] rounded-xl">
                 <div className="flex items-center gap-1.5 text-sm font-semibold text-[var(--color-primary)] mb-3">
                   <Bot size={16} /> {t('form.preview_title')}
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div className="p-3 border border-[var(--color-border)] bg-[var(--color-surface)]">
+                  <div className="p-3 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-lg">
                     <div className="text-[var(--color-text-muted)] mb-1">Kategori</div>
                     <div className="font-bold text-[var(--color-text)] capitalize">{form.category || '-'}</div>
                   </div>
-                  <div className="p-3 border border-[var(--color-border)] bg-[var(--color-surface)]">
+                  <div className="p-3 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-lg">
                     <div className="text-[var(--color-text-muted)] mb-1">Urgensi</div>
                     <div className="font-bold text-[var(--color-status-warning)]">Sedang</div>
                   </div>
-                  <div className="p-3 border border-[var(--color-border)] bg-[var(--color-surface)]">
+                  <div className="p-3 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-lg">
                     <div className="text-[var(--color-text-muted)] mb-1">Sentimen</div>
                     <div className="font-bold text-[var(--color-status-danger)]">Negatif</div>
                   </div>

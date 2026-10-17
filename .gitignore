@@ -233,3 +233,12 @@ exports/*
 credentials/
 secrets/
 private/
+
+# ============================================================
+# Local AI & Prompt Tooling (Excluded from repository)
+# ============================================================
+GEMINI.md
+gemini.md
+antislop.md
+anti-slop/
+skills/

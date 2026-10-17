@@ -44,30 +44,36 @@ export default function AdminComplaintList() {
         </div>
         <button
           onClick={() => window.print()}
-          className="btn-outline !py-2 !px-3 text-xs inline-flex items-center gap-1.5"
+          className="btn-outline !py-2 !px-3.5 text-xs inline-flex items-center gap-1.5 rounded-xl min-h-[40px]"
         >
-          <Printer size={13} /> Cetak Rekap (PDF)
+          <Printer size={14} /> Cetak Rekap (PDF)
         </button>
       </div>
 
       {/* Filter Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 border border-[var(--color-border)] bg-[var(--color-surface)]">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 p-4 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl shadow-xs">
         <div>
-          <label className="block text-[11px] font-mono uppercase text-[var(--color-text-muted)] mb-1">Cari Tiket / Kata Kunci</label>
+          <label htmlFor="filter-search" className="block text-[11px] font-mono uppercase text-[var(--color-text-muted)] font-semibold mb-1">
+            Cari Tiket / Kata Kunci
+          </label>
           <input
+            id="filter-search"
             type="text"
-            placeholder="Cari..."
+            placeholder="Ketik kata kunci pencarian..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="input-field text-xs !py-1.5"
+            className="input-field text-xs !py-2 rounded-xl"
           />
         </div>
         <div>
-          <label className="block text-[11px] font-mono uppercase text-[var(--color-text-muted)] mb-1">Filter Status (7 Tahap)</label>
+          <label htmlFor="filter-status" className="block text-[11px] font-mono uppercase text-[var(--color-text-muted)] font-semibold mb-1">
+            Filter Status (7 Tahap)
+          </label>
           <select
+            id="filter-status"
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className="input-field text-xs !py-1.5"
+            className="input-field text-xs !py-2 rounded-xl"
           >
             <option value="">-- Semua Status --</option>
             <option value="received">1. Diterima</option>
@@ -80,11 +86,14 @@ export default function AdminComplaintList() {
           </select>
         </div>
         <div>
-          <label className="block text-[11px] font-mono uppercase text-[var(--color-text-muted)] mb-1">Filter Unit (14 Unit Baku)</label>
+          <label htmlFor="filter-unit" className="block text-[11px] font-mono uppercase text-[var(--color-text-muted)] font-semibold mb-1">
+            Filter Unit (14 Unit Baku)
+          </label>
           <select
+            id="filter-unit"
             value={unitFilter}
             onChange={e => setUnitFilter(e.target.value)}
-            className="input-field text-xs !py-1.5"
+            className="input-field text-xs !py-2 rounded-xl"
           >
             <option value="">-- Semua Unit Kerja --</option>
             {UNITS.map(u => (
@@ -96,47 +105,48 @@ export default function AdminComplaintList() {
 
       {/* Table */}
       {loading ? (
-        <div className="space-y-2">
-          {[1, 2, 3, 4].map(i => <div key={i} className="skeleton h-16 border border-[var(--color-border)]" />)}
+        <div className="space-y-3">
+          {[1, 2, 3, 4].map(i => <div key={i} className="skeleton h-16 border border-[var(--color-border)] rounded-2xl" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="p-12 text-center border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-muted)] font-mono">
+        <div className="p-12 text-center border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-muted)] font-mono rounded-2xl shadow-xs">
           Tidak ada aduan yang sesuai dengan filter pencarian.
         </div>
       ) : (
-        <div className="border border-[var(--color-border)] overflow-x-auto bg-[var(--color-surface)]">
+        <div className="border border-[var(--color-border)] overflow-x-auto bg-[var(--color-surface)] rounded-2xl shadow-sm">
           <table className="w-full text-left text-xs">
+            <caption className="sr-only">Daftar rekap masukan dan aduan sivitas PENS</caption>
             <thead className="border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] font-mono uppercase">
               <tr>
-                <th className="p-3">No Tiket</th>
-                <th className="p-3">Tanggal</th>
-                <th className="p-3">Substansi Aduan</th>
-                <th className="p-3">Unit Tujuan</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">Urgensi</th>
+                <th scope="col" className="p-3.5">No Tiket</th>
+                <th scope="col" className="p-3.5">Tanggal</th>
+                <th scope="col" className="p-3.5">Substansi Aduan</th>
+                <th scope="col" className="p-3.5">Unit Tujuan</th>
+                <th scope="col" className="p-3.5">Status</th>
+                <th scope="col" className="p-3.5">Urgensi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
               {filtered.map(c => (
                 <tr key={c.id} className="hover:bg-[var(--color-bg-secondary)] transition-colors">
-                  <td className="p-3 font-mono font-bold text-[var(--color-primary)] whitespace-nowrap">
+                  <td className="p-3.5 font-mono font-bold text-[var(--color-primary)] whitespace-nowrap">
                     {c.ticket_id}
                   </td>
-                  <td className="p-3 font-mono text-[var(--color-text-muted)] whitespace-nowrap">
+                  <td className="p-3.5 font-mono text-[var(--color-text-muted)] whitespace-nowrap">
                     {formatDate(c.created_at)}
                   </td>
-                  <td className="p-3 max-w-md">
-                    <p className="line-clamp-2 text-[var(--color-text)] leading-relaxed">
+                  <td className="p-3.5 max-w-md">
+                    <p className="line-clamp-2 text-[var(--color-text)] leading-relaxed font-medium">
                       {c.description}
                     </p>
                   </td>
-                  <td className="p-3 font-semibold text-[var(--color-text)] whitespace-nowrap">
+                  <td className="p-3.5 font-semibold text-[var(--color-text)] whitespace-nowrap">
                     {c.target_unit || c.unit}
                   </td>
-                  <td className="p-3 whitespace-nowrap">
+                  <td className="p-3.5 whitespace-nowrap">
                     <StatusBadge status={c.status} />
                   </td>
-                  <td className="p-3 font-mono font-bold whitespace-nowrap">
+                  <td className="p-3.5 font-mono font-bold whitespace-nowrap">
                     <span className={c.urgency_score >= 7 ? 'text-[var(--color-status-danger)]' : 'text-[var(--color-text)]'}>
                       {c.urgency_score}/10
                     </span>

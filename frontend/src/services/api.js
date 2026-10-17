@@ -8,7 +8,7 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Request interceptor — attach auth token
+// Request interceptor: attach auth token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('suaralens_token')
@@ -18,7 +18,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// Response interceptor — handle 401
+// Response interceptor: handle 401
 api.interceptors.response.use(
   (response) => response,
   (error) => {

@@ -33,7 +33,7 @@ export default function MyComplaints() {
           </div>
           <Link
             to="/user/submit"
-            className="btn-solid inline-flex items-center gap-2 self-start sm:self-auto text-xs py-2.5 px-4 font-medium tracking-tight"
+            className="btn-solid inline-flex items-center gap-2 self-start sm:self-auto text-xs py-2.5 px-4 font-medium tracking-tight rounded-xl min-h-[44px]"
           >
             <PlusCircle size={15} /> Ajukan Baru
           </Link>
@@ -41,13 +41,13 @@ export default function MyComplaints() {
 
         {loading && (
           <div className="space-y-3">
-            {[1, 2, 3].map(i => <div key={i} className="skeleton h-24 border border-[var(--color-border)]" />)}
+            {[1, 2, 3].map(i => <div key={i} className="skeleton h-24 border border-[var(--color-border)] rounded-2xl" />)}
           </div>
         )}
 
         {!loading && data.length === 0 && (
-          <div className="text-center py-20 border border-[var(--color-border)] bg-[var(--color-surface)] px-6">
-            <div className="w-12 h-12 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex items-center justify-center mx-auto mb-4 text-[var(--color-primary)]">
+          <div className="text-center py-20 border border-[var(--color-border)] bg-[var(--color-surface)] px-6 rounded-2xl shadow-sm">
+            <div className="w-12 h-12 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex items-center justify-center mx-auto mb-4 text-[var(--color-primary)] rounded-2xl">
               <Inbox size={22} />
             </div>
             <div className="font-bold text-lg text-[var(--color-text)] tracking-tight">Belum Ada Aduan Terdaftar</div>
@@ -56,7 +56,7 @@ export default function MyComplaints() {
             </p>
             <Link
               to="/user/submit"
-              className="btn-solid inline-flex items-center gap-2 text-xs py-2.5 px-5 font-medium"
+              className="btn-solid inline-flex items-center gap-2 text-xs py-2.5 px-5 font-medium rounded-xl min-h-[44px]"
             >
               Ajukan Sekarang <ChevronRight size={14} />
             </Link>
@@ -64,7 +64,7 @@ export default function MyComplaints() {
         )}
 
         {!loading && data.length > 0 && (
-          <div className="border border-[var(--color-border)] divide-y divide-[var(--color-border)] bg-[var(--color-surface)]">
+          <div className="border border-[var(--color-border)] divide-y divide-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl shadow-sm overflow-hidden">
             {data.map(c => (
               <Link
                 to={`/user/complaints/${c.id}`}
@@ -74,13 +74,13 @@ export default function MyComplaints() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-2">
-                      <span className="text-xs font-mono font-medium text-[var(--color-text-muted)] bg-[var(--color-bg-secondary)] px-2 py-0.5 border border-[var(--color-border)]">
+                      <span className="text-xs font-mono font-medium text-[var(--color-text-muted)] bg-[var(--color-bg-secondary)] px-2 py-0.5 border border-[var(--color-border)] rounded-lg">
                         {c.ticket_id}
                       </span>
-                      <span className="text-xs px-2 py-0.5 border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-primary)] font-medium">
+                      <span className="text-xs px-2 py-0.5 border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-primary)] font-medium rounded-lg">
                         {TYPE_MAP[c.type] || c.type}
                       </span>
-                      <span className="text-xs px-2 py-0.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)]">
+                      <span className="text-xs px-2 py-0.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] rounded-lg">
                         {CAT_MAP[c.category] || c.category}
                       </span>
                     </div>

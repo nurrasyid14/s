@@ -1,32 +1,28 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, MessageSquare, BarChart3, ListChecks,
-  Paperclip, Settings, LogOut, ChevronsLeft, ChevronsRight,
-  Sun, Moon, Globe, ScanSearch,
+  Paperclip, Settings, LogOut, Sun, Moon, Globe, ScanSearch,
+  HelpCircle
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useTheme } from '../../context/ThemeContext.jsx'
-import { useState } from 'react'
 
 const NAV_ITEMS = [
-  { key: 'dashboard', to: '/stakeholder', icon: LayoutDashboard },
-  { key: 'complaints', to: '/stakeholder/complaints', icon: MessageSquare },
-  { key: 'analytics', to: '/stakeholder/analytics', icon: BarChart3 },
-  { key: 'followups', to: '/stakeholder/followups', icon: ListChecks },
-  { key: 'evidence', to: '/stakeholder/evidence', icon: Paperclip },
-  { key: 'settings', to: '/stakeholder/settings', icon: Settings },
+  { key: 'dashboard', to: '/stakeholder', icon: LayoutDashboard, label: 'Overview' },
+  { key: 'complaints', to: '/stakeholder/complaints', icon: MessageSquare, label: 'Aduan' },
+  { key: 'analytics', to: '/stakeholder/analytics', icon: BarChart3, label: 'Analitik' },
+  { key: 'followups', to: '/stakeholder/followups', icon: ListChecks, label: 'Tindak Lanjut' },
+  { key: 'evidence', to: '/stakeholder/evidence', icon: Paperclip, label: 'Bukti' },
+  { key: 'settings', to: '/stakeholder/settings', icon: Settings, label: 'Pengaturan' },
 ]
-
-const itemCls =
-  'flex items-center gap-3 px-3 py-2.5 w-full text-sm font-medium transition-colors text-[var(--color-sidebar-text-muted)] hover:text-[var(--color-sidebar-text)] hover:bg-[var(--color-sidebar-hover)]'
 
 export default function Sidebar({ notifCount = 0 }) {
   const { t, i18n } = useTranslation()
   const { user, logout } = useAuth()
   const { dark, toggle } = useTheme()
   const location = useLocation()
-  const [collapsed, setCollapsed] = useState(false)
+  const navigate = useNavigate()
 
   function switchLang() {
     const next = i18n.language === 'id' ? 'en' : 'id'
@@ -34,92 +30,83 @@ export default function Sidebar({ notifCount = 0 }) {
     localStorage.setItem('suaralens_lang', next)
   }
 
+  function handleLogout() {
+    logout()
+    navigate('/signin')
+  }
+
   return (
     <aside
-      className={`h-screen sticky top-0 flex flex-col transition-all duration-300 z-30 bg-[var(--color-sidebar-bg)] border-r border-[var(--color-sidebar-border)] ${collapsed ? 'w-16' : 'w-60'}`}
+      className="hidden md:flex w-20 flex-shrink-0 flex-col items-center justify-between py-6 bg-[var(--color-surface)] border-r border-[var(--color-border)] z-30"
+      aria-label="Sidebar Navigasi Stakeholder"
     >
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-4 h-14 border-b border-[var(--color-sidebar-border)]">
-        <Link to="/" className="flex items-center gap-2 min-w-0">
-          <div className="w-7 h-7 flex items-center justify-center flex-shrink-0 bg-[var(--color-sidebar-active-bg)] text-[var(--color-sidebar-active-text)]">
-            <ScanSearch size={16} strokeWidth={2.2} />
-          </div>
-          {!collapsed && <span className="font-bold text-[var(--color-sidebar-text)] text-xl tracking-tight truncate font-sans">SuaraLens</span>}
-        </Link>
-        {!collapsed && (
-          <button
-            onClick={() => setCollapsed(true)}
-            className="ml-auto text-[var(--color-sidebar-text-muted)] hover:text-[var(--color-sidebar-text)] transition-colors p-1"
-            aria-label="Perkecil sidebar"
-          >
-            <ChevronsLeft size={16} />
-          </button>
-        )}
-      </div>
-      {collapsed && (
+      {/* Top: Light/Dark Mode Switcher */}
+      <div className="flex flex-col items-center gap-4">
         <button
-          onClick={() => setCollapsed(false)}
-          className="mx-auto mt-2 text-[var(--color-sidebar-text-muted)] hover:text-[var(--color-sidebar-text)] p-1"
-          aria-label="Perluas sidebar"
+          onClick={toggle}
+          className="w-11 h-11 rounded-2xl flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-bg-secondary)] transition-all shadow-2xs"
+          title={dark ? 'Mode Terang' : 'Mode Gelap'}
+          aria-label="Toggle tema tampilan"
         >
-          <ChevronsRight size={16} />
+          {dark ? <Sun size={20} className="text-amber-400" /> : <Moon size={20} />}
         </button>
-      )}
+      </div>
 
-      {/* Nav */}
-      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-        {NAV_ITEMS.map(({ key, to, icon: Icon }) => {
+      {/* Center: Icon Rail */}
+      <nav className="flex flex-col items-center gap-3 w-full px-3">
+        {NAV_ITEMS.map(({ key, to, icon: Icon, label }) => {
           const active = location.pathname === to || (to !== '/stakeholder' && location.pathname.startsWith(to))
           return (
             <Link
               key={key}
               to={to}
-              className={active
-                ? 'flex items-center gap-3 px-3 py-2.5 text-sm font-medium bg-[var(--color-sidebar-active-bg)] text-[var(--color-sidebar-active-text)]'
-                : itemCls}
+              title={label}
+              aria-label={label}
+              className={`relative w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${
+                active
+                  ? 'bg-[#0B1F3A] text-white shadow-md shadow-blue-950/20 dark:bg-[var(--color-primary)] dark:text-white'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)]'
+              }`}
             >
-              <Icon size={18} strokeWidth={1.8} className="flex-shrink-0" />
-              {!collapsed && <span>{t(`nav.${key}`)}</span>}
-              {!collapsed && key === 'followups' && notifCount > 0 && (
-                <span className="ml-auto bg-[var(--color-primary)] text-white text-xs font-bold w-5 h-5 flex items-center justify-center font-mono">
-                  {notifCount}
-                </span>
+              <Icon size={20} strokeWidth={active ? 2.2 : 1.9} />
+              {active && (
+                <span className="absolute -left-1 w-1.5 h-6 bg-[var(--color-primary)] rounded-r-full" />
+              )}
+              {key === 'followups' && notifCount > 0 && (
+                <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900" />
               )}
             </Link>
           )
         })}
       </nav>
 
-      {/* Bottom actions */}
-      <div className="px-2 py-3 space-y-1 border-t border-[var(--color-sidebar-border)]">
-        <button onClick={toggle} className={itemCls}>
-          {dark ? <Sun size={16} /> : <Moon size={16} />}
-          {!collapsed && <span>{dark ? 'Light Mode' : 'Dark Mode'}</span>}
+      {/* Bottom: Language, Help, Logout */}
+      <div className="flex flex-col items-center gap-3">
+        <button
+          onClick={switchLang}
+          className="w-10 h-10 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-bg-secondary)] text-xs font-mono font-bold"
+          title="Ganti Bahasa"
+          aria-label="Ganti Bahasa"
+        >
+          {i18n.language.toUpperCase()}
         </button>
-        <button onClick={switchLang} className={itemCls}>
-          <Globe size={16} />
-          {!collapsed && <span>{i18n.language === 'id' ? 'English' : 'Bahasa'}</span>}
+        <button
+          onClick={() => alert('Pusat Bantuan Stakeholder Unit: Konsultasikan SOP penanganan tiket kepada Administrator Sentral.')}
+          className="w-10 h-10 rounded-xl flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-colors"
+          title="Bantuan Layanan"
+          aria-label="Bantuan Layanan"
+        >
+          <HelpCircle size={19} />
         </button>
-        <button onClick={logout} className={`${itemCls} !text-[var(--color-status-danger)]`}>
-          <LogOut size={16} />
-          {!collapsed && <span>{t('nav.logout')}</span>}
+        <button
+          onClick={handleLogout}
+          className="w-10 h-10 rounded-xl flex items-center justify-center text-[var(--color-status-danger)] hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+          title="Keluar dari Portal"
+          aria-label="Keluar dari Portal"
+        >
+          <LogOut size={19} />
         </button>
       </div>
-
-      {/* User info */}
-      {!collapsed && user && (
-        <div className="px-3 py-3 border-t border-[var(--color-sidebar-border)]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 bg-[var(--color-primary)] text-white font-bold text-xs font-mono">
-              {user.name?.charAt(0) || 'S'}
-            </div>
-            <div className="min-w-0">
-              <div className="text-[var(--color-sidebar-text)] text-xs font-semibold truncate">{user.name}</div>
-              <div className="text-[var(--color-sidebar-text-muted)] text-xs truncate">{user.position || user.email}</div>
-            </div>
-          </div>
-        </div>
-      )}
     </aside>
   )
 }

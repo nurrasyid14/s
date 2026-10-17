@@ -1,0 +1,198 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%" fill="none">
+  <defs>
+    <linearGradient id="heroBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B1F3A" />
+      <stop offset="50%" stop-color="#142C4E" />
+      <stop offset="100%" stop-color="#1D4ED8" />
+    </linearGradient>
+    <linearGradient id="blueCardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1D4ED8" />
+      <stop offset="100%" stop-color="#1E40AF" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#2563EB" />
+    </linearGradient>
+    <linearGradient id="screenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#F1F5F9" />
+    </linearGradient>
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0B1F3A" flood-opacity="0.25" />
+    </filter>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#0F172A" flood-opacity="0.15" />
+    </filter>
+  </defs>
+
+  <!-- Background decorative rings & network -->
+  <g opacity="0.35">
+    <circle cx="400" cy="300" r="260" stroke="#38BDF8" stroke-width="1.5" stroke-dasharray="6 6" />
+    <circle cx="400" cy="300" r="190" stroke="#60A5FA" stroke-width="1" />
+    <circle cx="400" cy="300" r="110" stroke="#93C5FD" stroke-width="1" stroke-dasharray="4 4" />
+    <line x1="140" y1="300" x2="660" y2="300" stroke="#38BDF8" stroke-width="1" stroke-dasharray="3 3" opacity="0.5" />
+    <line x1="400" y1="80" x2="400" y2="520" stroke="#38BDF8" stroke-width="1" stroke-dasharray="3 3" opacity="0.5" />
+  </g>
+
+  <!-- Campus Building Backdrop (Symbol of EEPIS Institution) -->
+  <g opacity="0.4" transform="translate(230, 90)">
+    <polygon points="170,0 210,35 130,35" fill="#38BDF8" opacity="0.8" />
+    <rect x="155" y="35" width="30" height="25" fill="#1D4ED8" />
+    <rect x="60" y="60" width="220" height="85" rx="6" fill="#0B1F3A" />
+    <!-- Pillars -->
+    <rect x="85" y="70" width="14" height="65" rx="3" fill="#60A5FA" opacity="0.7" />
+    <rect x="125" y="70" width="14" height="65" rx="3" fill="#60A5FA" opacity="0.7" />
+    <rect x="165" y="70" width="14" height="65" rx="3" fill="#60A5FA" opacity="0.7" />
+    <rect x="205" y="70" width="14" height="65" rx="3" fill="#60A5FA" opacity="0.7" />
+    <rect x="245" y="70" width="14" height="65" rx="3" fill="#60A5FA" opacity="0.7" />
+    <!-- Dome Base -->
+    <path d="M140,60 Q170,30 200,60 Z" fill="#2563EB" />
+  </g>
+
+  <!-- Main Floating Dashboard Display Frame (Finexy Inspired) -->
+  <g filter="url(#softGlow)" transform="translate(130, 140)">
+    <!-- Main Frame Body -->
+    <rect x="0" y="0" width="540" height="340" rx="24" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2" />
+    
+    <!-- Top Window Bar -->
+    <path d="M0,24 Q0,0 24,0 L516,0 Q540,0 540,24 L540,48 L0,48 Z" fill="#F8FAFC" />
+    <circle cx="28" cy="24" r="5" fill="#EF4444" />
+    <circle cx="44" cy="24" r="5" fill="#F59E0B" />
+    <circle cx="60" cy="24" r="5" fill="#10B981" />
+    
+    <!-- Header Pill Nav in Window -->
+    <rect x="180" y="14" width="180" height="22" rx="11" fill="#E2E8F0" opacity="0.7" />
+    <rect x="182" y="16" width="56" height="18" rx="9" fill="#0B1F3A" />
+    <text x="210" y="28" font-family="Geist, sans-serif" font-size="9" font-weight="600" fill="#FFFFFF" text-anchor="middle">Overview</text>
+    <text x="265" y="28" font-family="Geist, sans-serif" font-size="9" font-weight="500" fill="#64748B" text-anchor="middle">Aktivitas</text>
+    <text x="325" y="28" font-family="Geist, sans-serif" font-size="9" font-weight="500" fill="#64748B" text-anchor="middle">Disposisi</text>
+
+    <!-- Mini Left Rail in Frame -->
+    <g transform="translate(16, 62)">
+      <rect x="0" y="0" width="34" height="260" rx="10" fill="#F1F5F9" />
+      <circle cx="17" cy="20" r="11" fill="#1D4ED8" />
+      <path d="M12,17 L22,17 M12,20 L22,20 M12,23 L18,23" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" />
+      <circle cx="17" cy="52" r="9" fill="#E2E8F0" />
+      <circle cx="17" cy="80" r="9" fill="#E2E8F0" />
+      <circle cx="17" cy="108" r="9" fill="#E2E8F0" />
+      <circle cx="17" cy="236" r="8" fill="#CBD5E1" />
+    </g>
+
+    <!-- Main Content Inside Frame -->
+    <!-- Welcome Text & Subtitle -->
+    <text x="66" y="80" font-family="Geist, sans-serif" font-size="16" font-weight="700" fill="#0B1F3A">Dashboard SuaraLens</text>
+    <text x="66" y="94" font-family="Geist, sans-serif" font-size="9" font-weight="400" fill="#64748B">Sistem aspirasi kampus terpadu dan akuntabel berbasis SLA</text>
+
+    <!-- Left Card: Total Aspirasi -->
+    <g transform="translate(66, 108)">
+      <rect x="0" y="0" width="160" height="130" rx="14" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="14" y="22" font-family="Geist, sans-serif" font-size="10" font-weight="600" fill="#64748B">Total Aspirasi Masuk</text>
+      <text x="14" y="52" font-family="Geist Mono, monospace" font-size="24" font-weight="700" fill="#0B1F3A">1.284</text>
+      <!-- Trend Badge -->
+      <rect x="14" y="62" width="80" height="16" rx="8" fill="#DCFCE7" />
+      <text x="54" y="73" font-family="Geist, sans-serif" font-size="8" font-weight="600" fill="#15803D" text-anchor="middle">↑ 12% bulan ini</text>
+      <!-- Action Pills -->
+      <rect x="14" y="90" width="62" height="24" rx="8" fill="#0B1F3A" />
+      <text x="45" y="105" font-family="Geist, sans-serif" font-size="9" font-weight="600" fill="#FFFFFF" text-anchor="middle">Disposisi</text>
+      <rect x="82" y="90" width="62" height="24" rx="8" fill="#FFFFFF" stroke="#CBD5E1" />
+      <text x="113" y="105" font-family="Geist, sans-serif" font-size="9" font-weight="600" fill="#334155" text-anchor="middle">Ekspor</text>
+    </g>
+
+    <!-- Center Highlight Stat Card (Bold Blue, Finexy Inspired) -->
+    <g transform="translate(236, 108)" filter="url(#cardShadow)">
+      <rect x="0" y="0" width="135" height="130" rx="14" fill="url(#blueCardGrad)" />
+      <!-- Decorative circle inside bold card -->
+      <circle cx="115" cy="20" r="28" fill="#FFFFFF" opacity="0.08" />
+      <text x="14" y="22" font-family="Geist, sans-serif" font-size="10" font-weight="600" fill="#93C5FD">Perlu Verifikasi</text>
+      <text x="14" y="56" font-family="Geist Mono, monospace" font-size="28" font-weight="700" fill="#FFFFFF">18</text>
+      <rect x="14" y="68" width="86" height="16" rx="8" fill="#FFFFFF" opacity="0.2" />
+      <text x="57" y="79" font-family="Geist, sans-serif" font-size="8.5" font-weight="600" fill="#FFFFFF" text-anchor="middle">Siap Disposisi</text>
+      <rect x="14" y="96" width="107" height="18" rx="6" fill="#172554" opacity="0.5" />
+      <text x="67" y="108" font-family="Geist, sans-serif" font-size="8" font-weight="500" fill="#BFDBFE" text-anchor="middle">SLA Tanggap &lt; 24 Jam</text>
+    </g>
+
+    <!-- Right Chart Card -->
+    <g transform="translate(381, 108)">
+      <rect x="0" y="0" width="143" height="130" rx="14" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="12" y="20" font-family="Geist, sans-serif" font-size="10" font-weight="600" fill="#0B1F3A">Tren Penanganan</text>
+      <circle cx="95" cy="17" r="3.5" fill="#1D4ED8" />
+      <circle cx="118" cy="17" r="3.5" fill="#0B1F3A" />
+      <!-- Bars representation -->
+      <g transform="translate(12, 38)">
+        <!-- Bar 1 -->
+        <rect x="5" y="45" width="10" height="35" rx="3" fill="#0B1F3A" />
+        <rect x="5" y="25" width="10" height="18" rx="3" fill="#1D4ED8" />
+        <!-- Bar 2 -->
+        <rect x="23" y="35" width="10" height="45" rx="3" fill="#0B1F3A" />
+        <rect x="23" y="12" width="10" height="21" rx="3" fill="#1D4ED8" />
+        <!-- Bar 3 -->
+        <rect x="41" y="40" width="10" height="40" rx="3" fill="#0B1F3A" />
+        <rect x="41" y="18" width="10" height="20" rx="3" fill="#1D4ED8" />
+        <!-- Bar 4 -->
+        <rect x="59" y="30" width="10" height="50" rx="3" fill="#0B1F3A" />
+        <rect x="59" y="5" width="10" height="23" rx="3" fill="#1D4ED8" />
+        <!-- Bar 5 -->
+        <rect x="77" y="25" width="10" height="55" rx="3" fill="#0B1F3A" />
+        <rect x="77" y="2" width="10" height="21" rx="3" fill="#1D4ED8" />
+        <!-- Bar 6 -->
+        <rect x="95" y="35" width="10" height="45" rx="3" fill="#0B1F3A" />
+        <rect x="95" y="16" width="10" height="17" rx="3" fill="#1D4ED8" />
+        <!-- Baseline -->
+        <line x1="0" y1="82" x2="118" y2="82" stroke="#CBD5E1" stroke-width="1" />
+      </g>
+    </g>
+
+    <!-- Bottom Mini Table Row -->
+    <g transform="translate(66, 250)">
+      <rect x="0" y="0" width="458" height="68" rx="12" fill="#FFFFFF" stroke="#E2E8F0" />
+      <!-- Row 1 -->
+      <rect x="12" y="10" width="18" height="18" rx="4" fill="#DBEAFE" />
+      <text x="21" y="22" font-family="Geist, sans-serif" font-size="9" font-weight="700" fill="#1D4ED8" text-anchor="middle">#1</text>
+      <text x="38" y="23" font-family="Geist, sans-serif" font-size="10" font-weight="600" fill="#0B1F3A">SL-0247 · Pemeliharaan AC Lab Gedung D</text>
+      <rect x="315" y="11" width="55" height="16" rx="8" fill="#DCFCE7" />
+      <text x="342" y="22" font-family="Geist, sans-serif" font-size="8" font-weight="600" fill="#15803D" text-anchor="middle">Selesai</text>
+      <text x="420" y="22" font-family="Geist Mono, monospace" font-size="9" fill="#64748B" text-anchor="end">Hari ini, 10:15</text>
+      <!-- Separator -->
+      <line x1="12" y1="36" x2="446" y2="36" stroke="#F1F5F9" />
+      <!-- Row 2 -->
+      <rect x="12" y="42" width="18" height="18" rx="4" fill="#FEF3C7" />
+      <text x="21" y="54" font-family="Geist, sans-serif" font-size="9" font-weight="700" fill="#B45309" text-anchor="middle">#2</text>
+      <text x="38" y="55" font-family="Geist, sans-serif" font-size="10" font-weight="600" fill="#0B1F3A">SL-0248 · Peningkatan Bandwidth Wi-Fi Perpustakaan</text>
+      <rect x="315" y="43" width="55" height="16" rx="8" fill="#EFF6FF" />
+      <text x="342" y="54" font-family="Geist, sans-serif" font-size="8" font-weight="600" fill="#1D4ED8" text-anchor="middle">Diproses</text>
+      <text x="420" y="54" font-family="Geist Mono, monospace" font-size="9" fill="#64748B" text-anchor="end">Hari ini, 09:30</text>
+    </g>
+  </g>
+
+  <!-- Floating Badge 1: SLA Resolution Shield (Top Right) -->
+  <g filter="url(#cardShadow)" transform="translate(610, 110)">
+    <rect x="0" y="0" width="145" height="68" rx="16" fill="#FFFFFF" stroke="#E2E8F0" />
+    <circle cx="28" cy="34" r="16" fill="#DCFCE7" />
+    <path d="M22,34 L26,38 L34,29" stroke="#15803D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="52" y="28" font-family="Geist, sans-serif" font-size="10" font-weight="700" fill="#0B1F3A">SLA Tercapai</text>
+    <text x="52" y="43" font-family="Geist, sans-serif" font-size="14" font-weight="800" fill="#15803D">96.4%</text>
+    <text x="52" y="55" font-family="Geist, sans-serif" font-size="8" fill="#64748B">Standar &lt; 3 Hari</text>
+  </g>
+
+  <!-- Floating Badge 2: Real-time NLP Triage (Bottom Left) -->
+  <g filter="url(#cardShadow)" transform="translate(45, 410)">
+    <rect x="0" y="0" width="165" height="74" rx="16" fill="#0B1F3A" />
+    <rect x="14" y="16" width="32" height="32" rx="8" fill="#1D4ED8" />
+    <circle cx="30" cy="32" r="7" stroke="#FFFFFF" stroke-width="2" />
+    <line x1="35" y1="37" x2="41" y2="43" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" />
+    <text x="54" y="30" font-family="Geist, sans-serif" font-size="10" font-weight="700" fill="#FFFFFF">Analisis NLP AI</text>
+    <text x="54" y="44" font-family="Geist, sans-serif" font-size="9" fill="#93C5FD">Disposisi Otomatis</text>
+    <text x="54" y="56" font-family="Geist Mono, monospace" font-size="8" font-weight="600" fill="#38BDF8">Akurasi 94%</text>
+  </g>
+
+  <!-- Floating Badge 3: 14 Campus Units (Bottom Right) -->
+  <g filter="url(#cardShadow)" transform="translate(595, 390)">
+    <rect x="0" y="0" width="155" height="70" rx="16" fill="#FFFFFF" stroke="#E2E8F0" />
+    <rect x="14" y="16" width="30" height="30" rx="8" fill="#F1F5F9" />
+    <path d="M22,34 L29,22 L36,34 Z" fill="#1D4ED8" />
+    <rect x="24" y="34" width="10" height="6" fill="#0B1F3A" />
+    <text x="52" y="30" font-family="Geist, sans-serif" font-size="10" font-weight="700" fill="#0B1F3A">14 Unit Kerja</text>
+    <text x="52" y="44" font-family="Geist, sans-serif" font-size="9" fill="#64748B">Terhubung Langsung</text>
+    <text x="52" y="56" font-family="Geist, sans-serif" font-size="8" font-weight="600" fill="#15803D">● Semua Online</text>
+  </g>
+</svg>

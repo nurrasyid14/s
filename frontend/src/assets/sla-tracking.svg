@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="100%" height="100%" fill="none">
+  <defs>
+    <linearGradient id="slaProgressGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1D4ED8" />
+      <stop offset="60%" stop-color="#3B82F6" />
+      <stop offset="100%" stop-color="#10B981" />
+    </linearGradient>
+  </defs>
+
+  <rect width="400" height="300" rx="20" fill="#F8FAFC" stroke="#E2E8F0" />
+  
+  <!-- SLA Target Header Card -->
+  <g transform="translate(30, 30)">
+    <rect x="0" y="0" width="340" height="70" rx="14" fill="#FFFFFF" stroke="#E2E8F0" />
+    <circle cx="28" cy="35" r="14" fill="#DCFCE7" />
+    <path d="M22,35 L26,39 L34,31" stroke="#15803D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="52" y="30" font-family="Geist, sans-serif" font-size="11" font-weight="700" fill="#0B1F3A">Standar Respons SLA Kampus</text>
+    <text x="52" y="46" font-family="Geist, sans-serif" font-size="9.5" fill="#64748B">Rata-rata 1.4 hari kerja (Batas maksimal: 3.0 hari)</text>
+    <rect x="260" y="22" width="66" height="26" rx="13" fill="#0B1F3A" />
+    <text x="293" y="39" font-family="Geist Mono, monospace" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">96.4%</text>
+  </g>
+
+  <!-- Interactive Stepper Timeline -->
+  <g transform="translate(35, 130)">
+    <!-- Connecting Line -->
+    <line x1="25" y1="20" x2="305" y2="20" stroke="#E2E8F0" stroke-width="4" stroke-linecap="round" />
+    <line x1="25" y1="20" x2="215" y2="20" stroke="url(#slaProgressGrad)" stroke-width="4" stroke-linecap="round" />
+
+    <!-- Step 1: Diterima -->
+    <circle cx="25" cy="20" r="14" fill="#1D4ED8" />
+    <circle cx="25" cy="20" r="6" fill="#FFFFFF" />
+    <text x="25" y="52" font-family="Geist, sans-serif" font-size="9" font-weight="700" fill="#0B1F3A" text-anchor="middle">1. Diterima</text>
+    <text x="25" y="65" font-family="Geist Mono, monospace" font-size="8" fill="#1D4ED8" text-anchor="middle">&lt; 1 Jam</text>
+
+    <!-- Step 2: Diverifikasi -->
+    <circle cx="120" cy="20" r="14" fill="#1D4ED8" />
+    <circle cx="120" cy="20" r="6" fill="#FFFFFF" />
+    <text x="120" y="52" font-family="Geist, sans-serif" font-size="9" font-weight="700" fill="#0B1F3A" text-anchor="middle">2. Verifikasi</text>
+    <text x="120" y="65" font-family="Geist Mono, monospace" font-size="8" fill="#1D4ED8" text-anchor="middle">Hari ke-1</text>
+
+    <!-- Step 3: Ditindaklanjuti -->
+    <circle cx="215" cy="20" r="14" fill="#10B981" />
+    <path d="M210,20 L213,23 L220,17" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="215" y="52" font-family="Geist, sans-serif" font-size="9" font-weight="700" fill="#10B981" text-anchor="middle">3. Tindakan</text>
+    <text x="215" y="65" font-family="Geist Mono, monospace" font-size="8" fill="#10B981" text-anchor="middle">Hari ke-2</text>
+
+    <!-- Step 4: Selesai -->
+    <circle cx="305" cy="20" r="12" fill="#E2E8F0" />
+    <circle cx="305" cy="20" r="5" fill="#94A3B8" />
+    <text x="305" y="52" font-family="Geist, sans-serif" font-size="9" font-weight="600" fill="#64748B" text-anchor="middle">4. Evaluasi</text>
+    <text x="305" y="65" font-family="Geist Mono, monospace" font-size="8" fill="#94A3B8" text-anchor="middle">Rating User</text>
+  </g>
+
+  <!-- SLA Progress bar -->
+  <g transform="translate(45, 230)">
+    <rect x="0" y="0" width="310" height="12" rx="6" fill="#E2E8F0" />
+    <rect x="0" y="0" width="260" height="12" rx="6" fill="#1D4ED8" />
+    <text x="0" y="32" font-family="Geist, sans-serif" font-size="9" font-weight="600" fill="#64748B">Progres Penanganan: 84% tepat waktu</text>
+    <text x="310" y="32" font-family="Geist Mono, monospace" font-size="9" font-weight="700" fill="#15803D" text-anchor="end">SLA Terpenuhi</text>
+  </g>
+</svg>

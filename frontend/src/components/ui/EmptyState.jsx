@@ -7,8 +7,8 @@ export default function EmptyState({ icon: Icon, title, description, tone = 'neu
         tone === 'success' ? 'text-[var(--color-status-success)]' : 'text-[var(--color-text-muted)]'
 
     return (
-        <div role="status" className="card-elevated border border-[var(--color-border)] flex flex-col items-center px-4 py-14 text-center bg-[var(--color-surface)]">
-            <div className="mb-3 flex h-14 w-14 items-center justify-center border border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+        <div role="status" className="card-elevated rounded-2xl border border-[var(--color-border)] flex flex-col items-center px-4 py-14 text-center bg-[var(--color-surface)] shadow-xs">
+            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-2xs">
                 <Icon size={26} className={iconColor} aria-hidden="true" />
             </div>
             <div className="font-semibold text-[var(--color-text)] tracking-tight">{title}</div>
