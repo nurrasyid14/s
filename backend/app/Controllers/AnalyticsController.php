@@ -29,11 +29,14 @@ class AnalyticsController extends ResourceController
         $negative = 0;
         $highPending = 0;
         foreach ($analyses as $row) {
-            if (strtolower((string) ($row['sentiment'] ?? '')) === 'negative') {
+            $sent = strtolower((string) ($row['sentiment'] ?? ''));
+            if (in_array($sent, ['negative', 'negatif'], true)) {
                 $negative++;
             }
+            $urgency = strtolower((string) ($row['urgency_label'] ?? ''));
+            $score = (float) ($row['urgency_score'] ?? 0);
             if (
-                in_array(strtolower((string) ($row['urgency_label'] ?? '')), ['high', 'critical'], true)
+                (in_array($urgency, ['high', 'critical', 'tinggi', 'kritis'], true) || $score >= 0.7)
                 && !in_array(strtolower((string) ($row['complaint_status'] ?? '')), ['resolved', 'done'], true)
             ) {
                 $highPending++;
@@ -101,9 +104,9 @@ class AnalyticsController extends ResourceController
     public function distribution()
     {
         $rows = \Config\Database::connect()->table('complaints c')
-            ->select("COALESCE(u.user_role, u.role) AS role, COUNT(*) AS count", false)
+            ->select("COALESCE(u.user_role, u.role, 'Mahasiswa') AS role, COUNT(*) AS count", false)
             ->join('users u', 'u.id = c.user_id', 'left')
-            ->groupBy(['u.user_role', 'u.role'])
+            ->groupBy("COALESCE(u.user_role, u.role, 'Mahasiswa')", false)
             ->get()->getResultArray();
 
         $total = array_sum(array_map(static fn ($r) => (int) $r['count'], $rows));
@@ -124,8 +127,14 @@ class AnalyticsController extends ResourceController
     {
         $counts = ['negative' => 0, 'neutral' => 0, 'positive' => 0];
         foreach ($this->latestAnalysisRows() as $row) {
-            $label = strtolower((string) ($row['sentiment'] ?? ''));
-            if (isset($counts[$label])) {
+            $raw = strtolower((string) ($row['sentiment'] ?? ''));
+            $label = match ($raw) {
+                'negative', 'negatif' => 'negative',
+                'neutral', 'netral'   => 'neutral',
+                'positive', 'positif' => 'positive',
+                default               => null,
+            };
+            if ($label !== null && isset($counts[$label])) {
                 $counts[$label]++;
             }
         }
@@ -236,22 +245,35 @@ class AnalyticsController extends ResourceController
     {
         $data = [];
         foreach ($this->latestAnalysisRows() as $row) {
+            $urgency = strtolower((string) ($row['urgency_label'] ?? ''));
+            $score = (float) ($row['urgency_score'] ?? 0);
+            $isUrgent = in_array($urgency, ['high', 'critical', 'tinggi', 'kritis'], true) || $score >= 0.7;
+
             if (
-                !in_array(strtolower((string) ($row['urgency_label'] ?? '')), ['high', 'critical'], true)
+                !$isUrgent
                 || in_array(strtolower((string) ($row['complaint_status'] ?? '')), ['resolved', 'done'], true)
             ) {
                 continue;
             }
 
+            $rawStatus = strtolower((string) ($row['complaint_status'] ?? ''));
+            $status = match ($rawStatus) {
+                'submitted', 'new' => 'received',
+                'process'          => 'in_progress',
+                'done'             => 'resolved',
+                'escalate'         => 'dispatched',
+                default            => $rawStatus ?: 'received',
+            };
+
             $data[] = [
                 'id'            => (int) $row['complaint_id'],
                 'ticket_id'     => $row['ticket_id'],
                 'description'   => $row['description'],
-                'urgency_score' => round((float) ($row['urgency_score'] ?? 0) * 10, 2),
+                'urgency_score' => round($score * 10, 2),
                 'sender_name'   => !empty($row['is_anonymous']) ? null : ($row['sender_name'] ?? null),
                 'sender_role'   => $row['sender_role'] ?? null,
                 'is_anonymous'  => (bool) $row['is_anonymous'],
-                'status'        => $row['complaint_status'],
+                'status'        => $status,
             ];
         }
 

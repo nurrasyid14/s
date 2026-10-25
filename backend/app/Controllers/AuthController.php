@@ -17,8 +17,8 @@ class AuthController extends ResourceController
     public function registerUser()
     {
         try {
-            $data = $this->request->getJSON(true);
-            if (!is_array($data)) {
+            $data = $this->getRequestData();
+            if (empty($data)) {
                 return $this->respond([
                     'status'  => false,
                     'message' => 'Request body harus berupa JSON yang valid.',
@@ -104,8 +104,8 @@ class AuthController extends ResourceController
     public function registerStakeholder()
     {
         try {
-            $data = $this->request->getJSON(true);
-            if (!is_array($data)) {
+            $data = $this->getRequestData();
+            if (empty($data)) {
                 return $this->respond([
                     'status'  => false,
                     'message' => 'Request body harus berupa JSON yang valid.',
@@ -189,8 +189,8 @@ class AuthController extends ResourceController
     public function login()
     {
         try {
-            $data = $this->request->getJSON(true);
-            if (!is_array($data)) {
+            $data = $this->getRequestData();
+            if (empty($data)) {
                 return $this->respond([
                     'status'  => false,
                     'message' => 'Request body harus berupa JSON yang valid.',
@@ -266,5 +266,28 @@ class AuthController extends ResourceController
             'status'  => true,
             'message' => 'Logout berhasil.',
         ]);
+    }
+
+    private function getRequestData(): array
+    {
+        try {
+            $json = $this->request->getJSON(true);
+            if (is_array($json)) {
+                return $json;
+            }
+        } catch (\Throwable $e) {
+        }
+        $post = $this->request->getPost();
+        if (is_array($post) && !empty($post)) {
+            return $post;
+        }
+        $raw = $this->request->getBody();
+        if (!empty($raw)) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+        }
+        return [];
     }
 }

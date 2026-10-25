@@ -107,14 +107,96 @@ class ComplaintController extends ResourceController
             ->where('complaint_replies.complaint_id', (int) $id)
             ->orderBy('complaint_replies.created_at', 'ASC')
             ->findAll();
-        $complaint['followups'] = array_map(static fn ($reply) => [
-            'id'         => (int) $reply['id'],
-            'by'         => $reply['by'] ?? 'Stakeholder',
-            'note'       => $reply['reply'],
-            'status'     => 'process',
-            'created_at' => $reply['created_at'],
-        ], $replies);
-        $complaint['attachments'] = [];
+
+        $verification = null;
+        $disposition = null;
+        $unitAnswer = null;
+        $feedback = null;
+        $followups = [];
+
+        foreach ($replies as $reply) {
+            $text = (string) $reply['reply'];
+            $byName = $reply['by'] ?? 'Petugas';
+            $createdAt = $reply['created_at'];
+
+            if (str_starts_with($text, '[Verifikasi ')) {
+                $isApproved = str_starts_with($text, '[Verifikasi Disetujui]');
+                $note = trim(preg_replace('/^\[Verifikasi [^\]]+\]\s*/', '', $text));
+                $verification = [
+                    'verified_by' => $byName ?: 'Admin Sentral PENS',
+                    'verified_at' => $createdAt,
+                    'note'        => $note,
+                    'approved'    => $isApproved,
+                ];
+            } elseif (str_starts_with($text, '[Disposisi ke ')) {
+                preg_match('/^\[Disposisi ke ([^\]]+)\](?:\s*PIC:\s*([^.]+)\.)?\s*(.*)$/s', $text, $m);
+                $unit = !empty($m[1]) ? trim($m[1]) : ($complaint['assigned_unit'] ?? 'Unit Terkait');
+                $pic = !empty($m[2]) ? trim($m[2]) : "Koordinator {$unit}";
+                $note = !empty($m[3]) ? trim($m[3]) : 'Mohon segera ditindaklanjuti sesuai SOP unit.';
+                $disposition = [
+                    'target_unit'      => $unit,
+                    'assigned_pic'     => $pic,
+                    'disposition_note' => $note,
+                    'disposition_by'   => $byName ?: 'Admin Sentral PENS',
+                    'disposition_at'   => $createdAt,
+                    'target_sla_date'  => date('c', strtotime($createdAt . ' + 3 days')),
+                ];
+            } elseif (str_starts_with($text, '[Jawaban Resmi Unit]')) {
+                preg_match('/^\[Jawaban Resmi Unit\](?:\s*Oleh:\s*([^.]+)\.)?\s*(.*)$/s', $text, $m);
+                $answeredBy = !empty($m[1]) ? trim($m[1]) : $byName;
+                $ans = !empty($m[2]) ? trim($m[2]) : $text;
+                $unitAnswer = [
+                    'answer'      => $ans,
+                    'answered_by' => $answeredBy,
+                    'answered_at' => $createdAt,
+                    'attachments' => [],
+                ];
+            } elseif (str_starts_with($text, '[Feedback Stakeholder]')) {
+                preg_match('/Rating:\s*([0-9]+)\/5\.(?:\s*Catatan:\s*(.*))?$/s', $text, $m);
+                $feedback = [
+                    'rating'       => !empty($m[1]) ? (int) $m[1] : 5,
+                    'comment'      => !empty($m[2]) ? trim($m[2]) : 'Aduan diselesaikan dengan puas.',
+                    'submitted_at' => $createdAt,
+                ];
+            }
+
+            $followups[] = [
+                'id'         => (int) $reply['id'],
+                'by'         => $byName,
+                'note'       => $text,
+                'status'     => 'process',
+                'created_at' => $createdAt,
+            ];
+        }
+
+        // Fallbacks based on complaint status if not found in replies
+        $statusKey = strtolower((string) ($complaint['status'] ?? ''));
+        if (!$disposition && in_array($statusKey, ['dispatched', 'in_progress', 'action_taken', 'answered', 'resolved'], true)) {
+            $targetUnit = $complaint['assigned_unit'] ?? $complaint['unit'] ?? 'Unit Terkait';
+            $disposition = [
+                'target_unit'      => $targetUnit,
+                'assigned_pic'     => "Koordinator {$targetUnit}",
+                'disposition_note' => 'Disposisi penanganan unit oleh Admin Sentral.',
+                'disposition_by'   => 'Admin Sentral PENS',
+                'disposition_at'   => $complaint['updated_at'] ?? $complaint['created_at'],
+                'target_sla_date'  => date('c', strtotime(($complaint['created_at'] ?? 'now') . ' + 3 days')),
+            ];
+        }
+        if (!$verification && in_array($statusKey, ['verified', 'dispatched', 'in_progress', 'action_taken', 'answered', 'resolved'], true)) {
+            $verification = [
+                'verified_by' => 'Admin Sentral PENS',
+                'verified_at' => $complaint['updated_at'] ?? $complaint['created_at'],
+                'note'        => 'Aduan telah diverifikasi validitas substansinya oleh Admin Sentral.',
+                'approved'    => true,
+            ];
+        }
+
+        $complaint['verification'] = $verification;
+        $complaint['disposition']  = $disposition;
+        $complaint['unit_answer']  = $unitAnswer;
+        $complaint['feedback']     = $feedback;
+        $complaint['followups']    = $followups;
+        $complaint['attachments']  = [];
 
         return $this->respond($this->presentComplaint($complaint));
     }

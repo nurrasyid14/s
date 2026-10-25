@@ -26,6 +26,7 @@ class DashboardController extends ResourceController
                 'ca.urgency_label',
                 'u.user_role AS sender_role',
                 'c.assigned_unit AS unit',
+                'c.assigned_unit AS target_unit',
             ])
             ->select('(ca.urgency_score * 10) AS urgency_score', false)
             ->select('CASE WHEN c.is_anonymous THEN NULL ELSE u.name END AS sender_name', false)
@@ -47,6 +48,17 @@ class DashboardController extends ResourceController
                 $item['sender_name'] = null;
                 unset($item['user_id']);
             }
+            $item['target_unit'] = $item['assigned_unit'] ?? $item['unit'] ?? null;
+            $item['unit'] = $item['target_unit'];
+
+            $raw = strtolower((string) ($item['status'] ?? ''));
+            $item['status'] = match ($raw) {
+                'submitted', 'new' => 'received',
+                'process'          => 'in_progress',
+                'done'             => 'resolved',
+                'escalate'         => 'dispatched',
+                default            => $raw ?: 'received',
+            };
             return $item;
         }, $items);
 
