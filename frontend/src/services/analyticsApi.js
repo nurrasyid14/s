@@ -115,3 +115,21 @@ export async function getUrgentComplaints() {
   const res = await api.get('/analytics/urgent')
   return res.data
 }
+
+export async function getExecutiveAISummary() {
+  if (USE_MOCK) {
+    await delay(500)
+    return {
+      summary: 'Dalam periode ini, terdapat 247 aduan masuk dengan tingkat kepatuhan SLA 78%. Sarana Prasarana dan Layanan Umum mencatat beban tertinggi (89 tiket), didominasi isu fasilitas fisik. Sentimen negatif sebesar 34%, dengan 8 aduan berurgensi tinggi menunggu tindak lanjut prioritas.',
+      grounding: {
+        numbers_in_summary: ['247', '78%', '89', '34%', '8'],
+        grounding_note: 'Semua angka dalam ringkasan terverifikasi 100% dari data agregat. ✓'
+      },
+      model_used: 'qwen3:8b',
+      generated_at: new Date().toISOString(),
+      is_fallback: false,
+    }
+  }
+  const res = await api.get('/analytics/ai-summary')
+  return res.data?.data || null
+}

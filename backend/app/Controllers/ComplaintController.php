@@ -307,26 +307,34 @@ class ComplaintController extends ResourceController
             $urgencyScore = $isUrgent ? 0.85 : ($isMod ? 0.65 : 0.45);
             $urgencyLabel = $isUrgent ? 'Tinggi' : ($isMod ? 'Sedang' : 'Rendah');
 
-            // Deteksi kategori otomatis dari kata kunci
+            // Deteksi 14 unit kerja resmi PENS secara otomatis dari kata kunci
             $catLabel = null;
-            if (preg_match('/(ac|ruang|kelas|lab|gedung|kursi|meja|toilet|lampu|pintu|atap|bocor|fasilitas)/i', $lower)) {
-                $catLabel = 'Fasilitas';
-            } elseif (preg_match('/(wifi|internet|jaringan|komputer|server|sia|website|login|akun|email)/i', $lower)) {
-                $catLabel = 'Sarana IT';
-            } elseif (preg_match('/(nilai|dosen|kuliah|jadwal|skripsi|krs|ujian|praktikum|akademik)/i', $lower)) {
+            if (preg_match('/(wifi|internet|jaringan|komputer|server|sia|siakad|website|login|akun|email|portal)/i', $lower)) {
+                $catLabel = 'TIK/Sistem Informasi';
+            } elseif (preg_match('/(lab|praktikum|alat lab|komputer lab|teknisi|prodi|jurusan)/i', $lower)) {
+                $catLabel = 'Laboratorium/Jurusan';
+            } elseif (preg_match('/(ac|ruang|kelas|gedung|kursi|meja|toilet|lampu|pintu|atap|bocor|fasilitas|listrik|air|kebersihan|sampah)/i', $lower)) {
+                $catLabel = 'Sarana Prasarana dan Layanan Umum';
+            } elseif (preg_match('/(nilai|dosen|kuliah|jadwal|skripsi|krs|ujian|kurikulum|akademik|yudisium)/i', $lower)) {
                 $catLabel = 'Akademik';
-            } elseif (preg_match('/(ukt|biaya|bayar|keuangan|tagihan|dana)/i', $lower)) {
+            } elseif (preg_match('/(ukt|biaya|bayar|keuangan|tagihan|dana|restitusi)/i', $lower)) {
                 $catLabel = 'Keuangan';
-            } elseif (preg_match('/(beasiswa|bantuan|kip)/i', $lower)) {
-                $catLabel = 'Beasiswa';
-            } elseif (preg_match('/(surat|legalisir|ktm|ijazah|administrasi|transkrip)/i', $lower)) {
-                $catLabel = 'Pelayanan Administrasi';
-            } elseif (preg_match('/(parkir|helm|hilang|maling|satpam|keamanan)/i', $lower)) {
-                $catLabel = 'Parkir & Keamanan';
-            } elseif (preg_match('/(sampah|kotor|bau|kebersihan|taman)/i', $lower)) {
-                $catLabel = 'Kebersihan & Lingkungan';
-            } elseif (preg_match('/(ormawa|bem|hima|kegiatan|mahasiswa)/i', $lower)) {
+            } elseif (preg_match('/(beasiswa|ormawa|bem|hima|ukm|kegiatan|mahasiswa|lomba|prestasi)/i', $lower)) {
                 $catLabel = 'Kemahasiswaan';
+            } elseif (preg_match('/(buku|jurnal|perpustakaan|ruang baca|pinjam)/i', $lower)) {
+                $catLabel = 'Perpustakaan';
+            } elseif (preg_match('/(parkir|helm|hilang|maling|satpam|keamanan|tertib|pos)/i', $lower)) {
+                $catLabel = 'Keamanan dan Ketertiban';
+            } elseif (preg_match('/(magang|pkl|mitra|industri|kerjasama|mou)/i', $lower)) {
+                $catLabel = 'Kerjasama dan Hubungan Eksternal';
+            } elseif (preg_match('/(karir|alumni|tracer|lowongan)/i', $lower)) {
+                $catLabel = 'Ukarni dan Hubungan Alumni';
+            } elseif (preg_match('/(kepegawaian|tendik|staf|gaji|presensi|sdm)/i', $lower)) {
+                $catLabel = 'SDM/Kepegawaian';
+            } elseif (preg_match('/(informasi publik|ppid|keterbukaan|data publik)/i', $lower)) {
+                $catLabel = 'Informasi Publik/PPID';
+            } elseif (preg_match('/(kebijakan|direksi|senat|manajemen|direktur|pimpinan)/i', $lower)) {
+                $catLabel = 'Pimpinan/Manajemen';
             }
 
             if (!$catLabel) {
@@ -334,23 +342,26 @@ class ComplaintController extends ResourceController
                 $catLabel = match ($catKey) {
                     'academic' => 'Akademik',
                     'finance'  => 'Keuangan',
-                    'admin'    => 'Pelayanan Administrasi',
-                    'other'    => 'Lainnya',
-                    default    => 'Fasilitas',
+                    'admin'    => 'SDM/Kepegawaian',
+                    'other'    => 'Lainnya/Lintas Unit',
+                    default    => 'Sarana Prasarana dan Layanan Umum',
                 };
             }
 
             $analysis = [
                 'redacted_text'       => $redacted,
+                'target_unit'         => $catLabel,
+                'unit_confidence'     => 0.88,
+                'unit_reason'         => 'Rekomendasi disposisi heuristik berdasarkan kata kunci substansi keluhan.',
                 'category'            => $catLabel,
                 'category_confidence' => 0.88,
                 'urgency_label'       => $urgencyLabel,
                 'urgency_score'       => $urgencyScore,
-                'urgency_reason'      => $isUrgent ? 'Terdeteksi kondisi urgensi tinggi pada teks keluhan.' : 'Kategorisasi berdasarkan substansi laporan.',
+                'urgency_reason'      => $isUrgent ? 'Terdeteksi kondisi urgensi tinggi pada teks keluhan.' : 'Tingkat urgensi dinilai proporsional berdasarkan dampak operasional.',
                 'sentiment'           => 'negatif',
                 'sentiment_score'     => 0.70,
                 'requires_review'     => $isUrgent,
-                'model_version'       => 'heuristic-fallback-v1.1'
+                'model_version'       => 'heuristic-fallback-v1.2'
             ];
             $inferenceTime = 12;
         }
@@ -377,6 +388,9 @@ class ComplaintController extends ResourceController
 
         $complaintModel = new ComplaintModel();
 
+        // Gunakan input user jika ada, atau rekomendasi Smart Triage AI
+        $assignedUnit = $data['assigned_unit'] ?? $data['unit'] ?? $analysis['target_unit'] ?? $analysis['category'] ?? null;
+
         $complaintId = $complaintModel->insert([
             'ticket_id'     => $ticketId,
             'user_id'       => (int) $authenticatedUser['id'],
@@ -387,7 +401,7 @@ class ComplaintController extends ResourceController
 
             'is_anonymous'  => $data['is_anonymous'] ?? false,
             'status'        => 'submitted',
-            'assigned_unit' => $data['assigned_unit'] ?? $data['unit'] ?? null,
+            'assigned_unit' => $assignedUnit,
         ]);
 
         /*

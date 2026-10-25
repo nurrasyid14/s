@@ -57,66 +57,84 @@ OPENAI_BASE_URL = f"{OLLAMA_BASE_URL.rstrip('/')}/v1"
 
 # ── Konstanta ─────────────────────────────────────────────────────────────────
 
-VALID_CATEGORIES = [
+VALID_UNITS = [
     "Akademik",
-    "Keuangan",
-    "Fasilitas",
-    "Sarana IT",
     "Kemahasiswaan",
-    "Beasiswa",
+    "Keuangan",
+    "SDM/Kepegawaian",
+    "Sarana Prasarana dan Layanan Umum",
+    "TIK/Sistem Informasi",
     "Perpustakaan",
-    "Parkir & Keamanan",
-    "Kebersihan & Lingkungan",
-    "Kerjasama & Mitra",
-    "Pelayanan Administrasi",
-    "Lainnya",
+    "Ukarni dan Hubungan Alumni",
+    "Laboratorium/Jurusan",
+    "Kerjasama dan Hubungan Eksternal",
+    "Informasi Publik/PPID",
+    "Keamanan dan Ketertiban",
+    "Pimpinan/Manajemen",
+    "Lainnya/Lintas Unit",
 ]
 
+# Alias kompatibilitas dengan notebook & modul terdahulu
+VALID_CATEGORIES = VALID_UNITS
 VALID_URGENCY = ["Low", "Medium", "High", "Critical"]
+
+LEGACY_CATEGORY_TO_UNIT = {
+    "akademik": "Akademik",
+    "keuangan": "Keuangan",
+    "fasilitas": "Sarana Prasarana dan Layanan Umum",
+    "sarana it": "TIK/Sistem Informasi",
+    "kemahasiswaan": "Kemahasiswaan",
+    "beasiswa": "Kemahasiswaan",
+    "perpustakaan": "Perpustakaan",
+    "parkir & keamanan": "Keamanan dan Ketertiban",
+    "kebersihan & lingkungan": "Sarana Prasarana dan Layanan Umum",
+    "kerjasama & mitra": "Kerjasama dan Hubungan Eksternal",
+    "pelayanan administrasi": "SDM/Kepegawaian",
+    "lainnya": "Lainnya/Lintas Unit",
+}
 
 # ── System Prompt ─────────────────────────────────────────────────────────────
 
-SYSTEM_PROMPT = """Kamu adalah sistem klasifikasi aduan untuk institusi pendidikan PENS (Politeknik Elektronika Negeri Surabaya).
+SYSTEM_PROMPT = """Kamu adalah sistem cerdas routing aduan (Smart Triage) dan evaluasi urgensi objektif untuk institusi Politeknik Elektronika Negeri Surabaya (PENS).
 
-Tugasmu adalah menganalisis teks aduan/masukan dari stakeholder dan menghasilkan:
-1. Kategori yang tepat (HANYA dari 12 kategori yang tersedia)
-2. Label urgency dan skor urgency
-3. Alasan singkat urgency
-4. Skor kepercayaan diri klasifikasi
+Tugasmu menganalisis teks aduan stakeholder dan menghasilkan:
+1. Rekomendasi Unit Kerja Operasional penanggung jawab (target_unit) dari 14 UNIT RESMI PENS
+2. Skor keyakinan unit (unit_confidence) dan alasan singkat penugasan (unit_reason)
+3. Evaluasi urgensi objektif (urgency_label & urgency_score) beserta alasan (urgency_reason)
 
-12 KATEGORI VALID (gunakan PERSIS salah satu dari ini, tidak boleh membuat kategori baru):
-- Akademik: masalah perkuliahan, nilai, kurikulum, dosen, jadwal
-- Keuangan: UKT, biaya, pembayaran, beasiswa administrasi keuangan
-- Fasilitas: gedung, ruang kelas, laboratorium, peralatan fisik
-- Sarana IT: wifi, komputer, sistem informasi, akun, jaringan
-- Kemahasiswaan: organisasi, kegiatan mahasiswa, ekstrakurikuler
-- Beasiswa: beasiswa internal/eksternal, prosedur, persyaratan
-- Perpustakaan: koleksi buku, akses jurnal, jam operasional perpustakaan
-- Parkir & Keamanan: parkir kendaraan, keamanan kampus, kehilangan
-- Kebersihan & Lingkungan: kebersihan toilet, sampah, taman, lingkungan
-- Kerjasama & Mitra: PKL, magang, kerjasama industri, alumni
-- Pelayanan Administrasi: surat, legalisir, KTM, administrasi umum
-- Lainnya: tidak masuk kategori di atas
+14 UNIT KERJA RESMI PENS (Gunakan PERSIS salah satu dari nama berikut):
+- Akademik: administrasi perkuliahan, nilai, KRS, ujian, jadwal kuliah, kurikulum, dosen, kelulusan/yudisium
+- Kemahasiswaan: beasiswa, kegiatan organisasi mahasiswa (BEM/HIMA/UKM), perlombaan, prestasi, kesejahteraan mahasiswa
+- Keuangan: pembayaran UKT, biaya kuliah, tagihan, restitusi, sistem pembayaran keuangan
+- SDM/Kepegawaian: staf, administrasi kepegawaian dosen & tendik, presensi, sertifikasi, layanan pegawai
+- Sarana Prasarana dan Layanan Umum: fasilitas fisik kampus, gedung, ruang kelas, toilet, AC, listrik, air, kebersihan, meja/kursi
+- TIK/Sistem Informasi: jaringan internet/WiFi kampus, website pens.ac.id, sistem informasi (SIAKAD/SIA), akun email, server, komputer
+- Perpustakaan: sirkulasi buku, akses e-journal/katalog, jam operasional perpustakaan, ruang baca
+- Ukarni dan Hubungan Alumni: pusat karir, informasi lowongan kerja, bursa kerja, tracer study alumni, ikatan alumni
+- Laboratorium/Jurusan: alat praktikum, komputer lab jurusan, modul praktikum, teknisi lab, administrasi departemen/prodi
+- Kerjasama dan Hubungan Eksternal: program magang/PKL industri, MoU kemitraan, pertukaran mahasiswa, kunjungan industri
+- Informasi Publik/PPID: layanan permohonan data publik, keterbukaan informasi publik, layanan humas kampus
+- Keamanan dan Ketertiban: keamanan pos satpam, ketertiban lingkungan kampus, parkir kendaraan, helm/barang hilang
+- Pimpinan/Manajemen: kebijakan strategis direksi, tata kelola kelembagaan, audit mutu, dewan senat institusi
+- Lainnya/Lintas Unit: masalah yang membutuhkan koordinasi gabungan lebih dari satu unit atau tidak tercakup di atas
 
 4 LEVEL URGENCY:
-- Low: keluhan umum, tidak mendesak, tidak berdampak luas
-- Medium: perlu tindak lanjut dalam 1-2 minggu, dampak terbatas
-- High: perlu respons dalam 1-3 hari, berdampak pada banyak pihak atau mengganggu aktivitas penting
-- Critical: perlu respons SEGERA (<24 jam), mengancam keselamatan, hak, atau aktivitas inti institusi
+- Low (0.00 - 0.39): keluhan umum/saran, tidak mendesak, tidak berdampak pada perkuliahan/layanan vital
+- Medium (0.40 - 0.69): perlu tindak lanjut 2-3 hari, dampak terbatas pada kelompok kecil
+- High (0.70 - 0.89): perlu respons 1-2 hari, berdampak luas atau mengganggu perkuliahan/ujian/kegiatan penting
+- Critical (0.90 - 1.00): perlu respons SEGERA (<24 jam), membahayakan keselamatan, kegagalan sistem vital, atau hak krusial terancam
 
 BATASAN PENTING:
-- Tugasmu HANYA klasifikasi dan scoring
-- DILARANG menentukan sanksi, tindakan disipliner, atau keputusan terhadap individu/pihak tertentu
-- DILARANG memberikan rekomendasi kebijakan yang tidak diminta
-- Tetap objektif dan netral
-
-Output HARUS berupa JSON valid dengan format PERSIS seperti ini:
+- DILARANG menentukan sanksi personal atau tindakan disipliner
+- Tetap objektif, netral, dan berbasis bukti pada teks
+- Output HARUS berupa JSON valid persis seperti ini:
 {
-  "kategori": "<salah satu dari 12 kategori>",
+  "target_unit": "<salah satu dari 14 unit di atas>",
+  "unit_confidence": <float 0.0-1.0>,
+  "unit_reason": "<alasan singkat mengapa unit ini yang berwenang>",
   "urgency_label": "<Low/Medium/High/Critical>",
   "urgency_score": <float 0.0-1.0>,
-  "urgency_reason": "<alasan singkat 1 kalimat>",
-  "confidence": <float 0.0-1.0>
+  "urgency_reason": "<alasan singkat penilaian tingkat urgensi>"
 }
 
 JANGAN tambahkan teks lain di luar JSON."""
@@ -319,135 +337,95 @@ def _parse_and_validate(raw: str) -> Optional[dict]:
         return None
 
     # ========================================================
-    # 6. VALIDASI FIELD
+    # 6. NORMALISASI FIELD KEYS (TARGET_UNIT & URGENCY)
     # ========================================================
 
-    required = [
-        "kategori",
-        "urgency_label",
-        "urgency_score",
-        "urgency_reason",
-        "confidence"
-    ]
+    raw_unit = (
+        result.get("target_unit")
+        or result.get("kategori")
+        or result.get("unit")
+        or "Lainnya/Lintas Unit"
+    )
 
-    missing = [
-        field
-        for field in required
-        if field not in result
-    ]
+    raw_conf = (
+        result.get("unit_confidence")
+        if result.get("unit_confidence") is not None
+        else result.get("confidence", 0.85)
+    )
 
-    if missing:
-
-        print(
-            f"[ERROR] Field JSON tidak lengkap: {missing}"
-        )
-
-        print("\n========== PARSED JSON ==========")
-        print(
-            json.dumps(
-                result,
-                ensure_ascii=False,
-                indent=2
-            )
-        )
-        print("=================================\n")
-
-        return None
+    raw_unit_reason = (
+        result.get("unit_reason")
+        or result.get("reason")
+        or f"Aduan relevan dengan lingkup tugas {raw_unit}."
+    )
 
     # ========================================================
-    # 7. NORMALISASI KATEGORI
+    # 7. NORMALISASI TARGET UNIT (14 UNIT RESMI PENS)
     # ========================================================
 
-    kategori = str(
-        result["kategori"]
-    ).strip()
+    target_unit_str = str(raw_unit).strip()
+    matched_unit = None
 
-    # Exact match
-
-    if kategori in VALID_CATEGORIES:
-
-        result["kategori"] = kategori
-
+    # 1. Exact match
+    if target_unit_str in VALID_UNITS:
+        matched_unit = target_unit_str
     else:
-
-        # Fuzzy sederhana
-
-        kategori_lower = kategori.lower()
-
-        matched_category = None
-
-        for cat in VALID_CATEGORIES:
-
-            if cat.lower() in kategori_lower:
-
-                matched_category = cat
-                break
-
-        if matched_category:
-
-            result["kategori"] = matched_category
-
+        # 2. Check legacy dictionary
+        lower_unit = target_unit_str.lower()
+        if lower_unit in LEGACY_CATEGORY_TO_UNIT:
+            matched_unit = LEGACY_CATEGORY_TO_UNIT[lower_unit]
         else:
+            # 3. Fuzzy search in legacy dictionary
+            for leg_k, leg_v in LEGACY_CATEGORY_TO_UNIT.items():
+                if leg_k in lower_unit or lower_unit in leg_k:
+                    matched_unit = leg_v
+                    break
 
-            print(
-                f"[WARN] Kategori '{kategori}' "
-                f"tidak dikenali. Menggunakan Lainnya."
-            )
+            # 4. Fuzzy search in VALID_UNITS
+            if not matched_unit:
+                for u in VALID_UNITS:
+                    if u.lower() in lower_unit or lower_unit in u.lower():
+                        matched_unit = u
+                        break
 
-            result["kategori"] = "Lainnya"
+    if not matched_unit:
+        print(f"[WARN] Unit '{target_unit_str}' tidak dikenali. Menggunakan Lainnya/Lintas Unit.")
+        matched_unit = "Lainnya/Lintas Unit"
+
+    result["target_unit"] = matched_unit
+    result["kategori"] = matched_unit  # Backward compatibility
 
     # ========================================================
-    # 8. NORMALISASI URGENCY
+    # 8. NORMALISASI URGENCY LABEL
     # ========================================================
 
-    urgency = str(
-        result["urgency_label"]
-    ).strip().capitalize()
-
-    if urgency not in VALID_URGENCY:
-
-        urgency_lower = urgency.lower()
-
+    urgency_raw = str(result.get("urgency_label", "Medium")).strip().capitalize()
+    if urgency_raw not in VALID_URGENCY:
+        urgency_lower = urgency_raw.lower()
         urgency_mapping = {
             "low": "Low",
+            "rendah": "Low",
             "medium": "Medium",
+            "sedang": "Medium",
             "moderate": "Medium",
             "high": "High",
-            "critical": "Critical"
+            "tinggi": "High",
+            "critical": "Critical",
+            "kritis": "Critical",
         }
+        urgency_raw = urgency_mapping.get(urgency_lower, "Medium")
 
-        urgency = urgency_mapping.get(
-            urgency_lower,
-            "Medium"
-        )
-
-    result["urgency_label"] = urgency
+    result["urgency_label"] = urgency_raw
 
     # ========================================================
     # 9. VALIDASI URGENCY SCORE
     # ========================================================
 
     try:
-
-        urgency_score = float(
-            result["urgency_score"]
-        )
-
-        urgency_score = max(
-            0.0,
-            min(1.0, urgency_score)
-        )
-
-    except (
-        ValueError,
-        TypeError
-    ):
-
-        print(
-            "[WARN] urgency_score tidak valid. "
-            "Menggunakan 0.5."
-        )
-
+        urgency_score = float(result.get("urgency_score", 0.5))
+        urgency_score = max(0.0, min(1.0, urgency_score))
+    except (ValueError, TypeError):
+        print("[WARN] urgency_score tidak valid. Menggunakan 0.5.")
         urgency_score = 0.5
 
     result["urgency_score"] = urgency_score
@@ -457,36 +435,23 @@ def _parse_and_validate(raw: str) -> Optional[dict]:
     # ========================================================
 
     try:
+        confidence = float(raw_conf)
+        confidence = max(0.0, min(1.0, confidence))
+    except (ValueError, TypeError):
+        print("[WARN] confidence tidak valid. Menggunakan 0.85.")
+        confidence = 0.85
 
-        confidence = float(
-            result["confidence"]
-        )
-
-        confidence = max(
-            0.0,
-            min(1.0, confidence)
-        )
-
-    except (
-        ValueError,
-        TypeError
-    ):
-
-        print(
-            "[WARN] confidence tidak valid. "
-            "Menggunakan 0.5."
-        )
-
-        confidence = 0.5
-
-    result["confidence"] = confidence
+    result["unit_confidence"] = confidence
+    result["confidence"] = confidence  # Backward compatibility
 
     # ========================================================
-    # 11. NORMALISASI URGENCY REASON
+    # 11. NORMALISASI REASONS
     # ========================================================
 
+    result["unit_reason"] = str(raw_unit_reason).strip()
     result["urgency_reason"] = str(
-        result["urgency_reason"]
+        result.get("urgency_reason")
+        or f"Tingkat urgensi {urgency_raw} berdasarkan analisis dampak terhadap stakeholder."
     ).strip()
 
     return result
@@ -542,6 +507,9 @@ def classify_llm(teks_aduan: str,
 
     if result is None:
         return {
+            "target_unit":      None,
+            "unit_confidence":  None,
+            "unit_reason":      None,
             "kategori":         None,
             "urgency_label":    None,
             "urgency_score":    None,

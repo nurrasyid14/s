@@ -6,7 +6,7 @@ import SegmentedControl from '../../components/ui/SegmentedControl.jsx'
 import ErrorState from '../../components/ui/ErrorState.jsx'
 import { AXIS_TICK, TOOLTIP_STYLE } from '../../utils/chartTheme.js'
 import {
-  getSentiment, getIssueTypes, getSLAStats, getUnitStats,
+  getSentiment, getIssueTypes, getSLAStats, getUnitStats, getExecutiveAISummary,
 } from '../../services/analyticsApi.js'
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
@@ -81,8 +81,11 @@ export default function Analytics() {
   const [error, setError] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
 
-  // TODO: fungsi service analytics saat ini tidak menerima parameter periode.
-  // Setelah service mendukungnya, teruskan `period` ke keempat pemanggilan di bawah.
+  // AI Executive Summary State
+  const [aiSummary, setAiSummary] = useState(null)
+  const [aiLoading, setAiLoading] = useState(true)
+  const [refreshAiKey, setRefreshAiKey] = useState(0)
+
   useEffect(() => {
     let active = true
     setLoading(true)
@@ -103,6 +106,20 @@ export default function Analytics() {
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [period, reloadKey])
+
+  useEffect(() => {
+    let active = true
+    setAiLoading(true)
+    getExecutiveAISummary()
+      .then(res => {
+        if (active && res) setAiSummary(res)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setAiLoading(false)
+      })
+    return () => { active = false }
+  }, [refreshAiKey, reloadKey])
 
   const periodOptions = PERIOD_KEYS.map(key => ({ key, label: t(`analytics.period_${key}`) }))
 
@@ -127,6 +144,75 @@ export default function Analytics() {
           />
         }
       />
+
+      {/* Executive AI Grounded Narrative Summary Card */}
+      <section className="mb-6 rounded-2xl border border-[var(--color-primary)]/20 bg-gradient-to-r from-[var(--color-surface)] via-[var(--color-surface)] to-[var(--color-primary)]/5 p-5 md:p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[var(--color-border)]">
+          <div className="flex items-center gap-2">
+            <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-mono text-xs font-bold uppercase tracking-wider text-[var(--color-primary)]">
+              Executive AI Grounded Narrative
+            </span>
+            <span className="rounded-md bg-[var(--color-primary)]/10 px-2 py-0.5 font-mono text-[11px] text-[var(--color-primary)]">
+              {aiSummary?.model_used ? `Model: ${aiSummary.model_used}` : 'Qwen3:8B'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {aiSummary?.grounding?.grounding_note && (
+              <span className="hidden sm:inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 font-mono text-[11px] text-emerald-600 dark:text-emerald-400">
+                ✓ Angka Terverifikasi Faktual
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setRefreshAiKey(k => k + 1)}
+              disabled={aiLoading}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 font-mono text-xs text-[var(--color-text)] hover:bg-[var(--color-card-hover)] transition disabled:opacity-50"
+            >
+              <svg className={`h-3.5 w-3.5 ${aiLoading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>{aiLoading ? 'Menganalisis...' : 'Regenerasi Narasi'}</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          {aiLoading ? (
+            <div className="space-y-2 py-2">
+              <div className="h-4 w-full bg-[var(--color-border)]/40 rounded animate-pulse" />
+              <div className="h-4 w-5/6 bg-[var(--color-border)]/40 rounded animate-pulse" />
+              <div className="h-4 w-4/6 bg-[var(--color-border)]/40 rounded animate-pulse" />
+            </div>
+          ) : aiSummary?.summary ? (
+            <p className="text-sm md:text-base leading-relaxed text-[var(--color-text)]">
+              {aiSummary.summary}
+            </p>
+          ) : (
+            <p className="text-sm text-[var(--color-text-muted)] italic">
+              Ringkasan naratif analitik belum tersedia.
+            </p>
+          )}
+        </div>
+
+        {aiSummary?.metrics && (
+          <div className="mt-4 pt-3 border-t border-[var(--color-border)]/60 flex flex-wrap gap-2 sm:gap-3 text-xs font-mono">
+            <span className="rounded-lg bg-[var(--color-bg-secondary)] px-2.5 py-1 text-[var(--color-text-muted)]">
+              Total Masukan: <strong className="text-[var(--color-text)]">{aiSummary.metrics.total_records}</strong>
+            </span>
+            <span className="rounded-lg bg-[var(--color-bg-secondary)] px-2.5 py-1 text-[var(--color-text-muted)]">
+              Kepatuhan SLA: <strong className="text-emerald-500">{aiSummary.metrics.overall_compliant_pct}%</strong>
+            </span>
+            <span className="rounded-lg bg-[var(--color-bg-secondary)] px-2.5 py-1 text-[var(--color-text-muted)]">
+              Sentimen Negatif: <strong className="text-rose-500">{aiSummary.metrics.sentiment?.negative_pct}%</strong>
+            </span>
+            <span className="rounded-lg bg-[var(--color-bg-secondary)] px-2.5 py-1 text-[var(--color-text-muted)]">
+              Tiket Kritis Tertunda: <strong className="text-amber-500">{aiSummary.metrics.high_urgency_pending}</strong>
+            </span>
+          </div>
+        )}
+      </section>
 
       {error ? (
         <ErrorState onRetry={() => setReloadKey(k => k + 1)} />

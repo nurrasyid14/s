@@ -59,5 +59,6 @@ $routes->group('api', function ($routes) {
         $routes->get('sla', 'AnalyticsController::sla');
         $routes->get('units', 'AnalyticsController::units');
         $routes->get('urgent', 'AnalyticsController::urgent');
+        $routes->get('ai-summary', 'AnalyticsController::aiSummary');
     });
 });
