@@ -266,7 +266,7 @@ class ComplaintController extends ResourceController
                         'Accept'       => 'application/json'
                     ],
                     'body'    => $payload,
-                    'timeout' => 5,
+                    'timeout' => 90,
                 ]
             );
 
@@ -287,26 +287,70 @@ class ComplaintController extends ResourceController
             $redacted = preg_replace('/(\+62|62|08)[0-9]{8,12}/', '<TELEPON>', $redacted);
             $redacted = preg_replace('/\b[0-9]{7,16}\b/', '<NOMOR_IDENTITAS>', $redacted);
 
-            $catKey = strtolower((string) ($data['category'] ?? 'facility'));
-            $catLabel = match ($catKey) {
-                'academic' => 'Akademik',
-                'finance'  => 'Keuangan',
-                'admin'    => 'Pelayanan Administrasi',
-                'other'    => 'Lainnya',
-                default    => 'Fasilitas',
-            };
+            $lower = strtolower($rawText);
+
+            // Deteksi urgensi berbasis kata kunci
+            $urgentKeywords = ['darurat', 'bahaya', 'kebocoran', 'bocor', 'konslet', 'terbakar', 'terbengkalai', 'mati total', 'segera', 'urgent', 'kritis', 'parah', 'korban'];
+            $modKeywords    = ['rusak', 'gangguan', 'lambat', 'tidak bisa', 'sulit', 'terhambat', 'error', 'kendala'];
+
+            $isUrgent = false;
+            foreach ($urgentKeywords as $w) {
+                if (str_contains($lower, $w)) { $isUrgent = true; break; }
+            }
+            $isMod = false;
+            if (!$isUrgent) {
+                foreach ($modKeywords as $w) {
+                    if (str_contains($lower, $w)) { $isMod = true; break; }
+                }
+            }
+
+            $urgencyScore = $isUrgent ? 0.85 : ($isMod ? 0.65 : 0.45);
+            $urgencyLabel = $isUrgent ? 'Tinggi' : ($isMod ? 'Sedang' : 'Rendah');
+
+            // Deteksi kategori otomatis dari kata kunci
+            $catLabel = null;
+            if (preg_match('/(ac|ruang|kelas|lab|gedung|kursi|meja|toilet|lampu|pintu|atap|bocor|fasilitas)/i', $lower)) {
+                $catLabel = 'Fasilitas';
+            } elseif (preg_match('/(wifi|internet|jaringan|komputer|server|sia|website|login|akun|email)/i', $lower)) {
+                $catLabel = 'Sarana IT';
+            } elseif (preg_match('/(nilai|dosen|kuliah|jadwal|skripsi|krs|ujian|praktikum|akademik)/i', $lower)) {
+                $catLabel = 'Akademik';
+            } elseif (preg_match('/(ukt|biaya|bayar|keuangan|tagihan|dana)/i', $lower)) {
+                $catLabel = 'Keuangan';
+            } elseif (preg_match('/(beasiswa|bantuan|kip)/i', $lower)) {
+                $catLabel = 'Beasiswa';
+            } elseif (preg_match('/(surat|legalisir|ktm|ijazah|administrasi|transkrip)/i', $lower)) {
+                $catLabel = 'Pelayanan Administrasi';
+            } elseif (preg_match('/(parkir|helm|hilang|maling|satpam|keamanan)/i', $lower)) {
+                $catLabel = 'Parkir & Keamanan';
+            } elseif (preg_match('/(sampah|kotor|bau|kebersihan|taman)/i', $lower)) {
+                $catLabel = 'Kebersihan & Lingkungan';
+            } elseif (preg_match('/(ormawa|bem|hima|kegiatan|mahasiswa)/i', $lower)) {
+                $catLabel = 'Kemahasiswaan';
+            }
+
+            if (!$catLabel) {
+                $catKey = strtolower((string) ($data['category'] ?? 'facility'));
+                $catLabel = match ($catKey) {
+                    'academic' => 'Akademik',
+                    'finance'  => 'Keuangan',
+                    'admin'    => 'Pelayanan Administrasi',
+                    'other'    => 'Lainnya',
+                    default    => 'Fasilitas',
+                };
+            }
 
             $analysis = [
                 'redacted_text'       => $redacted,
                 'category'            => $catLabel,
                 'category_confidence' => 0.88,
-                'urgency_label'       => 'Sedang',
-                'urgency_score'       => 0.65,
-                'urgency_reason'      => 'Kategorisasi awal berdasarkan pemilihan pelapor.',
+                'urgency_label'       => $urgencyLabel,
+                'urgency_score'       => $urgencyScore,
+                'urgency_reason'      => $isUrgent ? 'Terdeteksi kondisi urgensi tinggi pada teks keluhan.' : 'Kategorisasi berdasarkan substansi laporan.',
                 'sentiment'           => 'negatif',
                 'sentiment_score'     => 0.70,
-                'requires_review'     => false,
-                'model_version'       => 'heuristic-fallback-v1.0'
+                'requires_review'     => $isUrgent,
+                'model_version'       => 'heuristic-fallback-v1.1'
             ];
             $inferenceTime = 12;
         }
