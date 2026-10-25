@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import AdminLayout from '../../components/layout/AdminLayout.jsx'
 import { StatusBadge } from '../../components/ui/StatusBadge.jsx'
 import { getComplaints, verifyComplaint } from '../../services/complaintApi.js'
-import { formatDateTime } from '../../utils/formatter.js'
+import { formatDateTime, formatUrgencyScore } from '../../utils/formatter.js'
 import { CheckSquare, XCircle, Check, Search, ShieldCheck } from 'lucide-react'
 
 export default function AdminVerification() {
@@ -114,7 +114,7 @@ export default function AdminVerification() {
                 <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
                   <span>Saran Unit AI: <strong className="text-[var(--color-text)]">{c.target_unit || c.unit}</strong></span>
                   <span>·</span>
-                  <span>Skor Urgensi: <strong className="text-[var(--color-status-danger)] font-mono">{c.urgency_score}/10</strong></span>
+                  <span>Skor Urgensi: <strong className="text-[var(--color-status-danger)] font-mono">{formatUrgencyScore(c.urgency_score)}/10</strong></span>
                 </div>
 
                 <div className="flex items-center gap-2">

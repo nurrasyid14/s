@@ -43,11 +43,13 @@ function PageLoader() {
 }
 
 /** Route guard: redirect unauthenticated or unauthorized users */
-function ProtectedRoute({ children, role }) {
+function ProtectedRoute({ children, role, roles }) {
   const { user, loading } = useAuth()
   if (loading) return <PageLoader />
   if (!user) return <Navigate to="/signin" replace />
-  if (role && user.role !== role) {
+  
+  const allowed = roles || (role ? [role] : [])
+  if (allowed.length > 0 && !allowed.includes(user.role)) {
     if (user.role === 'admin') return <Navigate to="/admin/dashboard" replace />
     if (user.role === 'stakeholder') return <Navigate to="/stakeholder" replace />
     return <Navigate to="/user/dashboard" replace />
@@ -80,9 +82,9 @@ export default function App() {
 
             {/* Stakeholder Area (Unit Kerja Pelaksana) */}
             <Route path="/stakeholder"                element={<ProtectedRoute role="stakeholder"><StakeholderDashboard /></ProtectedRoute>} />
-            <Route path="/stakeholder/complaints"     element={<ProtectedRoute role="stakeholder"><Complaints /></ProtectedRoute>} />
-            <Route path="/stakeholder/complaints/:id" element={<ProtectedRoute role="stakeholder"><ComplaintDetail /></ProtectedRoute>} />
-            <Route path="/stakeholder/analytics"      element={<ProtectedRoute role="stakeholder"><Analytics /></ProtectedRoute>} />
+            <Route path="/stakeholder/complaints"     element={<ProtectedRoute roles={['stakeholder', 'admin']}><Complaints /></ProtectedRoute>} />
+            <Route path="/stakeholder/complaints/:id" element={<ProtectedRoute roles={['stakeholder', 'admin']}><ComplaintDetail /></ProtectedRoute>} />
+            <Route path="/stakeholder/analytics"      element={<ProtectedRoute roles={['stakeholder', 'admin']}><Analytics /></ProtectedRoute>} />
             <Route path="/stakeholder/followups"      element={<ProtectedRoute role="stakeholder"><Followups /></ProtectedRoute>} />
             <Route path="/stakeholder/evidence"       element={<ProtectedRoute role="stakeholder"><Evidence /></ProtectedRoute>} />
             <Route path="/stakeholder/settings"       element={<ProtectedRoute role="stakeholder"><Settings /></ProtectedRoute>} />

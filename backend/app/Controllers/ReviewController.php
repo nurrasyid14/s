@@ -220,9 +220,9 @@ class ReviewController extends BaseController
          * ============================================================
          */
 
-        $data = $this->request->getJSON(true);
+        $data = $this->getRequestData();
 
-        if (!is_array($data)) {
+        if (empty($data)) {
             return $this->response->setJSON([
                 'status'  => false,
                 'message' => 'Request body harus berupa JSON yang valid.',
@@ -409,5 +409,31 @@ class ReviewController extends BaseController
                 ],
             ]
         ]);
+    }
+
+    private function getRequestData(): array
+    {
+        try {
+            $json = $this->request->getJSON(true);
+            if (is_array($json)) {
+                return $json;
+            }
+        } catch (\Throwable $e) {
+        }
+
+        $post = $this->request->getPost();
+        if (is_array($post) && !empty($post)) {
+            return $post;
+        }
+
+        $raw = $this->request->getBody();
+        if (!empty($raw)) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+        }
+
+        return [];
     }
 }

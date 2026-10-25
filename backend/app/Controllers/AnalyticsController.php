@@ -103,7 +103,7 @@ class AnalyticsController extends ResourceController
         $rows = \Config\Database::connect()->table('complaints c')
             ->select("COALESCE(u.user_role, u.role) AS role, COUNT(*) AS count", false)
             ->join('users u', 'u.id = c.user_id', 'left')
-            ->groupBy('u.role')
+            ->groupBy(['u.user_role', 'u.role'])
             ->get()->getResultArray();
 
         $total = array_sum(array_map(static fn ($r) => (int) $r['count'], $rows));
@@ -164,11 +164,55 @@ class AnalyticsController extends ResourceController
     /** GET /api/analytics/sla */
     public function sla()
     {
+        $complaints = \Config\Database::connect()->table('complaints')
+            ->select(['id', 'status', 'created_at', 'updated_at'])
+            ->get()->getResultArray();
+
+        $now = new \DateTimeImmutable('now');
+        $compliant = 0;
+        $nonCompliant = 0;
+
+        foreach ($complaints as $c) {
+            $status = strtolower((string) ($c['status'] ?? ''));
+            $isResolved = in_array($status, ['resolved', 'done', 'answered'], true);
+
+            try {
+                $created = new \DateTimeImmutable($c['created_at'] ?? 'now');
+            } catch (\Throwable $e) {
+                $created = $now;
+            }
+
+            if ($isResolved) {
+                try {
+                    $resolvedAt = new \DateTimeImmutable($c['updated_at'] ?? $c['created_at'] ?? 'now');
+                } catch (\Throwable $e) {
+                    $resolvedAt = $now;
+                }
+                $days = $created->diff($resolvedAt)->days;
+                if ($days <= 3) {
+                    $compliant++;
+                } else {
+                    $nonCompliant++;
+                }
+            } else {
+                $daysOpen = $created->diff($now)->days;
+                if ($daysOpen <= 3) {
+                    $compliant++;
+                } else {
+                    $nonCompliant++;
+                }
+            }
+        }
+
+        $total = $compliant + $nonCompliant;
+        $compliantPct = $total > 0 ? round(($compliant / $total) * 100) : 100;
+
         return $this->respond([
-            'status'        => false,
-            'message'       => 'SLA belum dapat dihitung: backend belum memiliki target SLA dan waktu penyelesaian per aduan.',
-            'compliant'     => null,
-            'non_compliant' => null,
+            'status'        => true,
+            'compliant'     => $compliant,
+            'non_compliant' => $nonCompliant,
+            'compliant_pct' => $compliantPct,
+            'target_days'   => 3,
         ]);
     }
 
@@ -203,7 +247,7 @@ class AnalyticsController extends ResourceController
                 'id'            => (int) $row['complaint_id'],
                 'ticket_id'     => $row['ticket_id'],
                 'description'   => $row['description'],
-                'urgency_score' => round((float) ($row['urgency_score'] ?? 0) * 10, 1),
+                'urgency_score' => round((float) ($row['urgency_score'] ?? 0) * 10, 2),
                 'sender_name'   => !empty($row['is_anonymous']) ? null : ($row['sender_name'] ?? null),
                 'sender_role'   => $row['sender_role'] ?? null,
                 'is_anonymous'  => (bool) $row['is_anonymous'],

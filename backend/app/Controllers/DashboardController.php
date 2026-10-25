@@ -41,7 +41,7 @@ class DashboardController extends ResourceController
 
         $items = array_map(function ($item) {
             $item['id'] = (int) $item['id'];
-            $item['urgency_score'] = round((float) ($item['urgency_score'] ?? 0), 1);
+            $item['urgency_score'] = round((float) ($item['urgency_score'] ?? 0), 2);
             $item['is_anonymous'] = (bool) ($item['is_anonymous'] ?? false);
             if ($item['is_anonymous']) {
                 $item['sender_name'] = null;

@@ -1,4 +1,4 @@
-import { formatDate, formatDateTime } from '../../utils/formatter.js'
+import { formatDate, formatDateTime, formatUrgencyScore } from '../../utils/formatter.js'
 import { Printer, X, FileText, CheckCircle2 } from 'lucide-react'
 
 export default function DispositionSheetModal({ complaint, onClose }) {
@@ -83,7 +83,7 @@ export default function DispositionSheetModal({ complaint, onClose }) {
             <div className="mt-2 text-[10px] font-mono text-gray-500 flex gap-4">
               <span>Jenis: {complaint.type}</span>
               <span>Kategori: {complaint.category}</span>
-              <span>Skor Urgensi: {complaint.urgency_score}/10</span>
+              <span>Skor Urgensi: {formatUrgencyScore(complaint.urgency_score)}/10</span>
             </div>
           </div>
 

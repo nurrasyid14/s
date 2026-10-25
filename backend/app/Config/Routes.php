@@ -23,9 +23,23 @@ $routes->group('api', function ($routes) {
         $routes->get('(:num)', 'ComplaintController::show/$1', ['filter' => 'authRole:user,stakeholder,admin']);
         $routes->post('', 'ComplaintController::create', ['filter' => 'authRole:user,stakeholder,admin']);
         $routes->patch('(:num)/status', 'ComplaintController::updateStatus/$1', ['filter' => 'authRole:stakeholder,admin']);
+        $routes->patch('(:num)/verify', 'ComplaintController::verify/$1', ['filter' => 'authRole:stakeholder,admin']);
+        $routes->post('(:num)/disposition', 'ComplaintController::dispatch/$1', ['filter' => 'authRole:stakeholder,admin']);
+        $routes->post('(:num)/feedback', 'ComplaintController::feedback/$1', ['filter' => 'authRole:user,stakeholder,admin']);
         $routes->post('(:num)/reply', 'ComplaintController::reply/$1', ['filter' => 'authRole:stakeholder,admin']);
         $routes->get('(:num)/replies', 'ComplaintController::replies/$1', ['filter' => 'authRole:stakeholder,admin']);
         $routes->post('(:num)/analyze', 'ComplaintController::analyze/$1', ['filter' => 'authRole:stakeholder,admin']);
+    });
+
+    $routes->group('admin/complaints', ['filter' => 'authRole:stakeholder,admin'], function ($routes) {
+        $routes->patch('(:num)/verify', 'ComplaintController::verify/$1');
+        $routes->post('(:num)/disposition', 'ComplaintController::dispatch/$1');
+    });
+
+    $routes->group('unit/complaints', ['filter' => 'authRole:stakeholder,admin'], function ($routes) {
+        $routes->post('(:num)/accept', 'ComplaintController::accept/$1');
+        $routes->post('(:num)/followup', 'ComplaintController::followup/$1');
+        $routes->post('(:num)/answer', 'ComplaintController::answer/$1');
     });
 
     $routes->group('reviews', ['filter' => 'authRole:stakeholder,admin'], function ($routes) {

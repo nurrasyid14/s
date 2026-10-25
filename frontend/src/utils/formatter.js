@@ -95,6 +95,14 @@ export function getUrgencyLevel(score) {
 }
 
 /**
+ * Format skor urgensi menjadi 2 angka di belakang koma (contoh: 6.50)
+ */
+export function formatUrgencyScore(score) {
+  const num = Number(score)
+  return isNaN(num) ? '0.00' : num.toFixed(2)
+}
+
+/**
  * Truncate text dengan ellipsis
  */
 export function truncate(text, maxLength = 80) {

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import AdminLayout from '../../components/layout/AdminLayout.jsx'
 import { StatusBadge } from '../../components/ui/StatusBadge.jsx'
 import { getComplaints } from '../../services/complaintApi.js'
-import { formatDateTime, formatDate } from '../../utils/formatter.js'
+import { formatDateTime, formatDate, formatUrgencyScore } from '../../utils/formatter.js'
 import { UNITS } from '../../data/units.js'
 import { Search, Filter, Printer, ExternalLink } from 'lucide-react'
 
@@ -148,7 +148,7 @@ export default function AdminComplaintList() {
                   </td>
                   <td className="p-3.5 font-mono font-bold whitespace-nowrap">
                     <span className={c.urgency_score >= 7 ? 'text-[var(--color-status-danger)]' : 'text-[var(--color-text)]'}>
-                      {c.urgency_score}/10
+                      {formatUrgencyScore(c.urgency_score)}/10
                     </span>
                   </td>
                 </tr>

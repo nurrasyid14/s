@@ -10,7 +10,7 @@ import {
   getComplaint, acceptComplaintByUnit, addUnitFollowUp,
   submitUnitOfficialAnswer, updateComplaintStatus
 } from '../../services/complaintApi.js'
-import { formatDateTime, formatDate, getUrgencyLevel, WORKFLOW_STEPS } from '../../utils/formatter.js'
+import { formatDateTime, formatDate, getUrgencyLevel, formatUrgencyScore, WORKFLOW_STEPS } from '../../utils/formatter.js'
 import { useComplaintLabels } from '../../utils/complaintLabels.js'
 import {
   ArrowLeft, Send, AlertTriangle, Inbox, Check, Printer,
@@ -310,7 +310,7 @@ export default function ComplaintDetail() {
               <div className="p-3.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
                 <span className="text-[var(--color-text-muted)] block text-[10px] font-mono uppercase">Skor Urgensi</span>
                 <span className="text-xl font-bold font-mono text-[var(--color-status-danger)] block mt-0.5">
-                  {data.urgency_score}/10
+                  {formatUrgencyScore(data.urgency_score)}/10
                 </span>
                 <span className="text-[10px] font-mono text-[var(--color-text-muted)]">{urgency.level} Priority</span>
               </div>

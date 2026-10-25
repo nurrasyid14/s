@@ -1,4 +1,4 @@
-import { getStatusInfo, getUrgencyLevel } from '../../utils/formatter.js'
+import { getStatusInfo, getUrgencyLevel, formatUrgencyScore } from '../../utils/formatter.js'
 import { useTranslation } from 'react-i18next'
 
 const COLOR_VARS = {
@@ -46,7 +46,8 @@ export function StatusBadge({ status }) {
 export function UrgencyBadge({ score }) {
   const { i18n } = useTranslation()
   const info = getUrgencyLevel(score)
-  const label = i18n.language === 'en' ? `${info.levelEn} (${score})` : `${info.level} (${score})`
+  const formattedScore = formatUrgencyScore(score)
+  const label = i18n.language === 'en' ? `${info.levelEn} (${formattedScore})` : `${info.level} (${formattedScore})`
 
   return (
     <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold rounded-full shadow-2xs" style={badgeStyle(info.color)}>

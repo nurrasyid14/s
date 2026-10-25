@@ -6,7 +6,7 @@ import StakeholderLayout from '../../components/layout/StakeholderLayout.jsx'
 import { StatusBadge, UrgencyBadge } from '../../components/ui/StatusBadge.jsx'
 import ErrorState from '../../components/ui/ErrorState.jsx'
 import UnitReportModal from '../../components/pdf/UnitReportModal.jsx'
-import { formatDate, formatRelative } from '../../utils/formatter.js'
+import { formatDate, formatRelative, formatUrgencyScore } from '../../utils/formatter.js'
 import { UNITS } from '../../data/units.js'
 import { getUnitDashboardStats } from '../../services/complaintApi.js'
 import { useDebounce } from '../../hooks/useDebounce.js'
@@ -455,7 +455,7 @@ export default function StakeholderDashboard() {
 
                               <td className="py-3.5 px-3">
                                 <span className={`font-mono text-xs font-bold ${isUrgent ? 'text-rose-600' : 'text-blue-600'}`}>
-                                  {c.urgency_score || 5}/10
+                                  {formatUrgencyScore(c.urgency_score || 5)}/10
                                 </span>
                               </td>
 

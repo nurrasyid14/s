@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useTheme } from '../../context/ThemeContext.jsx'
 import { getUrgentComplaints } from '../../services/analyticsApi.js'
+import { formatUrgencyScore } from '../../utils/formatter.js'
 
 /**
  * Navbar: adapts between public/user and stakeholder views
@@ -173,7 +174,7 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
                                 {n.ticket_id}
                               </span>
                               <span className={`text-xs font-bold ${URGENCY_COLOR(n.urgency_score)}`}>
-                                Urgency {n.urgency_score}
+                                Urgency {formatUrgencyScore(n.urgency_score)}
                               </span>
                             </div>
                             <p className="text-sm text-[var(--color-text)] truncate">{n.description}</p>
