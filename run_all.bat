@@ -2,8 +2,8 @@
 title SuaraLens - Multi Service Launcher
 echo ============================================================
 echo   Menjalankan Seluruh Layanan SuaraLens
-echo   1. ML Service   : FastAPI + Ollama Qwen3:8B (Port 8000)
-echo   2. Backend API  : CodeIgniter 4 (Port 8080)
+echo   1. ML Service   : FastAPI + Ollama Qwen3.5:4B (Port 8000)
+echo   2. Backend API  : CodeIgniter 4 (Port 8090)
 echo   3. Frontend Web : Vite React (Port 5173)
 echo ============================================================
 echo.
@@ -12,7 +12,7 @@ echo.
 start "SuaraLens - ML Service (Port 8000)" cmd /k "cd /d %CD% && set PYTHONPATH=%CD%\notebooks;%CD% && .\ml-service\venv\Scripts\python.exe -m uvicorn main:app --app-dir ml-service --host 127.0.0.1 --port 8000 --reload"
 
 :: 2. Jalankan Backend PHP di jendela baru
-start "SuaraLens - Backend CI4 (Port 8080)" cmd /k "cd /d %CD%\backend && php spark serve --port 8080"
+start "SuaraLens - Backend CI4 (Port 8090)" cmd /k "cd /d %CD%\backend && php spark serve --host 0.0.0.0 --port 8090"
 
 :: 3. Jalankan Frontend di jendela baru
 start "SuaraLens - Frontend React (Port 5173)" cmd /k "cd /d %CD%\frontend && npm run dev"
