@@ -1,12 +1,13 @@
 import requests
 import json
+import os
 
 
 class LLMEngine:
 
     def __init__(self):
-        self.url = "http://localhost:11434/api/generate"
-        self.model = "qwen3:8b"
+        self.url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+        self.model = os.getenv("OLLAMA_MODEL", "qwen3.5:4b")
 
     def analyze(self, text: str):
 

@@ -73,7 +73,7 @@ def root():
         "version": "1.0.0",
         "models": {
             "pii": "Presidio + Custom Regex",
-            "classification": "Qwen3:8B via Ollama",
+            "classification": "Qwen3.5:4B via Ollama",
             "sentiment": "w11wo/indonesian-roberta-base-sentiment-classifier"
         }
     }

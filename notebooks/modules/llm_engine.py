@@ -38,9 +38,10 @@ except ImportError:
 # ── Konfigurasi ────────────────────────────────────────────────────────────────
 
 # Deteksi otomatis: cloud vs lokal
-OLLAMA_API_KEY  = os.getenv("OLLAMA_API_KEY", "")
-DEFAULT_MODEL   = os.getenv("OLLAMA_MODEL", "qwen3:8b")
-FALLBACK_MODEL  = "qwen2.5:7b"
+_raw_key = os.getenv("OLLAMA_API_KEY", "").strip()
+OLLAMA_API_KEY  = _raw_key if _raw_key and _raw_key != "your_ollama_api_key_here" else ""
+DEFAULT_MODEL   = os.getenv("OLLAMA_MODEL", "qwen3.5:4b")
+FALLBACK_MODEL  = "qwen3.5:4b"
 
 # Base URL & mode
 if OLLAMA_API_KEY:
