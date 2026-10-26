@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useAuth } from '../../context/AuthContext.jsx'
 import StakeholderLayout from '../../components/layout/StakeholderLayout.jsx'
 import PageHeader from '../../components/ui/PageHeader.jsx'
 import SegmentedControl from '../../components/ui/SegmentedControl.jsx'
 import ErrorState from '../../components/ui/ErrorState.jsx'
 import { AXIS_TICK, TOOLTIP_STYLE } from '../../utils/chartTheme.js'
 import {
-  getSentiment, getIssueTypes, getSLAStats, getUnitStats, getExecutiveAISummary,
+  getSentiment, getIssueTypes, getSLAStats, getUnitStats, getExecutiveAISummary, getWeeklyAnalytics,
 } from '../../services/analyticsApi.js'
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
@@ -71,7 +72,9 @@ function Insight({ label, top }) {
 }
 
 export default function Analytics() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const { user } = useAuth()
+  const canViewWeekly = user?.role === 'admin'
   const [period, setPeriod] = useState('week')
   const [sentiment, setSentiment] = useState([])
   const [issues, setIssues] = useState([])
@@ -85,6 +88,10 @@ export default function Analytics() {
   const [aiSummary, setAiSummary] = useState(null)
   const [aiLoading, setAiLoading] = useState(true)
   const [refreshAiKey, setRefreshAiKey] = useState(0)
+  const [aggregateDays, setAggregateDays] = useState(7)
+  const [weekly, setWeekly] = useState(null)
+  const [weeklyLoading, setWeeklyLoading] = useState(true)
+  const [weeklyError, setWeeklyError] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -121,6 +128,33 @@ export default function Analytics() {
     return () => { active = false }
   }, [refreshAiKey, reloadKey])
 
+  useEffect(() => {
+    if (!canViewWeekly) {
+      setWeekly(null)
+      setWeeklyLoading(false)
+      setWeeklyError(false)
+      return undefined
+    }
+
+    let active = true
+    setWeeklyLoading(true)
+    setWeeklyError(false)
+    getWeeklyAnalytics(aggregateDays)
+      .then(data => {
+        if (active) setWeekly(data)
+      })
+      .catch(() => {
+        if (active) {
+          setWeekly(null)
+          setWeeklyError(true)
+        }
+      })
+      .finally(() => {
+        if (active) setWeeklyLoading(false)
+      })
+    return () => { active = false }
+  }, [aggregateDays, canViewWeekly, reloadKey])
+
   const periodOptions = PERIOD_KEYS.map(key => ({ key, label: t(`analytics.period_${key}`) }))
 
   const slaData = sla
@@ -144,6 +178,101 @@ export default function Analytics() {
           />
         }
       />
+
+      {canViewWeekly && <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 md:p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-mono text-xs font-bold uppercase tracking-wider text-[var(--color-text)]">
+              {t('analytics.weekly_title')}
+            </h2>
+            {weekly?.period && (
+              <p className="mt-1 text-xs font-mono text-[var(--color-text-muted)]">
+                {new Date(weekly.period.start_at).toLocaleString()} - {new Date(weekly.period.end_at).toLocaleString()}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <label htmlFor="weekly-aggregate-days" className="text-xs font-mono text-[var(--color-text-muted)]">
+              {t('analytics.aggregate_window')}
+            </label>
+            <select
+              id="weekly-aggregate-days"
+              value={aggregateDays}
+              onChange={event => setAggregateDays(Number(event.target.value))}
+              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-sm text-[var(--color-text)]"
+            >
+              {[7, 30, 90, 180].map(days => (
+                <option key={days} value={days}>{t('analytics.aggregate_days', { count: days })}</option>
+              ))}
+            </select>
+            {weekly?.generated_at && (
+              <span className="text-xs font-mono text-[var(--color-text-muted)]">
+                {t('analytics.weekly_generated')}: {new Date(weekly.generated_at).toLocaleString()}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {weeklyLoading ? (
+          <div className="mt-4 h-20 rounded-xl bg-[var(--color-bg-secondary)] animate-pulse" />
+        ) : weeklyError ? (
+          <p role="alert" className="mt-4 text-sm text-[var(--color-status-danger)]">
+            {t('analytics.weekly_error')}
+          </p>
+        ) : !weekly ? (
+          <p className="mt-4 text-sm text-[var(--color-text-muted)]">
+            {t('analytics.weekly_empty')}
+          </p>
+        ) : (
+          <>
+            <p className="mt-4 text-sm leading-relaxed text-[var(--color-text)]">
+              {weekly.summary?.[i18n.language?.startsWith('id') ? 'id' : 'en']}
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3">
+                <div className="text-xs text-[var(--color-text-muted)]">{t('analytics.weekly_record_count')}</div>
+                <div className="mt-1 text-xl font-bold font-mono text-[var(--color-text)]">{weekly.record_count}</div>
+              </div>
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3">
+                <div className="text-xs text-[var(--color-text-muted)]">{t('analytics.weekly_popular_topics')}</div>
+                <div className="mt-1 text-sm font-semibold text-[var(--color-text)]">
+                  {weekly.popular_topics?.[0]?.label || '-'}
+                  {weekly.popular_topics?.[0] ? ` (${weekly.popular_topics[0].count})` : ''}
+                </div>
+              </div>
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3">
+                <div className="text-xs text-[var(--color-text-muted)]">{t('analytics.weekly_negative')}</div>
+                <div className="mt-1 text-xl font-bold font-mono text-[var(--color-status-danger)]">
+                  {weekly.record_count > 0
+                    ? `${(((weekly.sentiment?.negative || 0) / weekly.record_count) * 100).toFixed(1)}%`
+                    : '0%'}
+                </div>
+              </div>
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3">
+                <div className="text-xs text-[var(--color-text-muted)]">{t('analytics.weekly_top_unit')}</div>
+                <div className="mt-1 text-sm font-semibold text-[var(--color-text)]">
+                  {weekly.top_units?.[0]?.label || '-'}
+                  {weekly.top_units?.[0] ? ` (${weekly.top_units[0].count})` : ''}
+                </div>
+              </div>
+            </div>
+            {weekly.popular_topics?.length > 0 && (
+              <div className="mt-4">
+                <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+                  {t('analytics.weekly_popular_topics')}
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {weekly.popular_topics.map(topic => (
+                    <span key={topic.label} className="rounded-full border border-[var(--color-border)] px-3 py-1 text-xs text-[var(--color-text)]">
+                      {topic.label}: {topic.count}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </section>}
 
       {/* Executive AI Grounded Narrative Summary Card */}
       <section className="mb-6 rounded-2xl border border-[var(--color-primary)]/20 bg-gradient-to-r from-[var(--color-surface)] via-[var(--color-surface)] to-[var(--color-primary)]/5 p-5 md:p-6 shadow-sm">

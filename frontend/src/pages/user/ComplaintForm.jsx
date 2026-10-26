@@ -22,6 +22,7 @@ const CATEGORIES = [
 import { UNITS } from '../../data/units.js'
 
 const TOTAL_STEPS = 5
+const MAX_ATTACHMENT_SIZE_BYTES = 5 * 1024 * 1024
 
 export default function ComplaintForm() {
   const { t } = useTranslation()
@@ -232,9 +233,17 @@ export default function ComplaintForm() {
                   accept="image/png,image/jpeg,application/pdf"
                   className="sr-only"
                   onChange={e => {
-                    if (e.target.files?.[0]) {
-                      setForm(f => ({ ...f, attachments: [e.target.files[0].name] }))
+                    const file = e.target.files?.[0]
+                    if (!file) return
+
+                    if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
+                      setError('Ukuran file maksimal 5 MB.')
+                      e.target.value = ''
+                      return
                     }
+
+                    setForm(f => ({ ...f, attachments: [file.name] }))
+                    setError('')
                   }}
                 />
                 <Paperclip size={24} className="text-[var(--color-text-muted)] mx-auto mb-2" aria-hidden="true" />

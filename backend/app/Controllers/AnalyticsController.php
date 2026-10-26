@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Services\WeeklyAnalyticsService;
 use CodeIgniter\RESTful\ResourceController;
 
 class AnalyticsController extends ResourceController
@@ -174,6 +175,22 @@ class AnalyticsController extends ResourceController
     public function sla()
     {
         return $this->respond($this->calculateSlaStats());
+    }
+
+    /** GET /api/analytics/weekly */
+    public function weekly()
+    {
+        $days = filter_var($this->request->getGet('days') ?? 7, FILTER_VALIDATE_INT);
+        if (!in_array($days, [7, 30, 90, 180], true)) {
+            return $this->failValidationErrors('days harus salah satu dari 7, 30, 90, atau 180.');
+        }
+
+        $snapshot = (new WeeklyAnalyticsService())->latestSnapshot($days);
+
+        return $this->respond([
+            'status' => true,
+            'data'   => $snapshot,
+        ]);
     }
 
     /** GET /api/analytics/ai-summary */

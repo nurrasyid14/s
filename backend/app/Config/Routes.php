@@ -49,6 +49,7 @@ $routes->group('api', function ($routes) {
     });
 
     $routes->get('unit/stats', 'DashboardController::unitStats', ['filter' => 'authRole:stakeholder,admin']);
+    $routes->get('analytics/weekly', 'AnalyticsController::weekly', ['filter' => 'authRole:admin']);
 
     $routes->group('analytics', ['filter' => 'authRole:stakeholder,admin'], function ($routes) {
         $routes->get('summary', 'AnalyticsController::summary');

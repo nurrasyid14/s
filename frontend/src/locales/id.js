@@ -185,6 +185,16 @@ export default {
       period_week: 'Mingguan',
       period_month: 'Bulanan',
       period_custom: 'Custom',
+      weekly_title: 'Ringkasan Analitik Berkala',
+      weekly_empty: 'Snapshot agregasi belum tersedia. Data akan muncul setelah batch berikutnya berjalan.',
+      weekly_error: 'Snapshot analitik gagal dimuat.',
+      weekly_generated: 'Diperbarui',
+      weekly_record_count: 'Total aduan',
+      weekly_popular_topics: 'Topik populer',
+      weekly_negative: 'Sentimen negatif',
+      weekly_top_unit: 'Unit terbanyak',
+      aggregate_window: 'Rentang agregasi',
+      aggregate_days: '{{count}} hari terakhir',
     },
 
     // Common

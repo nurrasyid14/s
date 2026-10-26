@@ -104,6 +104,12 @@ export async function getSLAStats() {
   }
 }
 
+export async function getWeeklyAnalytics(days = 7) {
+  if (USE_MOCK) { await delay(300); return null }
+  const res = await api.get('/analytics/weekly', { params: { days } })
+  return res.data?.data ?? null
+}
+
 export async function getUnitStats() {
   if (USE_MOCK) { await delay(400); return MOCK_UNIT }
   const res = await api.get('/analytics/units')
