@@ -210,6 +210,9 @@ temp/
 # Generated reports / exports
 # ============================================================
 
+# Scheduled analytics snapshots (backend: php spark analytics:refresh-weekly)
+data/output/weekly_analytics/
+
 reports/generated/*
 exports/*
 *.csv

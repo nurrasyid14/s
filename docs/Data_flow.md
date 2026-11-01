@@ -21,8 +21,8 @@ User/Reporter -> Frontend -> Backend API -> ML Service -> Operational DB -> Anal
 ### 2.1 Frontend submission
 The first entry point is the frontend complaint API layer:
 
-- [frontend/src/services/api.js](frontend/src/services/api.js)
-- [frontend/src/services/complaintApi.js](frontend/src/services/complaintApi.js)
+- [frontend/src/services/api.js](../frontend/src/services/api.js)
+- [frontend/src/services/complaintApi.js](../frontend/src/services/complaintApi.js)
 
 The client sends HTTP requests to the backend using Axios, with auth token injection and 401 redirect handling.
 
@@ -37,7 +37,7 @@ This is the user-facing ingress layer.
 ### 2.2 Backend API route
 The API entry route is registered here:
 
-- [backend/app/Config/Routes.php](backend/app/Config/Routes.php)
+- [backend/app/Config/Routes.php](../backend/app/Config/Routes.php)
 
 Relevant complaint endpoints:
 
@@ -54,7 +54,7 @@ The operational complaint workflow starts here.
 
 The main ingestion logic lives in:
 
-- [backend/app/Controllers/ComplaintController.php](backend/app/Controllers/ComplaintController.php)
+- [backend/app/Controllers/ComplaintController.php](../backend/app/Controllers/ComplaintController.php)
 
 In `create()`, the backend does the following:
 
@@ -79,9 +79,9 @@ This is a privacy-first design choice.
 
 The actual ML/NLP processing happens in:
 
-- [ml-service/main.py](ml-service/main.py)
-- [ml-service/pii_redactor.py](ml-service/pii_redactor.py)
-- [ml-service/llm_engine.py](ml-service/llm_engine.py)
+- [ml-service/main.py](../ml-service/main.py)
+- [ml-service/pii_redactor.py](../ml-service/pii_redactor.py)
+- [ml-service/llm_engine.py](../ml-service/llm_engine.py)
 
 ### 4.1 PII redaction
 `main.py` calls `anonymize_text(text)`.
@@ -130,7 +130,7 @@ This introduces the HITL step in the operational workflow.
 
 The complaint is saved to the application database using:
 
-- [backend/app/Models/ComplaintModel.php](backend/app/Models/ComplaintModel.php)
+- [backend/app/Models/ComplaintModel.php](../backend/app/Models/ComplaintModel.php)
 
 The complaint table contains core operational columns such as:
 
@@ -153,7 +153,7 @@ This makes the operational model cleaner:
 
 The database connection is configured in:
 
-- [backend/app/Config/Database.php](backend/app/Config/Database.php)
+- [backend/app/Config/Database.php](../backend/app/Config/Database.php)
 
 ---
 
@@ -164,15 +164,15 @@ The project also contains a data-science/analytics layer that prepares dataset a
 ### 6.1 Raw data landing zone
 The repository includes raw dataset files under:
 
-- [data/suaralens_dummy_simulasi.jsonl](data/suaralens_dummy_simulasi.jsonl)
-- [data/suaralens_dummy_uji.jsonl](data/suaralens_dummy_uji.jsonl)
+- [data/suaralens_dummy_simulasi.jsonl](../data/suaralens_dummy_simulasi.jsonl)
+- [data/suaralens_dummy_uji.jsonl](../data/suaralens_dummy_uji.jsonl)
 
 These are raw JSONL records used as the ingestion source for data analysis notebooks.
 
 ### 6.2 Notebook pipeline
 The mining notebook generator is:
 
-- [generate_nb08.py](generate_nb08.py)
+- [generate_nb08.py](../generate_nb08.py)
 
 This script creates a notebook that loads the dataset from:
 
