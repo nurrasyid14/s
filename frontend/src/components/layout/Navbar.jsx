@@ -252,10 +252,24 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
 
             {user ? (
               <>
-                <Link to={user.role === 'stakeholder' ? '/stakeholder' : '/user/dashboard'} className="btn-outline !py-2 !px-4 rounded-lg shadow-xs">
-                  {t('nav.dashboard')}
-                </Link>
-                <button onClick={logout} className="btn-solid !py-2 !px-4 rounded-lg shadow-xs">
+                {user.role === 'user' ? (
+                  <>
+                    <Link to="/user/dashboard" className="px-3 py-1.5 text-xs font-semibold rounded-lg text-[var(--color-text)] hover:bg-[var(--color-card-hover)] transition-colors">
+                      Transparansi
+                    </Link>
+                    <Link to="/user/complaints" className="px-3 py-1.5 text-xs font-semibold rounded-lg text-[var(--color-text)] hover:bg-[var(--color-card-hover)] transition-colors">
+                      Riwayat Saya
+                    </Link>
+                    <Link to="/user/submit" className="btn-solid !py-1.5 !px-3 rounded-lg shadow-xs text-xs font-semibold">
+                      + Ajukan
+                    </Link>
+                  </>
+                ) : (
+                  <Link to={user.role === 'stakeholder' ? '/stakeholder' : '/admin/dashboard'} className="btn-outline !py-2 !px-4 rounded-lg shadow-xs">
+                    {t('nav.dashboard')}
+                  </Link>
+                )}
+                <button onClick={logout} className="btn-outline !py-1.5 !px-3 rounded-lg shadow-xs text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-status-danger)]">
                   {t('nav.logout')}
                 </button>
               </>
@@ -296,9 +310,23 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
             )}
             {user && (
               <div className="pt-2 border-t border-[var(--color-border)] space-y-1">
-                <Link to={user.role === 'stakeholder' ? '/stakeholder' : '/user/dashboard'} onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-medium text-[var(--color-text)]">
-                  {t('nav.dashboard')}
-                </Link>
+                {user.role === 'user' ? (
+                  <>
+                    <Link to="/user/dashboard" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-medium text-[var(--color-text)]">
+                      Dashboard Transparansi
+                    </Link>
+                    <Link to="/user/complaints" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-medium text-[var(--color-text)]">
+                      Riwayat Aduan Saya
+                    </Link>
+                    <Link to="/user/submit" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-semibold text-[var(--color-primary)]">
+                      + Ajukan Aspirasi Baru
+                    </Link>
+                  </>
+                ) : (
+                  <Link to={user.role === 'stakeholder' ? '/stakeholder' : '/admin/dashboard'} onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-medium text-[var(--color-text)]">
+                    {t('nav.dashboard')}
+                  </Link>
+                )}
                 <button onClick={logout} className="block px-4 py-2 text-sm text-[var(--color-status-danger)] w-full text-left font-medium">{t('nav.logout')}</button>
               </div>
             )}

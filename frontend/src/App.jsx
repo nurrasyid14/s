@@ -14,6 +14,7 @@ const SignUpStakeholderPage  = lazy(() => import('./pages/auth/SignUpStakeholder
 const AdminSignInPage        = lazy(() => import('./pages/admin/AdminSignInPage.jsx'))
 
 // ── User / Pelapor (lazy) ────────────────────────────────────────────────────
+const UserDashboard          = lazy(() => import('./pages/user/UserDashboard.jsx'))
 const ComplaintForm          = lazy(() => import('./pages/user/ComplaintForm.jsx'))
 const MyComplaints           = lazy(() => import('./pages/user/MyComplaints.jsx'))
 const ComplaintTracking      = lazy(() => import('./pages/user/ComplaintTracking.jsx'))
@@ -78,7 +79,8 @@ export default function App() {
             <Route path="/user/submit"          element={<ProtectedRoute role="user"><ComplaintForm /></ProtectedRoute>} />
             <Route path="/user/complaints"      element={<ProtectedRoute role="user"><MyComplaints /></ProtectedRoute>} />
             <Route path="/user/complaints/:id"  element={<ProtectedRoute role="user"><ComplaintTracking /></ProtectedRoute>} />
-            <Route path="/user/dashboard"       element={<ProtectedRoute role="user"><MyComplaints /></ProtectedRoute>} />
+            <Route path="/user" element={<Navigate to="/user/dashboard" replace />} />
+            <Route path="/user/dashboard"       element={<ProtectedRoute role="user"><UserDashboard /></ProtectedRoute>} />
 
             {/* Stakeholder Area (Unit Kerja Pelaksana) */}
             <Route path="/stakeholder"                element={<ProtectedRoute role="stakeholder"><StakeholderDashboard /></ProtectedRoute>} />
