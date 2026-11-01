@@ -2,7 +2,7 @@
 title SuaraLens - Stop All Services
 echo ============================================================
 echo   Menghentikan Seluruh Layanan SuaraLens
-echo   Port 8000 (ML), 8080 (Backend), 5173 (Frontend)
+echo   Port 8000 (ML), 8090 (Backend), 5173 (Frontend)
 echo ============================================================
 echo.
 

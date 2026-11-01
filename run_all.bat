@@ -8,13 +8,17 @@ echo   3. Frontend Web : Vite React (Port 5173)
 echo ============================================================
 echo.
 
-:: 1. Jalankan ML Service di jendela baru
-start "SuaraLens - ML Service (Port 8000)" cmd /k "cd /d %CD% && set PYTHONPATH=%CD%\notebooks;%CD% && .\ml-service\venv\Scripts\python.exe -m uvicorn main:app --app-dir ml-service --host 127.0.0.1 --port 8000 --reload"
+:: 1. Tentukan Python untuk ML Service (utamakan .venv utama, fallback ml-service\venv)
+set "PYTHON_EXE=%CD%\.venv\Scripts\python.exe"
+if not exist "%PYTHON_EXE%" set "PYTHON_EXE=%CD%\ml-service\venv\Scripts\python.exe"
 
-:: 2. Jalankan Backend PHP di jendela baru
+:: 2. Jalankan ML Service di jendela baru
+start "SuaraLens - ML Service (Port 8000)" cmd /k "cd /d %CD% && set PYTHONPATH=%CD%\notebooks;%CD% && "%PYTHON_EXE%" -m uvicorn main:app --app-dir ml-service --host 127.0.0.1 --port 8000 --reload"
+
+:: 3. Jalankan Backend PHP di jendela baru
 start "SuaraLens - Backend CI4 (Port 8090)" cmd /k "cd /d %CD%\backend && php spark serve --host 0.0.0.0 --port 8090"
 
-:: 3. Jalankan Frontend di jendela baru
+:: 4. Jalankan Frontend di jendela baru
 start "SuaraLens - Frontend React (Port 5173)" cmd /k "cd /d %CD%\frontend && npm run dev"
 
 echo.

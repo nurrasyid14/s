@@ -43,6 +43,11 @@ OLLAMA_API_KEY  = _raw_key if _raw_key and _raw_key != "your_ollama_api_key_here
 DEFAULT_MODEL   = os.getenv("OLLAMA_MODEL", "qwen3.5:4b")
 FALLBACK_MODEL  = "qwen3.5:4b"
 
+# Nonaktifkan mode "thinking" pada model reasoning (mis. Qwen3.5) agar jawaban
+# JSON tidak habis terpakai untuk reasoning. Set kosong ("") untuk memakai
+# perilaku default model.
+REASONING_EFFORT = os.getenv("OLLAMA_REASONING_EFFORT", "none").strip().lower()
+
 # Base URL & mode
 if OLLAMA_API_KEY:
     # Mode Cloud: Ollama.com hosted API (OpenAI-compatible)
@@ -237,6 +242,11 @@ def _call_ollama(
             ],
             temperature=temperature,
             max_tokens=512,
+            extra_body=(
+                {"reasoning_effort": REASONING_EFFORT}
+                if REASONING_EFFORT and REASONING_EFFORT != "default"
+                else None
+            ),
         )
 
         content = response.choices[0].message.content

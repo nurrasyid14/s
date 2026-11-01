@@ -9,7 +9,12 @@ Write-Host "============================================================" -Foreg
 $root = $PSScriptRoot
 
 # 1. Tentukan path Python untuk ML Service
-$pythonExe = "$root\ml-service\venv\Scripts\python.exe"
+# Utamakan virtualenv utama proyek (.venv) karena berisi dependency lengkap
+# (Presidio, spaCy, transformers, dll). ml-service/venv hanya fallback ringan.
+$pythonExe = "$root\.venv\Scripts\python.exe"
+if (-not (Test-Path $pythonExe)) {
+    $pythonExe = "$root\ml-service\venv\Scripts\python.exe"
+}
 if (-not (Test-Path $pythonExe)) {
     if (Get-Command python -ErrorAction SilentlyContinue) {
         $pythonExe = "python"

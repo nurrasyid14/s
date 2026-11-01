@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Optional
 
 from modules.llm_engine import (
-    OLLAMA_API_MODE, DEFAULT_MODEL, FALLBACK_MODEL,
+    OLLAMA_API_MODE, DEFAULT_MODEL, FALLBACK_MODEL, REASONING_EFFORT,
     check_ollama_status, _get_client
 )
 
@@ -103,6 +103,11 @@ Berdasarkan data di atas, tulis ringkasan naratif (3-5 kalimat) untuk pimpinan P
             ],
             temperature=0.2,   # sedikit lebih kreatif tapi tetap rendah
             max_tokens=512,
+            extra_body=(
+                {"reasoning_effort": REASONING_EFFORT}
+                if REASONING_EFFORT and REASONING_EFFORT != "default"
+                else None
+            ),
         )
         summary_text = response.choices[0].message.content.strip()
         # Bersihkan thinking tags jika ada (model qwen3)
