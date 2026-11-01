@@ -301,6 +301,33 @@ button:not(:disabled),
   transition: all 150ms ease;
 }
 
+/* ============================================================
+   Native Select: dark mode override
+   Browser native <select> & <option> tidak otomatis mengikuti
+   CSS custom properties, sehingga perlu override eksplisit.
+   ============================================================ */
+select {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+select option {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+/* Fallback khusus dark mode menggunakan color-scheme */
+.dark select {
+  color-scheme: dark;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+.dark select option {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
 /* Skeleton */
 .skeleton {
   background: linear-gradient(90deg, var(--color-bg-secondary) 25%, var(--color-border) 50%, var(--color-bg-secondary) 75%);

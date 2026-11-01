@@ -90,7 +90,7 @@ export default function StakeholderDashboard() {
               id="unit-select"
               value={selectedUnit}
               onChange={e => setSelectedUnit(e.target.value)}
-              className="text-xs font-bold text-[var(--color-text)] bg-transparent border-none focus:outline-none cursor-pointer"
+              className="text-xs font-bold text-[var(--color-text)] bg-transparent border-none focus:outline-none cursor-pointer dark:bg-transparent"
             >
               {UNITS.map(u => (
                 <option key={u.id} value={u.name}>{u.name} ({u.code})</option>

@@ -119,9 +119,9 @@ export default function SignInPage() {
 
       <div className="mt-5 space-y-1 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 text-xs text-[var(--color-text-muted)] rounded-xl shadow-xs">
         <p className="font-semibold text-[var(--color-text)]">Demo credentials:</p>
-        <p>User: <span className="font-mono font-medium text-[var(--color-primary)]">user@test.com</span></p>
+        <p>User: <span className="font-mono font-medium text-[var(--color-primary)]">budi@student.pens.ac.id</span></p>
         <p>Stakeholder: <span className="font-mono font-medium text-[var(--color-primary)]">sari@pens.ac.id</span></p>
-        <p className="text-[11px]">(password: bebas)</p>
+        <p className="text-[11px]">(password: password123)</p>
       </div>
     </AuthShell>
   )
