@@ -1,24 +1,49 @@
 import { UNITS } from '../data/units.js'
 
 /**
- * Standard 7 Workflow Stages of SuaraLens
+ * Standard 7 Workflow Stages for Aduan (Complaints)
  */
-export const STAGES = [
-  { key: 'received',     step: 1, label: 'Diterima',       desc: 'Aduan masuk, menunggu verifikasi awal', color: 'sky' },
-  { key: 'verified',     step: 2, label: 'Diverifikasi',   desc: 'Diverifikasi keabsahannya oleh Admin Sentral', color: 'purple' },
-  { key: 'dispatched',   step: 3, label: 'Didisposisikan', desc: 'Diteruskan ke Unit Kerja terkait', color: 'amber' },
-  { key: 'in_progress',  step: 4, label: 'Diproses',       desc: 'Unit memulai penelaahan dan penugasan PIC', color: 'orange' },
-  { key: 'action_taken', step: 5, label: 'Ditindaklanjuti',desc: 'Aksi teknis perbaikan / investigasi lapangan', color: 'teal' },
-  { key: 'answered',     step: 6, label: 'Dijawab',        desc: 'Unit menerbitkan jawaban dan klarifikasi resmi', color: 'indigo' },
-  { key: 'resolved',     step: 7, label: 'Selesai',        desc: 'Keluhan tuntas ditangani dan dievaluasi', color: 'emerald' },
+export const COMPLAINT_STAGES = [
+  { key: 'received',     step: 1, label: 'Diterima',       desc: 'Aduan masuk, antrean validasi awal', color: 'sky' },
+  { key: 'verified',     step: 2, label: 'Diverifikasi',   desc: 'Diverifikasi Admin Sentral PENS', color: 'purple' },
+  { key: 'dispatched',   step: 3, label: 'Didisposisikan', desc: 'Diteruskan ke Unit Pelaksana terkait', color: 'amber' },
+  { key: 'in_progress',  step: 4, label: 'Diproses',       desc: 'Unit memulai telaah & penugasan PIC', color: 'orange' },
+  { key: 'action_taken', step: 5, label: 'Ditindaklanjuti',desc: 'Aksi teknis perbaikan / lapangan', color: 'teal' },
+  { key: 'answered',     step: 6, label: 'Dijawab',        desc: 'Tanggapan & klarifikasi resmi unit', color: 'indigo' },
+  { key: 'resolved',     step: 7, label: 'Selesai',        desc: 'Tuntas diselesaikan & evaluasi kepuasan', color: 'emerald' },
 ]
 
 /**
- * Benchmark data per unit (terkalibrasi dengan 14 unit standar PENS)
+ * Streamlined 4 Workflow Stages for Masukan (Feedback) & Saran (Suggestions)
+ * Alur ringkas/evaluatif: Diterima -> Ditinjau Unit -> Dijawab Resmi -> Selesai
+ */
+export const STREAMLINED_STAGES = [
+  { key: 'received', step: 1, label: 'Diterima', desc: 'Masukan/saran masuk ke sistem', color: 'sky' },
+  { key: 'verified', step: 2, label: 'Ditinjau Unit', desc: 'Ditinjau & dievaluasi oleh tim unit', color: 'purple' },
+  { key: 'answered', step: 3, label: 'Dijawab Resmi', desc: 'Tanggapan & apresiasi resmi unit diterbitkan', color: 'indigo' },
+  { key: 'resolved', step: 4, label: 'Selesai & Dicatat', desc: 'Dicatat dalam bank aspirasi perbaikan mutu', color: 'emerald' },
+]
+
+// Backward compatibility
+export const STAGES = COMPLAINT_STAGES
+
+/**
+ * 3 Tipe Pengajuan SuaraLens
+ */
+export const SUBMISSION_TYPES = [
+  { key: 'all',        label: 'Semua Jenis',  badgeColor: 'blue',   icon: 'Layers' },
+  { key: 'complaint',  label: 'Aduan',        badgeColor: 'rose',   icon: 'AlertTriangle', desc: 'Masalah/keluhan yang butuh penanganan (7 Tahap SLA)' },
+  { key: 'feedback',   label: 'Masukan',      badgeColor: 'sky',    icon: 'MessageCircle', desc: 'Ulasan & evaluasi layanan kampus (Alur Ringkas)' },
+  { key: 'suggestion', label: 'Saran',        badgeColor: 'amber',  icon: 'Lightbulb',     desc: 'Ide baru & usulan inovasi (Alur Ringkas)' },
+]
+
+/**
+ * Benchmark data per unit terkalibrasi dengan 14 unit standar PENS
  */
 const DEFAULT_UNIT_DATA = {
   'Sarana Prasarana dan Layanan Umum': {
     total: 68,
+    types: { complaint: 48, feedback: 14, suggestion: 6 },
     stages: { received: 2, verified: 3, dispatched: 5, in_progress: 11, action_taken: 8, answered: 7, resolved: 32 },
     avgResolutionDays: 1.6,
     slaTargetDays: 2,
@@ -28,6 +53,7 @@ const DEFAULT_UNIT_DATA = {
   },
   'TIK/Sistem Informasi': {
     total: 46,
+    types: { complaint: 32, feedback: 9, suggestion: 5 },
     stages: { received: 1, verified: 2, dispatched: 3, in_progress: 7, action_taken: 5, answered: 6, resolved: 22 },
     avgResolutionDays: 1.7,
     slaTargetDays: 2,
@@ -37,6 +63,7 @@ const DEFAULT_UNIT_DATA = {
   },
   'Akademik': {
     total: 38,
+    types: { complaint: 24, feedback: 10, suggestion: 4 },
     stages: { received: 1, verified: 1, dispatched: 4, in_progress: 6, action_taken: 3, answered: 5, resolved: 18 },
     avgResolutionDays: 2.3,
     slaTargetDays: 3,
@@ -46,6 +73,7 @@ const DEFAULT_UNIT_DATA = {
   },
   'Kemahasiswaan': {
     total: 29,
+    types: { complaint: 16, feedback: 8, suggestion: 5 },
     stages: { received: 1, verified: 1, dispatched: 2, in_progress: 4, action_taken: 2, answered: 4, resolved: 15 },
     avgResolutionDays: 2.4,
     slaTargetDays: 3,
@@ -55,6 +83,7 @@ const DEFAULT_UNIT_DATA = {
   },
   'Keuangan': {
     total: 19,
+    types: { complaint: 14, feedback: 3, suggestion: 2 },
     stages: { received: 0, verified: 1, dispatched: 2, in_progress: 3, action_taken: 1, answered: 2, resolved: 10 },
     avgResolutionDays: 2.2,
     slaTargetDays: 3,
@@ -64,6 +93,7 @@ const DEFAULT_UNIT_DATA = {
   },
   'Perpustakaan': {
     total: 14,
+    types: { complaint: 7, feedback: 4, suggestion: 3 },
     stages: { received: 0, verified: 0, dispatched: 1, in_progress: 2, action_taken: 1, answered: 2, resolved: 8 },
     avgResolutionDays: 1.4,
     slaTargetDays: 2,
@@ -73,6 +103,7 @@ const DEFAULT_UNIT_DATA = {
   },
   'Laboratorium/Jurusan': {
     total: 12,
+    types: { complaint: 9, feedback: 2, suggestion: 1 },
     stages: { received: 0, verified: 1, dispatched: 1, in_progress: 2, action_taken: 2, answered: 1, resolved: 5 },
     avgResolutionDays: 1.8,
     slaTargetDays: 2,
@@ -82,6 +113,7 @@ const DEFAULT_UNIT_DATA = {
   },
   'Ukarni dan Hubungan Alumni': {
     total: 8,
+    types: { complaint: 4, feedback: 2, suggestion: 2 },
     stages: { received: 0, verified: 0, dispatched: 1, in_progress: 1, action_taken: 1, answered: 1, resolved: 4 },
     avgResolutionDays: 2.5,
     slaTargetDays: 3,
@@ -91,6 +123,7 @@ const DEFAULT_UNIT_DATA = {
   },
   'Keamanan dan Ketertiban': {
     total: 7,
+    types: { complaint: 5, feedback: 1, suggestion: 1 },
     stages: { received: 0, verified: 0, dispatched: 1, in_progress: 1, action_taken: 1, answered: 1, resolved: 3 },
     avgResolutionDays: 0.8,
     slaTargetDays: 1,
@@ -100,6 +133,7 @@ const DEFAULT_UNIT_DATA = {
   },
   'SDM/Kepegawaian': {
     total: 5,
+    types: { complaint: 3, feedback: 1, suggestion: 1 },
     stages: { received: 0, verified: 0, dispatched: 1, in_progress: 1, action_taken: 0, answered: 1, resolved: 2 },
     avgResolutionDays: 2.1,
     slaTargetDays: 3,
@@ -109,6 +143,7 @@ const DEFAULT_UNIT_DATA = {
   },
   'Kerjasama dan Hubungan Eksternal': {
     total: 4,
+    types: { complaint: 2, feedback: 1, suggestion: 1 },
     stages: { received: 0, verified: 0, dispatched: 0, in_progress: 1, action_taken: 1, answered: 1, resolved: 1 },
     avgResolutionDays: 3.1,
     slaTargetDays: 4,
@@ -118,6 +153,7 @@ const DEFAULT_UNIT_DATA = {
   },
   'Informasi Publik/PPID': {
     total: 3,
+    types: { complaint: 1, feedback: 1, suggestion: 1 },
     stages: { received: 0, verified: 0, dispatched: 0, in_progress: 1, action_taken: 0, answered: 1, resolved: 1 },
     avgResolutionDays: 2.0,
     slaTargetDays: 3,
@@ -127,6 +163,7 @@ const DEFAULT_UNIT_DATA = {
   },
   'Pimpinan/Manajemen': {
     total: 3,
+    types: { complaint: 1, feedback: 0, suggestion: 2 },
     stages: { received: 0, verified: 0, dispatched: 0, in_progress: 1, action_taken: 0, answered: 1, resolved: 1 },
     avgResolutionDays: 3.8,
     slaTargetDays: 5,
@@ -136,6 +173,7 @@ const DEFAULT_UNIT_DATA = {
   },
   'Lainnya/Lintas Unit': {
     total: 3,
+    types: { complaint: 1, feedback: 1, suggestion: 1 },
     stages: { received: 0, verified: 0, dispatched: 0, in_progress: 1, action_taken: 0, answered: 1, resolved: 1 },
     avgResolutionDays: 2.2,
     slaTargetDays: 3,
@@ -146,10 +184,9 @@ const DEFAULT_UNIT_DATA = {
 }
 
 /**
- * Fetch and assemble student transparency analytics
+ * Fetch and assemble student transparency analytics with 3-type breakdown
  */
 export async function getStudentDashboardData() {
-  // Ambil data aduan aktif dari localStorage bila ada
   let localComplaints = []
   try {
     const raw = localStorage.getItem('suaralens_mock_complaints_v2')
@@ -158,11 +195,11 @@ export async function getStudentDashboardData() {
     // ignore
   }
 
-  // Clone dataset dasar
   const unitMap = {}
   UNITS.forEach(u => {
     const bench = DEFAULT_UNIT_DATA[u.name] || {
       total: 2,
+      types: { complaint: 1, feedback: 1, suggestion: 0 },
       stages: { received: 0, verified: 0, dispatched: 0, in_progress: 1, action_taken: 0, answered: 0, resolved: 1 },
       avgResolutionDays: 2.0,
       slaTargetDays: u.slaDays || 3,
@@ -178,6 +215,7 @@ export async function getStudentDashboardData() {
       desc: u.desc,
       slaTargetDays: u.slaDays || bench.slaTargetDays,
       total: bench.total,
+      types: { ...bench.types },
       stages: { ...bench.stages },
       avgResolutionDays: bench.avgResolutionDays,
       slaComplianceRate: bench.slaComplianceRate,
@@ -186,25 +224,33 @@ export async function getStudentDashboardData() {
     }
   })
 
-  // Jika ada aduan lokal baru, update stage counter secara real-time
+  // Sinkronisasi aduan lokal baru jika ada
   if (localComplaints.length > 0) {
     localComplaints.forEach(c => {
       const uName = c.target_unit || c.unit
-      if (unitMap[uName] && c.status) {
-        // Increment stage
-        if (unitMap[uName].stages[c.status] !== undefined) {
+      if (unitMap[uName]) {
+        const typeKey = ['complaint', 'feedback', 'suggestion'].includes(c.type) ? c.type : 'complaint'
+        unitMap[uName].types[typeKey] = (unitMap[uName].types[typeKey] || 0) + 1
+        unitMap[uName].total += 1
+        if (c.status && unitMap[uName].stages[c.status] !== undefined) {
           unitMap[uName].stages[c.status] += 1
-          unitMap[uName].total += 1
         }
       }
     })
   }
 
-  // Hitung total agregat keseluruhan kampus
+  // Agregasi Total Kampus
   let campusTotal = 0
   let campusResolved = 0
   let campusActive = 0
   let campusReceived = 0
+
+  const typeTotals = {
+    complaint: 0,
+    feedback: 0,
+    suggestion: 0,
+  }
+
   const globalStages = {
     received: 0,
     verified: 0,
@@ -221,7 +267,10 @@ export async function getStudentDashboardData() {
     campusActive += (u.stages.dispatched + u.stages.in_progress + u.stages.action_taken)
     campusReceived += (u.stages.received + u.stages.verified)
 
-    // Agregasi stage
+    typeTotals.complaint += (u.types.complaint || 0)
+    typeTotals.feedback += (u.types.feedback || 0)
+    typeTotals.suggestion += (u.types.suggestion || 0)
+
     Object.keys(globalStages).forEach(stg => {
       globalStages[stg] += (u.stages[stg] || 0)
     })
@@ -241,14 +290,14 @@ export async function getStudentDashboardData() {
     }
   })
 
-  // Urutkan unit berdasarkan volume aduan (terbanyak ke tersedikit)
   unitList.sort((a, b) => b.total - a.total)
 
-  // Hitung persentase distribusi
+  // Distribusi per unit
   const unitDistribution = unitList.map(u => ({
     name: u.name,
     code: u.code,
     count: u.total,
+    types: u.types,
     percentage: campusTotal > 0 ? Math.round((u.total / campusTotal) * 1000) / 10 : 0,
     resolved: u.stages.resolved,
     inProgress: u.activeCount,
@@ -256,7 +305,6 @@ export async function getStudentDashboardData() {
     topCategories: u.topCategories,
   }))
 
-  // Hitung rata-rata kinerja kampus
   const avgSlaCompliance = Math.round(
     unitList.reduce((acc, u) => acc + u.slaComplianceRate, 0) / unitList.length * 10
   ) / 10
@@ -269,6 +317,31 @@ export async function getStudentDashboardData() {
     unitList.reduce((acc, u) => acc + u.rating, 0) / unitList.length * 10
   ) / 10
 
+  // 3 Types Summary Cards Data
+  const typesBreakdown = {
+    complaint: {
+      count: typeTotals.complaint,
+      pct: Math.round((typeTotals.complaint / Math.max(1, campusTotal)) * 100),
+      label: 'Aduan',
+      sublabel: 'Isu teknis & fasilitas (7 Tahap SLA)',
+      badgeColor: 'rose',
+    },
+    feedback: {
+      count: typeTotals.feedback,
+      pct: Math.round((typeTotals.feedback / Math.max(1, campusTotal)) * 100),
+      label: 'Masukan',
+      sublabel: 'Evaluasi mutu layanan (Alur Ringkas)',
+      badgeColor: 'sky',
+    },
+    suggestion: {
+      count: typeTotals.suggestion,
+      pct: Math.round((typeTotals.suggestion / Math.max(1, campusTotal)) * 100),
+      label: 'Saran',
+      sublabel: 'Ide & usulan inovasi (Alur Ringkas)',
+      badgeColor: 'amber',
+    },
+  }
+
   return {
     summary: {
       total: campusTotal,
@@ -279,13 +352,33 @@ export async function getStudentDashboardData() {
       avgResolutionDays: avgResolutionDays,
       avgRating: avgSatisfaction,
       completionRate: Math.round((campusResolved / Math.max(1, campusTotal)) * 100),
+      types: typesBreakdown,
     },
+    typesBreakdown,
     globalStages,
-    stagesList: STAGES.map(s => ({
+    stagesList: COMPLAINT_STAGES.map(s => ({
       ...s,
       count: globalStages[s.key] || 0,
       pct: Math.round(((globalStages[s.key] || 0) / Math.max(1, campusTotal)) * 100),
     })),
+    streamlinedStagesList: STREAMLINED_STAGES.map(s => {
+      // Map stages for streamlined view:
+      // received -> received
+      // verified -> verified + dispatched + in_progress
+      // answered -> action_taken + answered
+      // resolved -> resolved
+      let count = 0
+      if (s.key === 'received') count = globalStages.received
+      else if (s.key === 'verified') count = globalStages.verified + globalStages.dispatched
+      else if (s.key === 'answered') count = globalStages.in_progress + globalStages.action_taken + globalStages.answered
+      else if (s.key === 'resolved') count = globalStages.resolved
+
+      return {
+        ...s,
+        count,
+        pct: Math.round((count / Math.max(1, campusTotal)) * 100),
+      }
+    }),
     units: unitList,
     distribution: unitDistribution,
   }
