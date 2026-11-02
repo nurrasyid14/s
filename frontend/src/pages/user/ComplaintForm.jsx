@@ -242,13 +242,13 @@ export default function ComplaintForm() {
                       return
                     }
 
-                    setForm(f => ({ ...f, attachments: [file.name] }))
+                    setForm(f => ({ ...f, attachments: [{ file, name: file.name, size: file.size, type: file.type }] }))
                     setError('')
                   }}
                 />
                 <Paperclip size={24} className="text-[var(--color-text-muted)] mx-auto mb-2" aria-hidden="true" />
                 <p className="text-sm font-medium text-[var(--color-text)]">
-                  {form.attachments.length > 0 ? `File Terpilih: ${form.attachments[0]}` : 'Klik atau tarik file ke sini'}
+                  {form.attachments.length > 0 ? `File Terpilih: ${form.attachments[0]?.name || form.attachments[0]}` : 'Klik atau tarik file ke sini'}
                 </p>
                 <p className="text-xs text-[var(--color-text-muted)] mt-1">JPG, PNG, PDF (maksimal 5MB)</p>
               </label>
@@ -284,6 +284,22 @@ export default function ComplaintForm() {
                   </div>
                 ))}
               </div>
+                            {form.attachments.length > 0 && (
+                <div className="p-3.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <Paperclip size={16} className="text-[var(--color-text-muted)]" />
+                    <div>
+                      <div className="text-[10px] uppercase font-mono tracking-wider text-[var(--color-text-muted)]">Lampiran File</div>
+                      <div className="text-xs font-semibold text-[var(--color-text)]">{form.attachments[0]?.name || form.attachments[0]}</div>
+                    </div>
+                  </div>
+                  {form.attachments[0]?.size && (
+                    <span className="text-[11px] font-mono text-[var(--color-text-muted)]">
+                      {(form.attachments[0].size / 1024).toFixed(0)} KB
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="p-4 border border-[var(--color-border)] text-sm rounded-xl bg-[var(--color-surface)]">
                 <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-1">Deskripsi Aduan</div>
                 <p className="text-[var(--color-text)] leading-relaxed whitespace-pre-line">{form.description}</p>

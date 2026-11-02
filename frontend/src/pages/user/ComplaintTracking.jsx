@@ -4,10 +4,10 @@ import { useTranslation } from 'react-i18next'
 import Navbar from '../../components/layout/Navbar.jsx'
 import { StatusBadge } from '../../components/ui/StatusBadge.jsx'
 import { getComplaint, submitStakeholderFeedback } from '../../services/complaintApi.js'
-import { formatDate, formatDateTime, WORKFLOW_STEPS } from '../../utils/formatter.js'
+import { formatDate, formatDateTime, WORKFLOW_STEPS, STREAMLINED_STEPS } from '../../utils/formatter.js'
 import {
   ArrowLeft, ShieldCheck, CheckCircle2, Clock, AlertTriangle,
-  Building2, UserCheck, MessageSquare, Star, Send, Printer, FileText, ChevronRight
+  Building2, UserCheck, MessageSquare, Star, Send, Printer, FileText, ChevronRight, Paperclip
 } from 'lucide-react'
 
 export default function ComplaintTracking() {
@@ -105,8 +105,10 @@ export default function ComplaintTracking() {
     )
   }
 
-  // Calculate current step index (0-indexed)
-  const currentStepIndex = WORKFLOW_STEPS.findIndex(s => s.key === data.status)
+  // Determine workflow stages based on submission type (complaint vs feedback/suggestion)
+  const isStreamlined = data.type === 'feedback' || data.type === 'suggestion'
+  const activeSteps = isStreamlined ? STREAMLINED_STEPS : WORKFLOW_STEPS
+  const currentStepIndex = activeSteps.findIndex(s => s.key === data.status)
   const isAnswered = data.status === 'answered'
   const isResolved = data.status === 'resolved'
 
@@ -127,7 +129,7 @@ export default function ComplaintTracking() {
             </Link>
             <div>
               <div className="text-[11px] font-mono uppercase tracking-wider text-[var(--color-primary)] font-semibold">
-                PELACAK ADUAN SIVITAS PENS
+                PELACAK ASPIRASI SIVITAS PENS
               </div>
               <div className="flex items-center gap-2.5 mt-0.5">
                 <h1 className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-[var(--color-text)]">
@@ -141,7 +143,7 @@ export default function ComplaintTracking() {
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="btn-outline inline-flex items-center gap-1.5 text-xs py-2 px-3 rounded-xl min-h-[40px]"
+              className="btn-outline inline-flex items-center gap-1.5 text-xs py-2.5 px-3.5 rounded-xl min-h-[44px]"
             >
               <Printer size={14} /> Cetak Bukti (PDF)
             </button>
@@ -157,13 +159,18 @@ export default function ComplaintTracking() {
           </div>
         </div>
 
-        {/* Visual Stepper: 7 Status Berurutan */}
+        {/* Visual Stepper: 7 Status Berurutan atau 4 Tahap Ringkas */}
         <div className="mb-8 border border-[var(--color-border)] bg-[var(--color-surface)] p-5 rounded-2xl shadow-sm">
-          <h2 className="text-xs font-mono uppercase tracking-wider font-bold text-[var(--color-text-muted)] mb-4">
-            Alur Penanganan 7 Tahap (Live Tracking)
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
-            {WORKFLOW_STEPS.map((stepItem, index) => {
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xs font-mono uppercase tracking-wider font-bold text-[var(--color-text-muted)]">
+              {isStreamlined ? 'Alur Penanganan 4 Tahap Ringkas (Live Tracking)' : 'Alur Penanganan 7 Tahap SLA (Live Tracking)'}
+            </h2>
+            <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
+              {isStreamlined ? 'Model Evaluatif' : 'Standar SLA Penanganan'}
+            </span>
+          </div>
+          <div className={`grid ${isStreamlined ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-7'} gap-2`}>
+            {activeSteps.map((stepItem, index) => {
               const isPast = currentStepIndex > index
               const isCurrent = currentStepIndex === index
               return (
@@ -204,7 +211,7 @@ export default function ComplaintTracking() {
             {/* Detail Isi Aduan */}
             <section className="border border-[var(--color-border)] bg-[var(--color-surface)] p-5 md:p-6 rounded-2xl shadow-sm">
               <h3 className="text-xs font-mono uppercase tracking-wider font-bold text-[var(--color-text-muted)] mb-3">
-                Informasi Masukan Anda
+                Informasi Pengajuan Anda
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs mb-4">
                 <div className="p-3 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
@@ -222,7 +229,7 @@ export default function ComplaintTracking() {
               </div>
 
               <div className="border-t border-[var(--color-border)] pt-3">
-                <div className="text-xs font-mono text-[var(--color-text-muted)] mb-1">Deskripsi Masukan:</div>
+                <div className="text-xs font-mono text-[var(--color-text-muted)] mb-1">Deskripsi Pengajuan:</div>
                 <p className="text-sm text-[var(--color-text)] leading-relaxed whitespace-pre-line">
                   {data.description}
                 </p>
@@ -231,12 +238,32 @@ export default function ComplaintTracking() {
               {data.attachments && data.attachments.length > 0 && (
                 <div className="mt-4 pt-3 border-t border-[var(--color-border)]">
                   <div className="text-xs font-mono text-[var(--color-text-muted)] mb-2">Lampiran Bukti Pengirim:</div>
-                  <div className="flex gap-2">
-                    {data.attachments.map((a, i) => (
-                      <a key={i} href={a.url} target="_blank" rel="noopener noreferrer" className="border border-[var(--color-border)] p-1 rounded-xl overflow-hidden hover:border-[var(--color-primary)]">
-                        <img src={a.url} alt="bukti" className="h-16 w-24 object-cover rounded-lg" />
-                      </a>
-                    ))}
+                  <div className="flex flex-wrap gap-2">
+                    {data.attachments.map((a, i) => {
+                      const fileUrl = typeof a === 'string' ? a : a?.url
+                      const fileName = typeof a === 'string' ? a : a?.name || `Lampiran ${i + 1}`
+                      const isImg = fileUrl && (fileUrl.match(/\.(jpg|jpeg|png|webp|gif)$/i) || fileUrl.startsWith('data:image') || fileUrl.startsWith('blob:'))
+
+                      return (
+                        <div key={i} className="inline-flex items-center gap-2 border border-[var(--color-border)] p-2 rounded-xl bg-[var(--color-bg-secondary)] text-xs">
+                          {isImg ? (
+                            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-[var(--color-border)] hover:border-[var(--color-primary)]">
+                              <img src={fileUrl} alt={fileName} className="h-14 w-20 object-cover rounded-md" />
+                            </a>
+                          ) : fileUrl ? (
+                            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[var(--color-primary)] hover:underline font-medium p-1">
+                              <Paperclip size={14} className="text-[var(--color-text-muted)]" />
+                              <span>{fileName}</span>
+                            </a>
+                          ) : (
+                            <div className="inline-flex items-center gap-1.5 p-1 text-[var(--color-text)] font-medium">
+                              <Paperclip size={14} className="text-[var(--color-text-muted)]" />
+                              <span>{fileName}</span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}
@@ -276,7 +303,7 @@ export default function ComplaintTracking() {
                 {/* 1. Diterima */}
                 <li className="ml-4">
                   <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border border-white bg-[var(--color-primary)]" />
-                  <div className="text-xs font-semibold text-[var(--color-text)]">Aduan Diterima Sistem</div>
+                  <div className="text-xs font-semibold text-[var(--color-text)]">Pengajuan Diterima Sistem</div>
                   <div className="text-[11px] font-mono text-[var(--color-text-muted)]">{formatDateTime(data.created_at)}</div>
                   <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Tiket berhasil dicatat dan masuk antrean verifikasi.</p>
                 </li>
@@ -285,13 +312,13 @@ export default function ComplaintTracking() {
                 {data.verification && (
                   <li className="ml-4">
                     <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border border-white bg-[var(--color-primary)]" />
-                    <div className="text-xs font-semibold text-[var(--color-text)]">Aduan Diverifikasi oleh Admin</div>
+                    <div className="text-xs font-semibold text-[var(--color-text)]">Diverifikasi oleh Admin</div>
                     <div className="text-[11px] font-mono text-[var(--color-text-muted)]">{formatDateTime(data.verification.verified_at)}</div>
                     <p className="text-xs text-[var(--color-text)] mt-0.5">{data.verification.note}</p>
                   </li>
                 )}
 
-                {/* 3. Didisposisikan */}
+                {/* 3. Didisposisikan (hanya untuk aduan SLA) */}
                 {data.disposition && (
                   <li className="ml-4">
                     <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border border-white bg-[var(--color-primary)]" />
@@ -339,10 +366,12 @@ export default function ComplaintTracking() {
                   <span>Unit Penanggung Jawab:</span>
                   <span className="font-semibold text-[var(--color-text)]">{data.target_unit || data.unit}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Estimasi Batas SLA:</span>
-                  <span className="font-mono text-[var(--color-text)]">{formatDate(data.sla_deadline)}</span>
-                </div>
+                {!isStreamlined && (
+                  <div className="flex justify-between">
+                    <span>Estimasi Batas SLA:</span>
+                    <span className="font-mono text-[var(--color-text)]">{formatDate(data.sla_deadline)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>Tanggal Masuk:</span>
                   <span className="font-mono text-[var(--color-text)]">{formatDate(data.created_at)}</span>
@@ -357,7 +386,7 @@ export default function ComplaintTracking() {
                   <AlertTriangle size={16} /> Wajib Diisi Pelapor
                 </div>
                 <h3 className="font-bold text-base text-[var(--color-text)] mb-1">
-                  Umpan Balik Penyelesaian Aduan
+                  Umpan Balik Penyelesaian Tiket
                 </h3>
                 <p className="text-xs text-[var(--color-text-muted)] mb-4 leading-relaxed">
                   Unit telah memberikan jawaban resmi. Mohon berikan penilaian kepuasan Anda untuk <strong>menyelesaikan dan menutup tiket ini secara resmi</strong>.

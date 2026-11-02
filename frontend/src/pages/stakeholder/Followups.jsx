@@ -8,18 +8,22 @@ import SegmentedControl from '../../components/ui/SegmentedControl.jsx'
 import EmptyState from '../../components/ui/EmptyState.jsx'
 import ErrorState from '../../components/ui/ErrorState.jsx'
 import { getComplaints } from '../../services/complaintApi.js'
-import { formatDate } from '../../utils/formatter.js'
+import { formatDate, normalizeUrgencyScore } from '../../utils/formatter.js'
 import { AlertTriangle, User, CheckCircle2 } from 'lucide-react'
 
 const FILTER_LABELS = {
   '': ['stk.followups.filter_all', 'Semua'],
-  new: ['stk.followups.filter_new', 'Belum ditinjau'],
-  process: ['stk.followups.filter_process', 'Ditinjau'],
+  dispatched: ['stk.followups.filter_dispatched', 'Didisposisikan'],
+  in_progress: ['stk.followups.filter_in_progress', 'Diproses'],
+  action_taken: ['stk.followups.filter_action_taken', 'Ditindaklanjuti'],
   escalate: ['stk.followups.filter_escalate', 'Dieskalasi'],
 }
 
-// Aturan tinjauan manual: urgency tinggi atau sudah dieskalasi.
-const needsManualReview = c => c.urgency_score >= 7 || c.status === 'escalate'
+// Aturan tinjauan manual: urgency tinggi (>= 7) atau dalam alur penanganan/eskalasi.
+const needsManualReview = c => {
+  const normUrgency = normalizeUrgencyScore(c.urgency_score)
+  return normUrgency >= 7 || ['dispatched', 'in_progress', 'action_taken', 'escalate'].includes(c.status)
+}
 
 export default function Followups() {
   const { t } = useTranslation()
@@ -75,7 +79,7 @@ export default function Followups() {
         <span className="leading-relaxed">
           <Trans
             i18nKey="stk.followups.notice"
-            defaults="Aduan dengan urgency tinggi (≥7) atau berstatus Dieskalasi <b>wajib ditinjau manual</b> oleh stakeholder. Sistem AI tidak mengambil keputusan akhir."
+            defaults="Aduan dengan urgency tinggi (≥7) atau berstatus Didisposisikan/Dieskalasi <b>wajib ditinjau manual</b> oleh stakeholder. Sistem AI tidak mengambil keputusan akhir."
             components={{ b: <strong /> }}
           />
         </span>
@@ -102,7 +106,7 @@ export default function Followups() {
                 to={`/stakeholder/complaints/${c.id}`}
                 className="block border border-[var(--color-border)] border-l-4 bg-[var(--color-surface)] p-4 sm:p-5 rounded-2xl shadow-sm transition-all hover:bg-[var(--color-bg-secondary)] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
                 style={{
-                  borderLeftColor: c.urgency_score >= 7 ? 'var(--color-status-danger)' : 'var(--color-status-warning)',
+                  borderLeftColor: normalizeUrgencyScore(c.urgency_score) >= 7 ? 'var(--color-status-danger)' : 'var(--color-status-warning)',
                 }}
               >
                 <div className="flex items-start justify-between gap-4">

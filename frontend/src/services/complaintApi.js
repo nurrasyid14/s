@@ -179,29 +179,41 @@ export async function getComplaint(id) {
   return res.data
 }
 
-export async function submitComplaint(formData) {
+export async function submitComplaint(data) {
   if (USE_MOCK) {
     await delay(800)
     const newId = MOCK_COMPLAINTS.length + 1
     const ticketId = `ADS-2026-${String(newId).padStart(4, '0')}`
+
+    // Parse attachments for mock display
+    const mockAttachments = (data.attachments || []).map((att, idx) => {
+      if (typeof att === 'string') return { name: att, url: '' }
+      return {
+        name: att.name || `Lampiran ${idx + 1}`,
+        size: att.size,
+        type: att.type,
+        url: att.file ? URL.createObjectURL(att.file) : '',
+      }
+    })
+
     const newComplaint = {
       id: newId,
       ticket_id: ticketId,
-      type: formData.type || 'complaint',
-      category: formData.category || 'facility',
-      description: formData.description || '',
-      unit: formData.unit || 'Lainnya/Lintas Unit',
-      target_unit: formData.unit || 'Lainnya/Lintas Unit',
+      type: data.type || 'complaint',
+      category: data.category || 'facility',
+      description: data.description || '',
+      unit: data.unit || 'Lainnya/Lintas Unit',
+      target_unit: data.unit || 'Lainnya/Lintas Unit',
       is_anonymous: true, // Wajib & Mutlak
       sender_name: 'Sivitas PENS (Anonim)',
       sender_role: 'Mahasiswa',
       status: 'received', // Status Awal 1
       urgency_score: Math.round((5 + Math.random() * 4) * 10) / 10,
-      nlp_category: formData.category || 'facility',
+      nlp_category: data.category || 'facility',
       nlp_confidence: 0.88,
       sentiment: 'negative',
       sla_deadline: dayjs().add(3, 'day').toISOString(),
-      attachments: formData.attachments || [],
+      attachments: mockAttachments,
       verification: null,
       disposition: null,
       followups: [],
@@ -214,10 +226,34 @@ export async function submitComplaint(formData) {
     saveMockComplaints(MOCK_COMPLAINTS)
     return { success: true, ticket_id: ticketId, id: newId }
   }
-  const isFormData = typeof FormData !== 'undefined' && formData instanceof FormData
-  const res = await api.post('/complaints', formData, {
-    headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
-  })
+
+  // Handle Real API submission:
+  if (typeof FormData !== 'undefined' && data instanceof FormData) {
+    const res = await api.post('/complaints', data)
+    return res.data
+  }
+
+  // If plain object with File attachments, convert to FormData
+  const hasFiles = data?.attachments && data.attachments.some(a => a instanceof File || a?.file instanceof File)
+  if (hasFiles) {
+    const bodyFormData = new FormData()
+    bodyFormData.append('type', data.type || 'complaint')
+    bodyFormData.append('category', data.category || 'facility')
+    bodyFormData.append('description', data.description || '')
+    if (data.unit) bodyFormData.append('unit', data.unit)
+
+    data.attachments.forEach(att => {
+      const fileObj = att instanceof File ? att : att?.file
+      if (fileObj) {
+        bodyFormData.append('attachments[]', fileObj)
+      }
+    })
+
+    const res = await api.post('/complaints', bodyFormData)
+    return res.data
+  }
+
+  const res = await api.post('/complaints', data)
   return res.data
 }
 
