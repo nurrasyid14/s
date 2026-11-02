@@ -256,7 +256,8 @@ class ComplaintController extends ResourceController
 
         $payload = json_encode([
             'complaint_id' => 0,
-            'text'         => $data['description']
+            'text'         => $data['description'],
+            'submission_type' => $data['type'],
         ]);
 
         $client = \Config\Services::curlrequest();
@@ -365,8 +366,10 @@ class ComplaintController extends ResourceController
                 'urgency_label'       => $urgencyLabel,
                 'urgency_score'       => $urgencyScore,
                 'urgency_reason'      => $isUrgent ? 'Terdeteksi kondisi urgensi tinggi pada teks keluhan.' : 'Tingkat urgensi dinilai proporsional berdasarkan dampak operasional.',
-                'sentiment'           => 'negatif',
+                'sentiment'           => 'negative',
                 'sentiment_score'     => 0.70,
+                'sentiment_scores'    => ['negative' => 0.70, 'neutral' => 0.20, 'positive' => 0.10],
+                'submission_type'     => $data['type'] === 'suggestion' ? 'aspiration' : $data['type'],
                 'requires_review'     => $isUrgent,
                 'model_version'       => 'heuristic-fallback-v1.2'
             ];
@@ -442,6 +445,8 @@ class ComplaintController extends ResourceController
             'urgency_reason'      => $analysis['urgency_reason'] ?? null,
             'sentiment'           => $analysis['sentiment'] ?? null,
             'sentiment_score'     => $analysis['sentiment_score'] ?? null,
+            'sentiment_scores'    => isset($analysis['sentiment_scores']) ? json_encode($analysis['sentiment_scores']) : null,
+            'submission_type'     => $analysis['submission_type'] ?? null,
             'requires_review'     => $analysis['requires_review'] ?? false,
             'model_version'       => 'qwen3:8b + indonesian-roberta',
             'inference_time_ms'   => $inferenceTime,
@@ -525,6 +530,8 @@ class ComplaintController extends ResourceController
 
                 'sentiment'           => $analysis['sentiment'] ?? null,
                 'sentiment_score'     => $analysis['sentiment_score'] ?? null,
+                'sentiment_scores'    => $analysis['sentiment_scores'] ?? null,
+                'submission_type'     => $analysis['submission_type'] ?? null,
 
                 'requires_review'     => $analysis['requires_review'] ?? false,
 
@@ -1027,7 +1034,8 @@ class ComplaintController extends ResourceController
 
         $payload = json_encode([
             'complaint_id' => (int) $complaint['id'],
-            'text'         => $complaint['description']
+            'text'         => $complaint['description'],
+            'submission_type' => $complaint['type'],
         ]);
 
         $client = \Config\Services::curlrequest();
@@ -1111,6 +1119,8 @@ class ComplaintController extends ResourceController
             'urgency_reason'      => $analysis['urgency_reason'] ?? null,
             'sentiment'           => $analysis['sentiment'] ?? null,
             'sentiment_score'     => $analysis['sentiment_score'] ?? null,
+            'sentiment_scores'    => isset($analysis['sentiment_scores']) ? json_encode($analysis['sentiment_scores']) : null,
+            'submission_type'     => $analysis['submission_type'] ?? null,
             'requires_review'     => $analysis['requires_review'] ?? false,
             'model_version'       => 'qwen3:8b + indonesian-roberta',
             'inference_time_ms'   => $inferenceTime,
@@ -1223,6 +1233,8 @@ class ComplaintController extends ResourceController
 
                 'sentiment'           => $analysis['sentiment'] ?? null,
                 'sentiment_score'     => $analysis['sentiment_score'] ?? null,
+                'sentiment_scores'    => $analysis['sentiment_scores'] ?? null,
+                'submission_type'     => $analysis['submission_type'] ?? null,
 
                 'requires_review'     => $analysis['requires_review'] ?? false,
 
@@ -1242,6 +1254,8 @@ class ComplaintController extends ResourceController
                 'ca.category AS nlp_category',
                 'ca.category_confidence AS nlp_confidence',
                 'ca.sentiment',
+                'ca.sentiment_scores',
+                'ca.submission_type',
                 'ca.urgency_label',
                 'u.user_role AS sender_role',
                 'c.assigned_unit AS unit',
@@ -1273,6 +1287,11 @@ class ComplaintController extends ResourceController
 
     private function presentComplaint(array $complaint): array
     {
+        if (!empty($complaint['sentiment_scores']) && is_string($complaint['sentiment_scores'])) {
+            $decodedScores = json_decode((string) $complaint['sentiment_scores'], true);
+            $complaint['sentiment_scores'] = is_array($decodedScores) ? $decodedScores : null;
+        }
+
         if (!empty($complaint['is_anonymous'])) {
             $complaint['sender_name'] = null;
             unset($complaint['user_id']);

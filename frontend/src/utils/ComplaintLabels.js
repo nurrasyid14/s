@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 
 // Nilai default (Bahasa Indonesia) dipakai jika key terjemahan belum ditambahkan ke file locale.
-const TYPE_LABELS = { complaint: 'Aduan', feedback: 'Masukan', suggestion: 'Saran' }
+const TYPE_LABELS = { complaint: 'Keluhan', feedback: 'Masukan', suggestion: 'Aspirasi' }
 const CATEGORY_LABELS = {
     facility: 'Fasilitas',
     academic: 'Akademik',

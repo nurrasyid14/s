@@ -319,6 +319,11 @@ export default function ComplaintDetail() {
                 <span className="text-sm font-bold text-[var(--color-text)] block mt-1 capitalize">
                   {sentimentLabel(data.sentiment)}
                 </span>
+                {data.sentiment_scores?.[data.sentiment] != null && (
+                  <span className="text-[10px] font-mono text-[var(--color-primary)]">
+                    {Math.round(data.sentiment_scores[data.sentiment] * 100)}% probability
+                  </span>
+                )}
               </div>
               <div className="p-3.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
                 <span className="text-[var(--color-text-muted)] block text-[10px] font-mono uppercase">AI Category Match</span>
