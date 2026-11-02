@@ -14,7 +14,7 @@ import {
   MessageSquare, Clock, AlertTriangle, CheckCircle2,
   ArrowRight, Printer, Star, Building2, Layers,
   Search, ChevronDown, ArrowUpRight, ArrowDownRight,
-  ShieldCheck, Wrench, Send, Server, UserCheck
+  ShieldCheck, Wrench, Send, Server, UserCheck, Lightbulb, Filter
 } from 'lucide-react'
 
 export default function StakeholderDashboard() {
@@ -26,6 +26,7 @@ export default function StakeholderDashboard() {
   const [error, setError] = useState(false)
   const [showPdfModal, setShowPdfModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedType, setSelectedType] = useState('all') // 'all' | 'complaint' | 'feedback' | 'suggestion'
 
   useEffect(() => {
     loadUnitStats(selectedUnit)
@@ -41,20 +42,36 @@ export default function StakeholderDashboard() {
   }
 
   const items = unitStats?.items || []
+
+  // Count by 3 types for this unit
+  const typeCounts = useMemo(() => {
+    const counts = { complaint: 0, feedback: 0, suggestion: 0 }
+    items.forEach(c => {
+      const typeKey = c.type || 'complaint'
+      if (counts[typeKey] !== undefined) counts[typeKey]++
+      else counts.complaint++
+    })
+    return counts
+  }, [items])
+
   const urgentComplaints = useMemo(
-    () => items.filter(c => c.urgency_score >= 7 || ['dispatched', 'in_progress'].includes(c.status)),
+    () => items.filter(c => (c.type === 'complaint' || !c.type) && (c.urgency_score >= 7 || ['dispatched', 'in_progress'].includes(c.status))),
     [items]
   )
+
   const debouncedSearch = useDebounce(searchQuery, 250)
+
   const filteredItems = useMemo(
     () => items.filter(c => {
+      const matchType = selectedType === 'all' || (c.type || 'complaint') === selectedType
       const q = debouncedSearch.toLowerCase().trim()
-      return !q ||
+      const matchSearch = !q ||
         (c.description || '').toLowerCase().includes(q) ||
         (c.ticket_id || '').toLowerCase().includes(q) ||
         (c.category || '').toLowerCase().includes(q)
+      return matchType && matchSearch
     }),
-    [items, debouncedSearch]
+    [items, debouncedSearch, selectedType]
   )
 
   // Monthly stats for chart
@@ -78,7 +95,7 @@ export default function StakeholderDashboard() {
             Selamat pagi, {user?.name ? user.name.split(' ')[0] : 'Pengelola'}
           </h1>
           <p className="text-xs sm:text-sm text-[var(--color-text-muted)] mt-1">
-            Pantau penanganan aduan unit {selectedUnit}, kepatuhan SLA, dan progres tindak lanjut lapangan.
+            Pantau penanganan aduan, masukan sivitas, dan usulan saran untuk unit {selectedUnit}.
           </p>
         </div>
 
@@ -118,7 +135,7 @@ export default function StakeholderDashboard() {
               <div>
                 <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-medium">
                   <span>Total Disposisi Unit</span>
-                  <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text)]">
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text)] truncate max-w-[170px]">
                     {selectedUnit}
                   </span>
                 </div>
@@ -134,8 +151,74 @@ export default function StakeholderDashboard() {
                   <ArrowUpRight size={13} /> {unitStats?.slaComplianceRate || 95}% Kepatuhan SLA
                 </div>
 
+                {/* 3-Type Breakdown Pills (Aduan, Masukan, Saran) */}
+                <div className="mt-4 pt-3.5 border-t border-[var(--color-border)]">
+                  <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-medium mb-2.5">
+                    <span>Komposisi 3 Jenis Masuk</span>
+                    <span className="font-mono text-[10px]">Filter Langsung</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {/* Aduan */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedType(selectedType === 'complaint' ? 'all' : 'complaint')}
+                      className={`p-2 rounded-2xl border text-left transition-all ${
+                        selectedType === 'complaint'
+                          ? 'bg-rose-500/10 border-rose-500/50 shadow-xs ring-1 ring-rose-500/30'
+                          : 'bg-[var(--color-bg-secondary)] border-[var(--color-border)]/60 hover:border-rose-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1 text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                        <AlertTriangle size={11} /> Aduan
+                      </div>
+                      <div className="text-base font-extrabold font-mono text-[var(--color-text)] mt-0.5">
+                        {typeCounts.complaint}
+                      </div>
+                      <div className="text-[9px] text-[var(--color-text-muted)] truncate">7 Tahap SLA</div>
+                    </button>
+
+                    {/* Masukan */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedType(selectedType === 'feedback' ? 'all' : 'feedback')}
+                      className={`p-2 rounded-2xl border text-left transition-all ${
+                        selectedType === 'feedback'
+                          ? 'bg-sky-500/10 border-sky-500/50 shadow-xs ring-1 ring-sky-500/30'
+                          : 'bg-[var(--color-bg-secondary)] border-[var(--color-border)]/60 hover:border-sky-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1 text-[10px] font-bold text-sky-600 dark:text-sky-400">
+                        <MessageSquare size={11} /> Masukan
+                      </div>
+                      <div className="text-base font-extrabold font-mono text-[var(--color-text)] mt-0.5">
+                        {typeCounts.feedback}
+                      </div>
+                      <div className="text-[9px] text-[var(--color-text-muted)] truncate">Evaluasi Mutu</div>
+                    </button>
+
+                    {/* Saran */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedType(selectedType === 'suggestion' ? 'all' : 'suggestion')}
+                      className={`p-2 rounded-2xl border text-left transition-all ${
+                        selectedType === 'suggestion'
+                          ? 'bg-amber-500/10 border-amber-500/50 shadow-xs ring-1 ring-amber-500/30'
+                          : 'bg-[var(--color-bg-secondary)] border-[var(--color-border)]/60 hover:border-amber-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                        <Lightbulb size={11} /> Saran
+                      </div>
+                      <div className="text-base font-extrabold font-mono text-[var(--color-text)] mt-0.5">
+                        {typeCounts.suggestion}
+                      </div>
+                      <div className="text-[9px] text-[var(--color-text-muted)] truncate">Ide Inovasi</div>
+                    </button>
+                  </div>
+                </div>
+
                 {/* Dual Pill Actions */}
-                <div className="mt-5 grid grid-cols-2 gap-2.5">
+                <div className="mt-4 grid grid-cols-2 gap-2.5">
                   <Link
                     to="/stakeholder/followups"
                     className="py-2.5 px-4 rounded-full text-xs font-bold text-center text-white bg-[#0B1F3A] hover:bg-[#153460] dark:bg-[var(--color-primary)] dark:hover:bg-blue-600 transition-all shadow-xs flex items-center justify-center gap-1.5"
@@ -146,33 +229,33 @@ export default function StakeholderDashboard() {
                     to="/stakeholder/complaints"
                     className="py-2.5 px-4 rounded-full text-xs font-bold text-center text-[var(--color-text)] bg-[var(--color-bg-secondary)] hover:bg-[var(--color-border)]/50 border border-[var(--color-border)] transition-all flex items-center justify-center gap-1.5"
                   >
-                    <MessageSquare size={13} /> Semua Aduan
+                    <MessageSquare size={13} /> Semua Laporan
                   </Link>
                 </div>
               </div>
 
               {/* Sub-cards: Status Mini Breakdown */}
-              <div className="mt-6 pt-5 border-t border-[var(--color-border)]">
-                <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-medium mb-3">
+              <div className="mt-5 pt-4 border-t border-[var(--color-border)]">
+                <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-medium mb-2.5">
                   <span>Status Terbanyak</span>
                   <span>7 Tahap SLA</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="p-2.5 rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/60 text-center">
+                  <div className="p-2 rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/60 text-center">
                     <div className="text-[10px] font-medium text-[var(--color-text-muted)] truncate">Diproses</div>
                     <div className="text-xs font-bold font-mono mt-0.5 text-blue-600">
                       {unitStats?.inProgress || 0}
                     </div>
                     <div className="text-[9px] font-bold text-blue-600 mt-0.5">Berjalan</div>
                   </div>
-                  <div className="p-2.5 rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/60 text-center">
+                  <div className="p-2 rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/60 text-center">
                     <div className="text-[10px] font-medium text-[var(--color-text-muted)] truncate">Tindakan</div>
                     <div className="text-xs font-bold font-mono mt-0.5 text-amber-600">
                       {unitStats?.actionTaken || 0}
                     </div>
                     <div className="text-[9px] font-bold text-amber-600 mt-0.5">Lapangan</div>
                   </div>
-                  <div className="p-2.5 rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/60 text-center">
+                  <div className="p-2 rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/60 text-center">
                     <div className="text-[10px] font-medium text-[var(--color-text-muted)] truncate">Selesai</div>
                     <div className="text-xs font-bold font-mono mt-0.5 text-emerald-600">
                       {unitStats?.resolved || 0}
@@ -294,7 +377,7 @@ export default function StakeholderDashboard() {
 
                 {/* Stylized Vertical Bar Chart */}
                 <div className="mt-8 flex items-end justify-between gap-2 h-44 px-2 border-b border-[var(--color-border)] pb-2">
-                  {monthlyUnitStats.map((item, idx) => {
+                  {monthlyUnitStats.map((item) => {
                     const total = item.completed + item.inProgress
                     const heightPercent = Math.min(100, Math.round((total / 50) * 100))
                     return (
@@ -389,24 +472,78 @@ export default function StakeholderDashboard() {
             {/* Right Sub-Column (8 Cols): Recent Activities Table ("Recent Activities" in Finexy) */}
             <div className="lg:col-span-8 rounded-3xl p-6 bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xs flex flex-col justify-between">
               <div>
-                {/* Header with Search */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[var(--color-border)]">
-                  <div>
-                    <h3 className="text-sm font-bold text-[var(--color-text)]">Daftar Aduan Unit {selectedUnit}</h3>
-                    <p className="text-[11px] text-[var(--color-text-muted)]">Disposisi yang memerlukan perhatian dan tindak lanjut</p>
+                {/* Header with Search and Type Filter Tabs */}
+                <div className="flex flex-col gap-3 pb-4 border-b border-[var(--color-border)]">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-bold text-[var(--color-text)]">
+                        Daftar Laporan &amp; Aspirasi Unit {selectedUnit}
+                      </h3>
+                      <p className="text-[11px] text-[var(--color-text-muted)]">
+                        Disposisi yang memerlukan penanganan solusi, telaah masukan, atau saran inovasi
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
+                        <input
+                          type="text"
+                          placeholder="Cari ID tiket, kata kunci..."
+                          value={searchQuery}
+                          onChange={e => setSearchQuery(e.target.value)}
+                          className="pl-8 pr-3 py-1.5 rounded-full text-xs bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] w-48 sm:w-60"
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <div className="relative">
-                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
-                      <input
-                        type="text"
-                        placeholder="Cari ID tiket, kata kunci..."
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        className="pl-8 pr-3 py-1.5 rounded-full text-xs bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] w-48 sm:w-64"
-                      />
-                    </div>
+                  {/* 3-Type Filter Tabs for Table */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedType('all')}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                        selectedType === 'all'
+                          ? 'bg-[#0B1F3A] text-white dark:bg-[var(--color-primary)]'
+                          : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+                      }`}
+                    >
+                      Semua ({items.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedType('complaint')}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                        selectedType === 'complaint'
+                          ? 'bg-rose-600 text-white shadow-xs'
+                          : 'bg-[var(--color-bg-secondary)] text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30'
+                      }`}
+                    >
+                      <AlertTriangle size={12} /> Aduan ({typeCounts.complaint})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedType('feedback')}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                        selectedType === 'feedback'
+                          ? 'bg-sky-600 text-white shadow-xs'
+                          : 'bg-[var(--color-bg-secondary)] text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/30'
+                      }`}
+                    >
+                      <MessageSquare size={12} /> Masukan ({typeCounts.feedback})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedType('suggestion')}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                        selectedType === 'suggestion'
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'bg-[var(--color-bg-secondary)] text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30'
+                      }`}
+                    >
+                      <Lightbulb size={12} /> Saran ({typeCounts.suggestion})
+                    </button>
                   </div>
                 </div>
 
@@ -417,7 +554,7 @@ export default function StakeholderDashboard() {
                   </div>
                 ) : filteredItems.length === 0 ? (
                   <div className="py-12 text-center text-xs font-mono text-[var(--color-text-muted)]">
-                    Tidak ada aduan yang ditemukan untuk unit {selectedUnit}.
+                    Tidak ada laporan yang sesuai dengan kriteria untuk unit {selectedUnit}.
                   </div>
                 ) : (
                   <div className="overflow-x-auto mt-2">
@@ -425,7 +562,8 @@ export default function StakeholderDashboard() {
                       <thead>
                         <tr className="text-[11px] font-mono text-[var(--color-text-muted)] border-b border-[var(--color-border)]/60">
                           <th className="py-3 px-3 font-semibold">ID Tiket</th>
-                          <th className="py-3 px-3 font-semibold">Deskripsi Masalah</th>
+                          <th className="py-3 px-3 font-semibold">Jenis</th>
+                          <th className="py-3 px-3 font-semibold">Deskripsi &amp; Rincian</th>
                           <th className="py-3 px-3 font-semibold">Urgensi</th>
                           <th className="py-3 px-3 font-semibold">Status</th>
                           <th className="py-3 px-3 font-semibold">Tanggal Masuk</th>
@@ -436,13 +574,31 @@ export default function StakeholderDashboard() {
                         {filteredItems.slice(0, 6).map(c => {
                           const isResolved = c.status === 'resolved'
                           const isUrgent = c.urgency_score >= 7
+                          const typeKey = c.type || 'complaint'
                           return (
                             <tr key={c.id} className="hover:bg-[var(--color-bg-secondary)]/60 transition-colors group">
                               <td className="py-3.5 px-3 font-mono font-bold text-[var(--color-primary)]">
                                 {c.ticket_id}
                               </td>
 
-                              <td className="py-3.5 px-3 max-w-[240px]">
+                              {/* Distinct Type Badge */}
+                              <td className="py-3.5 px-3 whitespace-nowrap">
+                                {typeKey === 'feedback' ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-900/60">
+                                    <MessageSquare size={10} /> Masukan
+                                  </span>
+                                ) : typeKey === 'suggestion' ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60">
+                                    <Lightbulb size={10} /> Saran
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60">
+                                    <AlertTriangle size={10} /> Aduan
+                                  </span>
+                                )}
+                              </td>
+
+                              <td className="py-3.5 px-3 max-w-[220px]">
                                 <div className="flex items-center gap-2">
                                   <span className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 flex items-center justify-center flex-shrink-0 text-[10px] font-bold">
                                     {c.category ? c.category.charAt(0).toUpperCase() : 'U'}
@@ -454,9 +610,15 @@ export default function StakeholderDashboard() {
                               </td>
 
                               <td className="py-3.5 px-3">
-                                <span className={`font-mono text-xs font-bold ${isUrgent ? 'text-rose-600' : 'text-blue-600'}`}>
-                                  {formatUrgencyScore(c.urgency_score || 5)}/10
-                                </span>
+                                {typeKey === 'complaint' ? (
+                                  <span className={`font-mono text-xs font-bold ${isUrgent ? 'text-rose-600' : 'text-blue-600'}`}>
+                                    {formatUrgencyScore(c.urgency_score || 5)}/10
+                                  </span>
+                                ) : (
+                                  <span className="font-mono text-[11px] text-[var(--color-text-muted)] italic">
+                                    N/A
+                                  </span>
+                                )}
                               </td>
 
                               <td className="py-3.5 px-3 whitespace-nowrap">
@@ -491,9 +653,9 @@ export default function StakeholderDashboard() {
 
               {/* Table Footer */}
               <div className="pt-4 mt-2 border-t border-[var(--color-border)] flex items-center justify-between text-xs text-[var(--color-text-muted)]">
-                <span>Menampilkan {Math.min(6, filteredItems.length)} dari {filteredItems.length} aduan unit</span>
+                <span>Menampilkan {Math.min(6, filteredItems.length)} dari {filteredItems.length} laporan unit</span>
                 <Link to="/stakeholder/complaints" className="text-[var(--color-primary)] font-bold hover:underline flex items-center gap-1">
-                  Buka Seluruh Aduan Unit <ArrowRight size={13} />
+                  Buka Seluruh Laporan Unit <ArrowRight size={13} />
                 </Link>
               </div>
             </div>

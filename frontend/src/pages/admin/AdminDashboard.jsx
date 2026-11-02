@@ -12,7 +12,8 @@ import {
   CheckSquare, Send, Clock, AlertTriangle, ArrowRight,
   ShieldCheck, Check, Building2, User, Search, Filter,
   MoreHorizontal, ChevronDown, CheckCircle2, FileText,
-  Calendar, Layers, ArrowUpRight, ArrowDownRight, Sparkles, Wrench, GraduationCap, Server
+  Calendar, Layers, ArrowUpRight, ArrowDownRight, Sparkles,
+  Wrench, GraduationCap, Server, MessageSquare, Lightbulb
 } from 'lucide-react'
 
 export default function AdminDashboard() {
@@ -22,6 +23,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterUnit, setFilterUnit] = useState('all')
+  const [filterType, setFilterType] = useState('all') // 'all' | 'complaint' | 'feedback' | 'suggestion'
 
   // Disposition Modal state
   const [selectedTicket, setSelectedTicket] = useState(null)
@@ -57,8 +59,18 @@ export default function AdminDashboard() {
       .finally(() => setLoading(false))
   }
 
+  // Count by 3 types
+  const typeCounts = useMemo(() => {
+    const counts = { complaint: 0, feedback: 0, suggestion: 0 }
+    complaints.forEach(c => {
+      const t = c.type || 'complaint'
+      if (counts[t] !== undefined) counts[t]++
+      else counts.complaint++
+    })
+    return counts
+  }, [complaints])
+
   // Antrean Verifikasi (Status 'received')
-  // ── Computed queues (memoized — only recompute when complaints changes) ─────
   const verificationQueue = useMemo(
     () => complaints.filter(c => c.status === 'received'),
     [complaints]
@@ -81,16 +93,17 @@ export default function AdminDashboard() {
 
   const debouncedSearch = useDebounce(searchQuery, 250)
 
-  // ── Filtered complaints (memoized — recompute only on debounced search/unit change) ──
+  // Filtered complaints (memoized — recompute on search, unit, or type change)
   const filteredComplaints = useMemo(() => complaints.filter(c => {
+    const matchType = filterType === 'all' || (c.type || 'complaint') === filterType
     const q = debouncedSearch.toLowerCase().trim()
     const matchSearch = !q ||
       (c.description || '').toLowerCase().includes(q) ||
       (c.ticket_id || '').toLowerCase().includes(q) ||
       (c.target_unit || c.unit || '').toLowerCase().includes(q)
     const matchUnit = filterUnit === 'all' || (c.target_unit || c.unit) === filterUnit
-    return matchSearch && matchUnit
-  }), [complaints, debouncedSearch, filterUnit])
+    return matchType && matchSearch && matchUnit
+  }), [complaints, debouncedSearch, filterUnit, filterType])
 
   async function handleQuickVerify(id) {
     setSavingAction(true)
@@ -148,7 +161,7 @@ export default function AdminDashboard() {
             Selamat pagi, {user?.name ? user.name.split(' ')[0] : 'Admin'}
           </h1>
           <p className="text-xs sm:text-sm text-[var(--color-text-muted)] mt-1">
-            Pantau aspirasi, tindak lanjut penanganan, dan progres laporan kampus secara real-time.
+            Pantau aduan, masukan sivitas, saran inovasi, dan progres tindak lanjut kampus secara real-time.
           </p>
         </div>
         <div className="flex items-center gap-2.5">
@@ -199,16 +212,79 @@ export default function AdminDashboard() {
             </div>
             <div className="mt-3 flex items-baseline gap-2">
               <span className="text-3xl sm:text-4xl font-extrabold font-mono tracking-tight text-[var(--color-text)]">
-                {complaints.length > 0 ? complaints.length.toLocaleString('id-ID') : '1.284'}
+                {complaints.length > 0 ? complaints.length.toLocaleString('id-ID') : '0'}
               </span>
-              <span className="text-xs font-mono text-[var(--color-text-muted)]">tiket</span>
+              <span className="text-xs font-mono text-[var(--color-text-muted)]">laporan</span>
             </div>
             <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300">
               <ArrowUpRight size={13} /> +12% dari bulan lalu
             </div>
 
+            {/* 3-Type Summary Breakdown */}
+            <div className="mt-4 pt-3.5 border-t border-[var(--color-border)]">
+              <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-medium mb-2.5">
+                <span>Distribusi Tipe Masuk</span>
+                <span className="text-[10px] font-mono">Filter Cepat</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFilterType(filterType === 'complaint' ? 'all' : 'complaint')}
+                  className={`p-2 rounded-2xl border text-left transition-all ${
+                    filterType === 'complaint'
+                      ? 'bg-rose-500/10 border-rose-500/50 shadow-xs ring-1 ring-rose-500/30'
+                      : 'bg-[var(--color-bg-secondary)] border-[var(--color-border)]/60 hover:border-rose-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-1 text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                    <AlertTriangle size={11} /> Aduan
+                  </div>
+                  <div className="text-base font-extrabold font-mono text-[var(--color-text)] mt-0.5">
+                    {typeCounts.complaint}
+                  </div>
+                  <div className="text-[9px] text-[var(--color-text-muted)] truncate">7 Tahap SLA</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFilterType(filterType === 'feedback' ? 'all' : 'feedback')}
+                  className={`p-2 rounded-2xl border text-left transition-all ${
+                    filterType === 'feedback'
+                      ? 'bg-sky-500/10 border-sky-500/50 shadow-xs ring-1 ring-sky-500/30'
+                      : 'bg-[var(--color-bg-secondary)] border-[var(--color-border)]/60 hover:border-sky-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-1 text-[10px] font-bold text-sky-600 dark:text-sky-400">
+                    <MessageSquare size={11} /> Masukan
+                  </div>
+                  <div className="text-base font-extrabold font-mono text-[var(--color-text)] mt-0.5">
+                    {typeCounts.feedback}
+                  </div>
+                  <div className="text-[9px] text-[var(--color-text-muted)] truncate">Evaluasi Mutu</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFilterType(filterType === 'suggestion' ? 'all' : 'suggestion')}
+                  className={`p-2 rounded-2xl border text-left transition-all ${
+                    filterType === 'suggestion'
+                      ? 'bg-amber-500/10 border-amber-500/50 shadow-xs ring-1 ring-amber-500/30'
+                      : 'bg-[var(--color-bg-secondary)] border-[var(--color-border)]/60 hover:border-amber-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                    <Lightbulb size={11} /> Saran
+                  </div>
+                  <div className="text-base font-extrabold font-mono text-[var(--color-text)] mt-0.5">
+                    {typeCounts.suggestion}
+                  </div>
+                  <div className="text-[9px] text-[var(--color-text-muted)] truncate">Ide Inovasi</div>
+                </button>
+              </div>
+            </div>
+
             {/* Dual Action Buttons */}
-            <div className="mt-5 grid grid-cols-2 gap-2.5">
+            <div className="mt-4 grid grid-cols-2 gap-2.5">
               <Link
                 to="/admin/disposisi"
                 className="py-2.5 px-4 rounded-full text-xs font-bold text-center text-white bg-[#0B1F3A] hover:bg-[#153460] dark:bg-[var(--color-primary)] dark:hover:bg-blue-600 transition-all shadow-xs flex items-center justify-center gap-1.5"
@@ -225,23 +301,23 @@ export default function AdminDashboard() {
           </div>
 
           {/* Sub-cards: Kategori / Unit Terbanyak */}
-          <div className="mt-6 pt-5 border-t border-[var(--color-border)]">
-            <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-medium mb-3">
+          <div className="mt-5 pt-4 border-t border-[var(--color-border)]">
+            <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-medium mb-2.5">
               <span>Unit Teratas</span>
               <span>14 Unit Kampus</span>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <div className="p-2.5 rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/60 text-center">
+              <div className="p-2 rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/60 text-center">
                 <div className="text-[10px] font-medium text-[var(--color-text-muted)] truncate">Sarpras</div>
                 <div className="text-xs font-bold font-mono mt-0.5 text-[var(--color-text)]">482</div>
                 <div className="text-[9px] font-bold text-emerald-600 mt-0.5">Aktif</div>
               </div>
-              <div className="p-2.5 rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/60 text-center">
+              <div className="p-2 rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/60 text-center">
                 <div className="text-[10px] font-medium text-[var(--color-text-muted)] truncate">Akademik</div>
                 <div className="text-xs font-bold font-mono mt-0.5 text-[var(--color-text)]">326</div>
                 <div className="text-[9px] font-bold text-emerald-600 mt-0.5">Aktif</div>
               </div>
-              <div className="p-2.5 rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/60 text-center">
+              <div className="p-2 rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/60 text-center">
                 <div className="text-[10px] font-medium text-[var(--color-text-muted)] truncate">IT Center</div>
                 <div className="text-xs font-bold font-mono mt-0.5 text-[var(--color-text)]">195</div>
                 <div className="text-[9px] font-bold text-emerald-600 mt-0.5">Aktif</div>
@@ -322,10 +398,10 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Metric Card 4: Aduan Selesai */}
+          {/* Metric Card 4: Laporan Selesai */}
           <div className="rounded-3xl p-5 bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xs flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-[var(--color-text-muted)]">Aduan Selesai</span>
+              <span className="text-xs font-medium text-[var(--color-text-muted)]">Laporan Selesai</span>
               <span className="w-7 h-7 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center">
                 <ShieldCheck size={14} />
               </span>
@@ -364,7 +440,7 @@ export default function AdminDashboard() {
 
             {/* Stylized Vertical Bar Chart (Finexy aesthetic) */}
             <div className="mt-8 flex items-end justify-between gap-2 h-44 px-2 border-b border-[var(--color-border)] pb-2">
-              {monthlyStats.map((item, idx) => {
+              {monthlyStats.map((item) => {
                 const total = item.completed + item.inProgress
                 const heightPercent = Math.min(100, Math.round((total / 100) * 100))
                 return (
@@ -463,34 +539,84 @@ export default function AdminDashboard() {
         {/* Right Sub-Column (8 Cols): Recent Activities Table ("Recent Activities" in Finexy) */}
         <div className="lg:col-span-8 rounded-3xl p-6 bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xs flex flex-col justify-between">
           <div>
-            {/* Header with Search and Filter */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[var(--color-border)]">
-              <div>
-                <h3 className="text-sm font-bold text-[var(--color-text)]">Aduan &amp; Aktivitas Terbaru</h3>
-                <p className="text-[11px] text-[var(--color-text-muted)]">Daftar aspirasi masuk sivitas kampus</p>
+            {/* Header with Search, Unit Filter, and Type Filter */}
+            <div className="flex flex-col gap-3 pb-4 border-b border-[var(--color-border)]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--color-text)]">Aktivitas &amp; Laporan Sivitas</h3>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">Rekap seluruh aduan, masukan, dan saran kampus</p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
+                    <input
+                      type="text"
+                      placeholder="Cari ID, kata kunci..."
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      className="pl-8 pr-3 py-1.5 rounded-full text-xs bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] w-44 sm:w-52"
+                    />
+                  </div>
+                  <select
+                    value={filterUnit}
+                    onChange={e => setFilterUnit(e.target.value)}
+                    className="py-1.5 px-3 rounded-full text-xs font-medium bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text)]"
+                  >
+                    <option value="all">Semua Unit</option>
+                    {UNITS.map(u => (
+                      <option key={u.id} value={u.name}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
-                  <input
-                    type="text"
-                    placeholder="Cari ID, kata kunci..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 rounded-full text-xs bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] w-48 sm:w-56"
-                  />
-                </div>
-                <select
-                  value={filterUnit}
-                  onChange={e => setFilterUnit(e.target.value)}
-                  className="py-1.5 px-3 rounded-full text-xs font-medium bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text)]"
+              {/* 3-Type Filter Tabs */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pt-1">
+                <button
+                  type="button"
+                  onClick={() => setFilterType('all')}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                    filterType === 'all'
+                      ? 'bg-[#0B1F3A] text-white dark:bg-[var(--color-primary)]'
+                      : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+                  }`}
                 >
-                  <option value="all">Semua Unit</option>
-                  {UNITS.map(u => (
-                    <option key={u.id} value={u.name}>{u.name}</option>
-                  ))}
-                </select>
+                  Semua ({complaints.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterType('complaint')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                    filterType === 'complaint'
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'bg-[var(--color-bg-secondary)] text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30'
+                  }`}
+                >
+                  <AlertTriangle size={12} /> Aduan ({typeCounts.complaint})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterType('feedback')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                    filterType === 'feedback'
+                      ? 'bg-sky-600 text-white shadow-xs'
+                      : 'bg-[var(--color-bg-secondary)] text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/30'
+                  }`}
+                >
+                  <MessageSquare size={12} /> Masukan ({typeCounts.feedback})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterType('suggestion')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                    filterType === 'suggestion'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'bg-[var(--color-bg-secondary)] text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30'
+                  }`}
+                >
+                  <Lightbulb size={12} /> Saran ({typeCounts.suggestion})
+                </button>
               </div>
             </div>
 
@@ -501,15 +627,16 @@ export default function AdminDashboard() {
               </div>
             ) : filteredComplaints.length === 0 ? (
               <div className="py-12 text-center text-xs font-mono text-[var(--color-text-muted)]">
-                Tidak ada laporan yang sesuai dengan pencarian.
+                Tidak ada laporan yang sesuai dengan kriteria filter.
               </div>
             ) : (
               <div className="overflow-x-auto mt-2">
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="text-[11px] font-mono text-[var(--color-text-muted)] border-b border-[var(--color-border)]/60">
-                      <th className="py-3 px-3 font-semibold">ID Aduan</th>
-                      <th className="py-3 px-3 font-semibold">Deskripsi &amp; Masukan</th>
+                      <th className="py-3 px-3 font-semibold">ID Tiket</th>
+                      <th className="py-3 px-3 font-semibold">Jenis</th>
+                      <th className="py-3 px-3 font-semibold">Deskripsi Laporan</th>
                       <th className="py-3 px-3 font-semibold">Unit Pelaksana</th>
                       <th className="py-3 px-3 font-semibold">Status</th>
                       <th className="py-3 px-3 font-semibold">Tanggal</th>
@@ -520,6 +647,7 @@ export default function AdminDashboard() {
                     {filteredComplaints.slice(0, 6).map(c => {
                       const isResolved = c.status === 'resolved'
                       const isPending = c.status === 'received'
+                      const typeKey = c.type || 'complaint'
                       return (
                         <tr key={c.id} className="hover:bg-[var(--color-bg-secondary)]/60 transition-colors group">
                           {/* ID Tiket */}
@@ -527,8 +655,25 @@ export default function AdminDashboard() {
                             {c.ticket_id}
                           </td>
 
+                          {/* Distinct Type Badge */}
+                          <td className="py-3.5 px-3 whitespace-nowrap">
+                            {typeKey === 'feedback' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-900/60">
+                                <MessageSquare size={10} /> Masukan
+                              </span>
+                            ) : typeKey === 'suggestion' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60">
+                                <Lightbulb size={10} /> Saran
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60">
+                                <AlertTriangle size={10} /> Aduan
+                              </span>
+                            )}
+                          </td>
+
                           {/* Deskripsi & Category Icon */}
-                          <td className="py-3.5 px-3 max-w-[220px]">
+                          <td className="py-3.5 px-3 max-w-[210px]">
                             <div className="flex items-center gap-2">
                               <span className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 flex items-center justify-center flex-shrink-0 text-[10px] font-bold">
                                 {c.category ? c.category.charAt(0).toUpperCase() : 'A'}
@@ -540,7 +685,7 @@ export default function AdminDashboard() {
                           </td>
 
                           {/* Unit */}
-                          <td className="py-3.5 px-3 text-[var(--color-text-muted)] font-medium text-[11px] truncate max-w-[140px]">
+                          <td className="py-3.5 px-3 text-[var(--color-text-muted)] font-medium text-[11px] truncate max-w-[130px]">
                             {c.target_unit || c.unit || 'Belum didisposisikan'}
                           </td>
 
@@ -596,7 +741,7 @@ export default function AdminDashboard() {
 
           {/* Footer of Table */}
           <div className="pt-4 mt-2 border-t border-[var(--color-border)] flex items-center justify-between text-xs text-[var(--color-text-muted)]">
-            <span>Menampilkan {Math.min(6, filteredComplaints.length)} dari {filteredComplaints.length} tiket</span>
+            <span>Menampilkan {Math.min(6, filteredComplaints.length)} dari {filteredComplaints.length} laporan</span>
             <Link to="/admin/complaints" className="text-[var(--color-primary)] font-bold hover:underline flex items-center gap-1">
               Lihat Seluruh Laporan <ArrowRight size={13} />
             </Link>
@@ -615,8 +760,24 @@ export default function AdminDashboard() {
           >
             <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
               <div>
-                <div className="text-[10px] font-mono uppercase text-[var(--color-primary)] font-bold">DISPOSISI RESMI ADMIN</div>
-                <h3 id="modal-quick-disposition-title" className="text-base font-bold text-[var(--color-text)] font-mono">{selectedTicket.ticket_id}</h3>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono uppercase text-[var(--color-primary)] font-bold">
+                    DISPOSISI RESMI ADMIN
+                  </span>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    selectedTicket.type === 'feedback'
+                      ? 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300'
+                      : selectedTicket.type === 'suggestion'
+                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                      : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                  }`}>
+                    {selectedTicket.type === 'feedback' ? <MessageSquare size={10} /> : selectedTicket.type === 'suggestion' ? <Lightbulb size={10} /> : <AlertTriangle size={10} />}
+                    {selectedTicket.type === 'feedback' ? 'Masukan' : selectedTicket.type === 'suggestion' ? 'Saran' : 'Aduan'}
+                  </span>
+                </div>
+                <h3 id="modal-quick-disposition-title" className="text-base font-bold text-[var(--color-text)] font-mono mt-0.5">
+                  {selectedTicket.ticket_id}
+                </h3>
               </div>
               <button
                 onClick={() => setSelectedTicket(null)}
@@ -670,7 +831,13 @@ export default function AdminDashboard() {
                   id="quick-note"
                   rows={3}
                   required
-                  placeholder="Tuliskan instruksi atau arahan pimpinan kepada unit terkait..."
+                  placeholder={
+                    selectedTicket.type === 'feedback'
+                      ? 'Tuliskan arahan tindak lanjut masukan untuk evaluasi mutu layanan unit...'
+                      : selectedTicket.type === 'suggestion'
+                      ? 'Tuliskan telaah rekomendasi usulan saran inovasi sivitas...'
+                      : 'Tuliskan instruksi atau arahan pimpinan penanganan aduan kepada unit terkait...'
+                  }
                   value={dispositionForm.disposition_note}
                   onChange={e => setDispositionForm(f => ({ ...f, disposition_note: e.target.value }))}
                   className="input-field text-xs resize-none rounded-xl"

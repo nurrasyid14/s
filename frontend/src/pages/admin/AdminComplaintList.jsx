@@ -5,22 +5,23 @@ import { StatusBadge } from '../../components/ui/StatusBadge.jsx'
 import { getComplaints } from '../../services/complaintApi.js'
 import { formatDateTime, formatDate, formatUrgencyScore } from '../../utils/formatter.js'
 import { UNITS } from '../../data/units.js'
-import { Search, Filter, Printer, ExternalLink } from 'lucide-react'
+import { Search, Filter, Printer, ExternalLink, AlertTriangle, MessageSquare, Lightbulb } from 'lucide-react'
 
 export default function AdminComplaintList() {
   const [complaints, setComplaints] = useState([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
   const [unitFilter, setUnitFilter] = useState('')
   const [search, setSearch] = useState('')
 
   useEffect(() => {
     loadData()
-  }, [statusFilter, unitFilter])
+  }, [statusFilter, typeFilter, unitFilter])
 
   function loadData() {
     setLoading(true)
-    getComplaints({ status: statusFilter, unit: unitFilter, limit: 50 })
+    getComplaints({ status: statusFilter, type: typeFilter, unit: unitFilter, limit: 50 })
       .then(res => setComplaints(res.items || []))
       .finally(() => setLoading(false))
   }
@@ -36,10 +37,10 @@ export default function AdminComplaintList() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-[var(--color-border)]">
         <div>
           <h2 className="text-xl font-bold font-mono tracking-tight text-[var(--color-text)]">
-            Daftar Seluruh Masukan Sivitas
+            Daftar Seluruh Laporan &amp; Aspirasi Sivitas
           </h2>
           <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Data terpusat seluruh aduan dalam 7 tahap siklus penanganan institusional.
+            Data terpusat seluruh aduan, masukan, dan saran dalam alur penanganan institusional kampus.
           </p>
         </div>
         <button
@@ -51,7 +52,7 @@ export default function AdminComplaintList() {
       </div>
 
       {/* Filter Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 p-4 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl shadow-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 p-4 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl shadow-xs">
         <div>
           <label htmlFor="filter-search" className="block text-[11px] font-mono uppercase text-[var(--color-text-muted)] font-semibold mb-1">
             Cari Tiket / Kata Kunci
@@ -66,8 +67,24 @@ export default function AdminComplaintList() {
           />
         </div>
         <div>
+          <label htmlFor="filter-type" className="block text-[11px] font-mono uppercase text-[var(--color-text-muted)] font-semibold mb-1">
+            Jenis Laporan
+          </label>
+          <select
+            id="filter-type"
+            value={typeFilter}
+            onChange={e => setTypeFilter(e.target.value)}
+            className="input-field text-xs !py-2 rounded-xl"
+          >
+            <option value="">-- Semua Jenis (3) --</option>
+            <option value="complaint">⚠️ Aduan (Masalah/Keluhan)</option>
+            <option value="feedback">💬 Masukan (Perbaikan Layanan)</option>
+            <option value="suggestion">💡 Saran (Ide Inovasi)</option>
+          </select>
+        </div>
+        <div>
           <label htmlFor="filter-status" className="block text-[11px] font-mono uppercase text-[var(--color-text-muted)] font-semibold mb-1">
-            Filter Status (7 Tahap)
+            Filter Status
           </label>
           <select
             id="filter-status"
@@ -110,49 +127,74 @@ export default function AdminComplaintList() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="p-12 text-center border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-muted)] font-mono rounded-2xl shadow-xs">
-          Tidak ada aduan yang sesuai dengan filter pencarian.
+          Tidak ada laporan yang sesuai dengan filter pencarian.
         </div>
       ) : (
         <div className="border border-[var(--color-border)] overflow-x-auto bg-[var(--color-surface)] rounded-2xl shadow-sm">
           <table className="w-full text-left text-xs">
-            <caption className="sr-only">Daftar rekap masukan dan aduan sivitas PENS</caption>
+            <caption className="sr-only">Daftar rekap masukan, aduan, dan saran sivitas PENS</caption>
             <thead className="border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] font-mono uppercase">
               <tr>
                 <th scope="col" className="p-3.5">No Tiket</th>
+                <th scope="col" className="p-3.5">Jenis</th>
                 <th scope="col" className="p-3.5">Tanggal</th>
-                <th scope="col" className="p-3.5">Substansi Aduan</th>
+                <th scope="col" className="p-3.5">Substansi Laporan</th>
                 <th scope="col" className="p-3.5">Unit Tujuan</th>
                 <th scope="col" className="p-3.5">Status</th>
                 <th scope="col" className="p-3.5">Urgensi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
-              {filtered.map(c => (
-                <tr key={c.id} className="hover:bg-[var(--color-bg-secondary)] transition-colors">
-                  <td className="p-3.5 font-mono font-bold text-[var(--color-primary)] whitespace-nowrap">
-                    {c.ticket_id}
-                  </td>
-                  <td className="p-3.5 font-mono text-[var(--color-text-muted)] whitespace-nowrap">
-                    {formatDate(c.created_at)}
-                  </td>
-                  <td className="p-3.5 max-w-md">
-                    <p className="line-clamp-2 text-[var(--color-text)] leading-relaxed font-medium">
-                      {c.description}
-                    </p>
-                  </td>
-                  <td className="p-3.5 font-semibold text-[var(--color-text)] whitespace-nowrap">
-                    {c.target_unit || c.unit}
-                  </td>
-                  <td className="p-3.5 whitespace-nowrap">
-                    <StatusBadge status={c.status} />
-                  </td>
-                  <td className="p-3.5 font-mono font-bold whitespace-nowrap">
-                    <span className={c.urgency_score >= 7 ? 'text-[var(--color-status-danger)]' : 'text-[var(--color-text)]'}>
-                      {formatUrgencyScore(c.urgency_score)}/10
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map(c => {
+                const typeKey = c.type || 'complaint'
+                return (
+                  <tr key={c.id} className="hover:bg-[var(--color-bg-secondary)] transition-colors">
+                    <td className="p-3.5 font-mono font-bold text-[var(--color-primary)] whitespace-nowrap">
+                      {c.ticket_id}
+                    </td>
+                    <td className="p-3.5 whitespace-nowrap">
+                      {typeKey === 'feedback' ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-900/60">
+                          <MessageSquare size={10} /> Masukan
+                        </span>
+                      ) : typeKey === 'suggestion' ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60">
+                          <Lightbulb size={10} /> Saran
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60">
+                          <AlertTriangle size={10} /> Aduan
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-3.5 font-mono text-[var(--color-text-muted)] whitespace-nowrap">
+                      {formatDate(c.created_at)}
+                    </td>
+                    <td className="p-3.5 max-w-md">
+                      <p className="line-clamp-2 text-[var(--color-text)] leading-relaxed font-medium">
+                        {c.description}
+                      </p>
+                    </td>
+                    <td className="p-3.5 font-medium text-[var(--color-text-muted)] whitespace-nowrap">
+                      {c.target_unit || c.unit || 'Belum ditugaskan'}
+                    </td>
+                    <td className="p-3.5 whitespace-nowrap">
+                      <StatusBadge status={c.status} />
+                    </td>
+                    <td className="p-3.5 font-mono whitespace-nowrap">
+                      {typeKey === 'complaint' ? (
+                        <span className="font-bold text-[var(--color-text)]">
+                          {formatUrgencyScore(c.urgency_score || 5)}/10
+                        </span>
+                      ) : (
+                        <span className="text-[var(--color-text-muted)] italic text-[11px]">
+                          N/A
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
