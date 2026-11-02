@@ -226,7 +226,7 @@ function Header() {
     ['#about', L('Tentang', 'About')],
     ['#contact', L('Kontak', 'Contact')],
   ]
-  const dash = user?.role === 'stakeholder' ? '/stakeholder' : '/user/dashboard'
+  const dash = user?.role === 'admin' ? '/admin/dashboard' : user?.role === 'stakeholder' ? '/stakeholder' : '/user/dashboard'
   return (
     <header className="relative w-full border-b border-white/30 text-white">
       <div className="flex w-full items-center justify-between py-4 px-4 md:px-10">
@@ -245,7 +245,7 @@ function Header() {
           {user ? (
             <>
               <Link to={dash} className="hidden md:flex min-h-[44px] items-center px-4 py-2 border border-white/60 rounded-xl text-sm font-medium text-white transition-all shadow-xs hover:bg-white/10">{t('nav.dashboard')}</Link>
-              <button onClick={logout} className="min-h-[44px] px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-md bg-white text-[#0B1F3A] hover:bg-white/90 hover:-translate-y-0.5">{t('nav.logout')}</button>
+              <button onClick={() => logout('/')} className="min-h-[44px] px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-md bg-white text-[#0B1F3A] hover:bg-white/90 hover:-translate-y-0.5">{t('nav.logout')}</button>
             </>
           ) : (
             <>
@@ -260,7 +260,17 @@ function Header() {
         <div className="md:hidden border-t border-white/20 bg-[#0B1F3A]/95 text-white backdrop-blur-md px-4 py-3 flex flex-col gap-3 text-sm font-medium animate-fade-in">
           {links.map(([href, label]) => <a key={href} href={href} className="text-white/85 hover:text-white" onClick={() => setOpen(false)}>{label}</a>)}
           <button onClick={switchLang} className="flex items-center gap-2 text-left text-white/90"><Globe size={15} />{i18n.language === 'id' ? 'English' : 'Bahasa Indonesia'}</button>
-          {!user && <Link to="/signin" className="text-white/90 hover:text-white font-medium" onClick={() => setOpen(false)}>{t('nav.login')}</Link>}
+                    {user ? (
+            <>
+              <Link to={dash} className="text-white/90 hover:text-white font-medium" onClick={() => setOpen(false)}>{t('nav.dashboard')}</Link>
+              <button onClick={() => { setOpen(false); logout('/'); }} className="text-left text-rose-300 hover:text-rose-200 font-medium">{t('nav.logout')}</button>
+            </>
+          ) : (
+            <>
+              <Link to="/signin" className="text-white/90 hover:text-white font-medium" onClick={() => setOpen(false)}>{t('nav.login')}</Link>
+              <Link to="/signup-user" className="text-white/90 hover:text-white font-semibold" onClick={() => setOpen(false)}>{t('nav.register')}</Link>
+            </>
+          )}
         </div>
       )}
     </header>
@@ -270,6 +280,7 @@ function Header() {
 /* ---------- Hero (Page 1: Pas 1 Layar Penuh Desktop) ---------- */
 function Hero() {
   const L = useL()
+  const { user } = useAuth()
   return (
     <section className="relative w-full flex-1 flex flex-col justify-between items-center px-4 py-2 md:py-4 overflow-hidden">
       {/* Background Gedung Kampus PENS (Paling Kanan & Paling Terang) */}
@@ -317,8 +328,27 @@ function Hero() {
 
         <div className="blur-in delay-300 w-full flex flex-col items-center">
           <div className="mt-6 flex w-full flex-col items-center justify-center gap-3 px-4 sm:w-auto sm:flex-row">
-            <Link to="/signup-user" className="w-full min-h-[46px] flex items-center justify-center px-8 py-2.5 rounded-xl font-bold text-sm md:text-base transition-all text-center sm:w-auto bg-white text-[#0B1F3A] hover:bg-slate-100 shadow-lg hover:shadow-xl hover:-translate-y-0.5">{L('Ajukan Aduan', 'Submit a Complaint')}</Link>
-            <Link to="/signin" className="w-full min-h-[46px] flex items-center justify-center px-8 py-2.5 border border-white/80 rounded-xl text-white font-semibold text-sm md:text-base transition-all text-center sm:w-auto hover:bg-white/10 shadow-sm hover:-translate-y-0.5">{L('Masuk Stakeholder', 'Stakeholder Sign In')}</Link>
+            <Link
+              to={user ? (user.role === 'user' ? '/user/submit' : (user.role === 'stakeholder' ? '/stakeholder' : '/admin/dashboard')) : '/signup-user'}
+              className="w-full min-h-[46px] flex items-center justify-center px-8 py-2.5 rounded-xl font-bold text-sm md:text-base transition-all text-center sm:w-auto bg-white text-[#0B1F3A] hover:bg-slate-100 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+            >
+              {user ? (user.role === 'user' ? L('Ajukan Aspirasi Baru', 'Submit New Aspirations') : L('Buka Dashboard', 'Open Dashboard')) : L('Ajukan Aduan', 'Submit a Complaint')}
+            </Link>
+            {!user ? (
+              <Link
+                to="/signin"
+                className="w-full min-h-[46px] flex items-center justify-center px-8 py-2.5 border border-white/80 rounded-xl text-white font-semibold text-sm md:text-base transition-all text-center sm:w-auto hover:bg-white/10 shadow-sm hover:-translate-y-0.5"
+              >
+                {L('Masuk Portal', 'Portal Sign In')}
+              </Link>
+            ) : (
+              <Link
+                to={user.role === 'user' ? '/user/dashboard' : (user.role === 'stakeholder' ? '/stakeholder' : '/admin/dashboard')}
+                className="w-full min-h-[46px] flex items-center justify-center px-8 py-2.5 border border-white/80 rounded-xl text-white font-semibold text-sm md:text-base transition-all text-center sm:w-auto hover:bg-white/10 shadow-sm hover:-translate-y-0.5"
+              >
+                {L('Buka Dashboard', 'Open Dashboard')}
+              </Link>
+            )}
           </div>
 
           {/* Showcase Vector Dashboard SuaraLens */}

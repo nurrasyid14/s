@@ -31,8 +31,7 @@ export default function Sidebar({ notifCount = 0 }) {
   }
 
   function handleLogout() {
-    logout()
-    navigate('/signin')
+    logout('/signin')
   }
 
   return (

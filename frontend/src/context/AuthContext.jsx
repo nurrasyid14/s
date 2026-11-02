@@ -15,10 +15,21 @@ export function AuthProvider({ children }) {
 
   function login(userData) { setUser(userData) }
 
-  function logout() {
-    apiSignOut()
+  function logout(redirectTo = '/') {
+    // 1. Hapus token & sesi pengguna dari localStorage seketika (sinkron)
+    localStorage.removeItem('suaralens_token')
+    localStorage.removeItem('suaralens_user')
     setUser(null)
-    window.location.href = '/'
+
+    // 2. Beri tahu backend tanpa memblokir redirect
+    apiSignOut().catch(() => {})
+
+    // 3. Arahkan pengguna ke landing page (atau rute tujuan) secara bersih
+    if (window.location.pathname === redirectTo) {
+      window.location.reload()
+    } else {
+      window.location.href = redirectTo
+    }
   }
 
   return (
