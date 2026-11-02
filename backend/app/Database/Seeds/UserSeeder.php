@@ -9,7 +9,6 @@ class UserSeeder extends Seeder
     public function run()
     {
         $db = \Config\Database::connect();
-        $builder = $db->table('users');
 
         $users = [
             [
@@ -28,6 +27,7 @@ class UserSeeder extends Seeder
                 'password_hash' => password_hash('password123', PASSWORD_DEFAULT),
                 'role'          => 'stakeholder',
                 'position'      => 'Kepala Bagian Kemahasiswaan',
+                'unit'          => 'Kemahasiswaan',
                 'institution'   => 'PENS',
                 'created_at'    => date('Y-m-d H:i:s'),
                 'updated_at'    => date('Y-m-d H:i:s'),
@@ -46,9 +46,14 @@ class UserSeeder extends Seeder
         ];
 
         foreach ($users as $u) {
-            $exists = $builder->where('email', $u['email'])->get()->getRowArray();
+            $exists = $db->table('users')->where('email', $u['email'])->get()->getRowArray();
             if (!$exists) {
-                $builder->insert($u);
+                $db->table('users')->insert($u);
+            } else {
+                $db->table('users')->where('email', $u['email'])->update([
+                    'unit'     => $u['unit'] ?? $exists['unit'] ?? null,
+                    'position' => $u['position'] ?? $exists['position'] ?? null,
+                ]);
             }
         }
     }

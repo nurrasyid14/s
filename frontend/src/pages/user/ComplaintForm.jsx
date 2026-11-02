@@ -11,14 +11,6 @@ const TYPES = [
   { key: 'suggestion', icon: Lightbulb, titleKey: 'form.type_suggestion', descKey: 'form.type_suggestion_desc' },
 ]
 
-const CATEGORIES = [
-  { key: 'facility', labelKey: 'form.category_facility' },
-  { key: 'academic', labelKey: 'form.category_academic' },
-  { key: 'admin', labelKey: 'form.category_admin' },
-  { key: 'finance', labelKey: 'form.category_finance' },
-  { key: 'other', labelKey: 'form.category_other' },
-]
-
 import { UNITS } from '../../data/units.js'
 
 const TOTAL_STEPS = 5
@@ -41,7 +33,6 @@ export default function ComplaintForm() {
 
   function canNext() {
     if (step === 1) return !!form.type
-    if (step === 2) return !!form.category
     if (step === 3) return form.description.length >= 50
     return true
   }
@@ -165,31 +156,53 @@ export default function ComplaintForm() {
             </div>
           )}
 
-          {/* Step 2: Kategori */}
+          {/* Step 2: Divisi / Unit Tujuan */}
           {step === 2 && (
             <div>
-              <h3 className="font-semibold text-lg text-[var(--color-text)] mb-4">{t('form.category')}</h3>
-              <div className="grid grid-cols-2 gap-2.5 mb-6">
-                {CATEGORIES.map(({ key, labelKey }) => (
-                  <button key={key} type="button" onClick={() => setField('category', key)}
-                    className={`py-3 px-4 border rounded-xl text-sm font-medium transition-all shadow-2xs min-h-[44px]
-                      ${form.category === key ? 'border-[var(--color-btn)] bg-[var(--color-btn)] text-[var(--color-btn-text)] shadow-xs' : 'border-[var(--color-border)] text-[var(--color-text)] hover:border-[var(--color-text-muted)] hover:bg-[var(--color-bg-secondary)]'}`}>
-                    {t(labelKey)}
-                  </button>
-                ))}
-              </div>
+              <h3 className="font-semibold text-lg text-[var(--color-text)] mb-2">Pilih Divisi / Unit Tujuan</h3>
+              <p className="text-xs text-[var(--color-text-muted)] mb-5 leading-relaxed">
+                Pilih unit kerja resmi PENS yang berwenang menindaklanjuti laporan Anda, atau gunakan rekomendasi otomatis cerdas oleh sistem AI.
+              </p>
+
               <div>
-                <label htmlFor="complaint-unit" className="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-1.5">{t('form.unit')}</label>
+                <label htmlFor="complaint-unit" className="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-2">
+                  Unit Kerja / Divisi Resmi Kampus
+                </label>
                 <select
                   id="complaint-unit"
                   value={form.unit}
-                  onChange={e => setField('unit', e.target.value)}
-                  className="input-field rounded-lg"
+                  onChange={e => {
+                    setField('unit', e.target.value)
+                    setField('category', e.target.value)
+                  }}
+                  className="input-field rounded-xl bg-[var(--color-surface)] text-[var(--color-text)] text-sm py-3"
                 >
-                  <option value="">-- Rekomendasi Sistem (Otomatis) atau Pilih Unit --</option>
-                  {UNITS.map(u => <option key={u.id} value={u.name}>{u.name} ({u.code})</option>)}
+                  <option value="">✨ Rekomendasi Otomatis oleh AI (Smart Triage)</option>
+                  {UNITS.map(u => (
+                    <option key={u.id} value={u.name}>
+                      {u.name} ({u.code})
+                    </option>
+                  ))}
                 </select>
               </div>
+
+              {form.unit ? (
+                <div className="mt-4 p-4 rounded-xl border border-[var(--color-primary)]/30 bg-[var(--color-primary-soft)] text-xs text-[var(--color-text)] leading-relaxed">
+                  <div className="font-bold text-[var(--color-primary)] mb-1">
+                    Tupoksi {form.unit}:
+                  </div>
+                  <div>
+                    {UNITS.find(u => u.name === form.unit)?.desc || 'Unit pelaksana layanan kampus.'}
+                  </div>
+                  <div className="mt-2 font-mono text-[11px] text-[var(--color-text-muted)]">
+                    Target Penyelesaian (SLA): {UNITS.find(u => u.name === form.unit)?.slaDays || 3} hari kerja
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-xs text-[var(--color-text-muted)] leading-relaxed">
+                  💡 <strong>Mode Otomatis Aktif:</strong> Model LLM/NLP SuaraLens akan membaca deskripsi laporan Anda di langkah berikutnya dan otomatis mengarahkan ke divisi yang paling tepat.
+                </div>
+              )}
             </div>
           )}
 
@@ -272,15 +285,14 @@ export default function ComplaintForm() {
           {step === 5 && (
             <div className="space-y-5">
               <h3 className="font-semibold text-lg text-[var(--color-text)] mb-4">{t('form.step5_title')}</h3>
-              <div className="grid grid-cols-3 gap-3 text-sm">
+              <div className="grid grid-cols-2 gap-3 text-sm">
                 {[
-                  { label: 'Jenis', value: form.type },
-                  { label: 'Kategori', value: form.category },
-                  { label: 'Unit', value: form.unit || '-' },
+                  { label: 'Jenis Laporan', value: form.type ? t(`form.type_${form.type}`) || form.type : '-' },
+                  { label: 'Divisi Tujuan', value: form.unit || 'Otomatis (AI Smart Triage)' },
                 ].map(({ label, value }) => (
                   <div key={label} className="p-3.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
                     <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)]">{label}</div>
-                    <div className="font-semibold text-[var(--color-text)] capitalize mt-1">{value}</div>
+                    <div className="font-semibold text-[var(--color-text)] mt-1">{value}</div>
                   </div>
                 ))}
               </div>

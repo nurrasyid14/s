@@ -23,6 +23,13 @@ class ComplaintController extends ResourceController
         $limit = min(100, max(1, (int) ($this->request->getGet('limit') ?? 10)));
         $builder = $this->complaintQuery();
 
+        $user = $this->authenticatedUser();
+        if ($user && $user['role'] === 'stakeholder' && !empty($user['unit'])) {
+            $builder->like('c.assigned_unit', trim($user['unit']));
+        } elseif ($this->request->getGet('unit')) {
+            $builder->like('c.assigned_unit', trim((string) $this->request->getGet('unit')));
+        }
+
         $status = $this->request->getGet('status');
         if ($status !== null && $status !== '') {
             $builder->where('c.status', $this->normalizeStatus($status));

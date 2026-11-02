@@ -15,9 +15,15 @@ export function AuthProvider({ children }) {
 
   function login(userData) { setUser(userData) }
 
-  function logout() {
-    apiSignOut()
+  async function logout() {
+    localStorage.removeItem('suaralens_token')
+    localStorage.removeItem('suaralens_user')
     setUser(null)
+    try {
+      await apiSignOut()
+    } catch {
+      // abaikan error jaringan saat logout
+    }
     window.location.href = '/'
   }
 

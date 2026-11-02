@@ -69,7 +69,7 @@ export default {
     form: {
       title: 'Ajukan Aduan / Masukan',
       step1_title: 'Pilih Jenis',
-      step2_title: 'Kategori',
+      step2_title: 'Divisi Tujuan',
       step3_title: 'Deskripsi',
       step4_title: 'Lampiran',
       step5_title: 'Konfirmasi',

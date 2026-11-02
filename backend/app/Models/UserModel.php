@@ -20,6 +20,7 @@ class UserModel extends Model
         'user_role',
         'institution',
         'position',
+        'unit',
         'password_hash',
         'role',
     ];

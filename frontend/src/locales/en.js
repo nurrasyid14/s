@@ -62,7 +62,7 @@ export default {
     form: {
       title: 'Submit Complaint / Feedback',
       step1_title: 'Choose Type',
-      step2_title: 'Category',
+      step2_title: 'Target Division',
       step3_title: 'Description',
       step4_title: 'Attachments',
       step5_title: 'Confirm',
