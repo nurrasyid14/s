@@ -45,12 +45,13 @@ foreach ($dir in $writableDirs) {
     }
 }
 
-# 4. Pastikan MySQL berjalan di port 3306
-$mysqlRunning = Get-NetTCPConnection -LocalPort 3306 -State Listen -ErrorAction SilentlyContinue
-if (-not $mysqlRunning) {
-    if (Test-Path "C:\xampp\mysql_start.bat") {
-        Write-Host "  Memulai MySQL daemon..." -ForegroundColor Yellow
-        Start-Process "C:\xampp\mysql_start.bat" -WindowStyle Minimized
+# 4. Pastikan PostgreSQL berjalan di port 5432
+$postgresRunning = Get-NetTCPConnection -LocalPort 5432 -State Listen -ErrorAction SilentlyContinue
+if (-not $postgresRunning) {
+    $postgresService = Get-Service -Name 'postgresql-x64-18' -ErrorAction SilentlyContinue
+    if ($postgresService) {
+        Write-Host "  Memulai PostgreSQL..." -ForegroundColor Yellow
+        Start-Service -Name $postgresService.Name
         Start-Sleep -Seconds 3
     }
 }
@@ -70,4 +71,3 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$root\fronten
 
 Write-Host "`nSemua layanan berhasil dibuka di jendela terpisah!" -ForegroundColor Green
 Write-Host "Aplikasi dapat diakses di: http://localhost:5173" -ForegroundColor Green
-

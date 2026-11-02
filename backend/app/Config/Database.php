@@ -27,21 +27,21 @@ class Database extends Config
     public array $default = [
         'DSN'          => '',
         'hostname'     => 'localhost',
-        'username'     => '',
+        'username'     => 'postgres',
         'password'     => '',
-        'database'     => '',
-        'DBDriver'     => 'MySQLi',
+        'database'     => 'suaralens',
+        'DBDriver'     => 'Postgre',
         'DBPrefix'     => '',
         'pConnect'     => false,
         'DBDebug'      => true,
-        'charset'      => 'utf8mb4',
-        'DBCollat'     => 'utf8mb4_general_ci',
+        'charset'      => 'utf8',
+        'DBCollat'     => '',
         'swapPre'      => '',
         'encrypt'      => false,
         'compress'     => false,
         'strictOn'     => false,
         'failover'     => [],
-        'port'         => 3306,
+        'port'         => 5432,
         'numberNative' => false,
         'foundRows'    => false,
         'dateFormat'   => [
@@ -193,6 +193,14 @@ class Database extends Config
     public function __construct()
     {
         parent::__construct();
+
+        $this->default = array_replace($this->default, [
+            'hostname' => env('database.default.hostname', 'localhost'),
+            'username' => env('database.default.username', 'postgres'),
+            'password' => env('database.default.password', ''),
+            'database' => env('database.default.database', 'suaralens'),
+            'port'     => (int) env('database.default.port', 5432),
+        ]);
 
         // Ensure that we always set the database group to 'tests' if
         // we are currently running an automated test suite, so that
