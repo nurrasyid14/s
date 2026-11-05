@@ -11,8 +11,8 @@ export default function DispositionSheetModal({ complaint, onClose }) {
   const currentDate = new Date()
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl">
+    <div className="fixed inset-0 z-50 backdrop-in bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="modal-in bg-[var(--color-surface)] border border-[var(--color-border)] max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl">
         {/* Modal Controls */}
         <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between print:hidden bg-[var(--color-bg-secondary)]">
           <div className="flex items-center gap-2">
@@ -159,7 +159,7 @@ export default function DispositionSheetModal({ complaint, onClose }) {
             {complaint.feedback ? (
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-bold text-amber-600 font-mono text-sm">
+                  <div className="font-bold text-orange-600 font-mono text-sm">
                     {complaint.feedback.rating} / 5 Bintang Kepuasan
                   </div>
                   <p className="text-gray-700 italic mt-0.5">"{complaint.feedback.comment}"</p>

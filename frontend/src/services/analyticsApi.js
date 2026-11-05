@@ -32,7 +32,7 @@ const MOCK_DISTRIBUTION = [
 
 const MOCK_SENTIMENT = [
   { name: 'Negatif',  nameEn: 'Negative', value: 34, color: '#ef4444' },
-  { name: 'Netral',   nameEn: 'Neutral',  value: 45, color: '#f59e0b' },
+  { name: 'Netral',   nameEn: 'Neutral',  value: 45, color: '#94A3B8' },
   { name: 'Positif',  nameEn: 'Positive', value: 21, color: '#10b981' },
 ]
 

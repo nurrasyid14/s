@@ -25,8 +25,8 @@ const TYPE_CONFIG = {
   suggestion: {
     label: 'Saran',
     icon: Lightbulb,
-    badgeClass: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60',
-    iconClass: 'text-amber-600 dark:text-amber-400',
+    badgeClass: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-900/60',
+    iconClass: 'text-orange-600 dark:text-orange-400',
     desc: 'Ide & usulan inovasi',
   },
 }
@@ -65,25 +65,25 @@ export default function MyComplaints() {
   }, [data, selectedType])
 
   return (
-    <div className="relative min-h-screen bg-[var(--color-bg)]">
+    <div className="relative min-h-screen bg-[var(--color-bg-secondary)]">
       <Navbar variant="user" />
       <div className="relative max-w-4xl mx-auto px-4 sm:px-6 py-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-[var(--color-border)]">
+        <div className="banner-blue mb-6 flex flex-col justify-between gap-4 p-6 sm:flex-row sm:items-end md:p-8">
           <div>
-            <div className="text-[11px] font-mono uppercase tracking-wider text-[var(--color-primary)] font-semibold mb-1">
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--color-gold)]">
               PORTAL PELAPOR · RIWAYAT &amp; ASPIRASI
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-[var(--color-text)] tracking-tight">
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
               {t('nav.history')}
             </h1>
-            <p className="text-sm text-[var(--color-text-muted)] mt-1">
+            <p className="mt-1 text-sm text-white/75">
               Pantau status transparansi penanganan aduan, masukan, dan saran Anda secara real-time.
             </p>
           </div>
           <Link
             to="/user/submit"
-            className="btn-solid inline-flex items-center gap-2 self-start sm:self-auto text-xs py-2.5 px-4 font-medium tracking-tight rounded-xl min-h-[44px]"
+            className="btn-gold self-start !h-11 sm:self-auto"
           >
             <PlusCircle size={15} /> Ajukan Baru
           </Link>
@@ -96,7 +96,7 @@ export default function MyComplaints() {
             <button
               type="button"
               onClick={() => setSelectedType(selectedType === 'complaint' ? 'all' : 'complaint')}
-              className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden ${
+              className={`p-4 rounded-2xl border text-left transition relative overflow-hidden ${
                 selectedType === 'complaint'
                   ? 'bg-rose-50/70 dark:bg-rose-950/30 border-rose-500/50 shadow-xs'
                   : 'bg-[var(--color-surface)] border-[var(--color-border)] hover:border-rose-300'
@@ -122,7 +122,7 @@ export default function MyComplaints() {
             <button
               type="button"
               onClick={() => setSelectedType(selectedType === 'feedback' ? 'all' : 'feedback')}
-              className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden ${
+              className={`p-4 rounded-2xl border text-left transition relative overflow-hidden ${
                 selectedType === 'feedback'
                   ? 'bg-sky-50/70 dark:bg-sky-950/30 border-sky-500/50 shadow-xs'
                   : 'bg-[var(--color-surface)] border-[var(--color-border)] hover:border-sky-300'
@@ -148,17 +148,17 @@ export default function MyComplaints() {
             <button
               type="button"
               onClick={() => setSelectedType(selectedType === 'suggestion' ? 'all' : 'suggestion')}
-              className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden ${
+              className={`p-4 rounded-2xl border text-left transition relative overflow-hidden ${
                 selectedType === 'suggestion'
-                  ? 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-500/50 shadow-xs'
-                  : 'bg-[var(--color-surface)] border-[var(--color-border)] hover:border-amber-300'
+                  ? 'bg-orange-50/70 dark:bg-orange-950/30 border-orange-500/50 shadow-xs'
+                  : 'bg-[var(--color-surface)] border-[var(--color-border)] hover:border-orange-300'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400">
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 dark:text-orange-400">
                   <Lightbulb size={14} /> Saran
                 </span>
-                <span className="text-[10px] font-mono uppercase text-amber-500 font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950">
+                <span className="text-[10px] font-mono uppercase text-orange-500 font-semibold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950">
                   Ide Inovasi
                 </span>
               </div>
@@ -181,7 +181,7 @@ export default function MyComplaints() {
                 onClick={() => setSelectedType('all')}
                 className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                   selectedType === 'all'
-                    ? 'bg-[#0B1F3A] text-white dark:bg-[var(--color-primary)]'
+                    ? 'bg-[var(--color-navy)] text-white dark:bg-[var(--color-primary)]'
                     : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
                 }`}
               >
@@ -214,8 +214,8 @@ export default function MyComplaints() {
                 onClick={() => setSelectedType('suggestion')}
                 className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                   selectedType === 'suggestion'
-                    ? 'bg-amber-600 text-white shadow-xs'
-                    : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30'
+                    ? 'bg-orange-600 text-white shadow-xs'
+                    : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/30'
                 }`}
               >
                 <Lightbulb size={13} /> Saran ({typeCounts.suggestion})

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 import StakeholderLayout from '../../components/layout/StakeholderLayout.jsx'
+import { CountUp } from '../../components/motion/Motion.jsx'
 import { StatusBadge, UrgencyBadge } from '../../components/ui/StatusBadge.jsx'
 import ErrorState from '../../components/ui/ErrorState.jsx'
 import UnitReportModal from '../../components/pdf/UnitReportModal.jsx'
@@ -94,48 +95,61 @@ export default function StakeholderDashboard() {
 
   return (
     <StakeholderLayout title={`Dashboard Unit: ${selectedUnit}`}>
-      {/* 1. Greeting & Unit Selector Bar (Finexy Style) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--color-text)] tracking-tight">
-            Selamat pagi, {user?.name ? user.name.split(' ')[0] : 'Pengelola'}
-          </h1>
-          <p className="text-xs sm:text-sm text-[var(--color-text-muted)] mt-1">
-            Pantau penanganan aduan, masukan sivitas, dan usulan saran untuk unit {selectedUnit}.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          {/* Unit Selector: Stakeholder terkunci ke unitnya, Admin bisa memilih unit */}
-          {user?.role === 'admin' ? (
-            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xs">
-              <Building2 size={15} className="text-[var(--color-primary)]" />
-              <select
-                id="unit-select"
-                value={selectedUnit}
-                onChange={e => setSelectedUnit(e.target.value)}
-                className="text-xs font-bold text-[var(--color-text)] bg-transparent border-none focus:outline-none cursor-pointer dark:bg-transparent"
-              >
-                {UNITS.map(u => (
-                  <option key={u.id} value={u.name}>{u.name} ({u.code})</option>
-                ))}
-              </select>
+      {/* 1. Banner sapaan biru + pemilih unit */}
+      <section className="banner-blue p-6 sm:p-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            {user?.role === 'admin' ? (
+              <label className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 py-1.5 pl-3 pr-2 backdrop-blur-sm">
+                <Building2 size={14} className="text-[var(--color-gold)]" />
+                <span className="sr-only">Pilih unit</span>
+                <select
+                  id="unit-select"
+                  value={selectedUnit}
+                  onChange={e => setSelectedUnit(e.target.value)}
+                  className="cursor-pointer border-none bg-transparent text-xs font-bold text-white focus:outline-none dark:bg-transparent [&>option]:text-[var(--color-text)]"
+                >
+                  {UNITS.map(u => (
+                    <option key={u.id} value={u.name}>{u.name} ({u.code})</option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <span className="inline-flex items-center gap-2 rounded-full bg-[var(--color-gold)] px-3 py-1.5 text-xs font-bold text-[var(--color-on-gold)]">
+                <Building2 size={14} /> {user?.unit || selectedUnit}
+              </span>
+            )}
+            <h2 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">
+              Selamat datang, {user?.name ? user.name.split(' ')[0] : 'Pengelola'}
+            </h2>
+            <p className="mt-2 text-sm text-white/75">
+              {urgentComplaints.length > 0
+                ? <>Ada <strong className="text-white">{urgentComplaints.length} laporan</strong> berurgensi tinggi yang perlu ditangani unit Anda.</>
+                : <>Tidak ada laporan mendesak saat ini. Pantau aduan, masukan, dan saran untuk unit {selectedUnit}.</>}
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2.5">
+              <Link to="/stakeholder/followups" className="btn-gold !h-11 !px-5">
+                <Send size={16} /> Kerjakan Tindak Lanjut
+              </Link>
+              <button onClick={() => setShowPdfModal(true)} className="btn-ghost-light !h-11 !px-5">
+                <Printer size={16} /> Ekspor PDF
+              </button>
             </div>
-          ) : (
-            <div className="flex items-center gap-2 px-3.5 py-2 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary-soft)] text-[var(--color-primary)] shadow-2xs">
-              <Building2 size={15} />
-              <span className="text-xs font-bold tracking-tight">Divisi: {user?.unit || selectedUnit}</span>
-            </div>
-          )}
-
-          <button
-            onClick={() => setShowPdfModal(true)}
-            className="px-4 py-2.5 rounded-full text-xs font-bold text-white bg-[#0B1F3A] hover:bg-[#153460] dark:bg-[var(--color-primary)] dark:hover:bg-blue-600 transition-all shadow-sm flex items-center gap-2"
-          >
-            <Printer size={14} /> Ekspor PDF
-          </button>
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:w-[420px]">
+            {[
+              ['Total laporan', unitStats?.total || 0, ''],
+              ['Urgensi tinggi', urgentComplaints.length, ''],
+              ['Kepatuhan SLA', unitStats?.slaComplianceRate || 95, '%'],
+            ].map(([label, val, suf]) => (
+              <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 backdrop-blur-sm sm:p-4">
+                <div className="text-2xl font-bold tracking-tight sm:text-3xl">{loading ? '…' : <CountUp value={val} suffix={suf} />}</div>
+                <div className="mt-1 text-[11px] text-white/65 sm:text-xs">{label}</div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
 
       {error ? (
         <ErrorState onRetry={() => loadUnitStats(selectedUnit)} />
@@ -155,7 +169,7 @@ export default function StakeholderDashboard() {
 
                 <div className="mt-3 flex items-baseline gap-2">
                   <span className="text-3xl sm:text-4xl font-extrabold font-mono tracking-tight text-[var(--color-text)]">
-                    {loading ? '...' : (unitStats?.total || 0).toLocaleString('id-ID')}
+                    {loading ? '...' : <CountUp value={unitStats?.total || 0} />}
                   </span>
                   <span className="text-xs font-mono text-[var(--color-text-muted)]">laporan</span>
                 </div>
@@ -175,7 +189,7 @@ export default function StakeholderDashboard() {
                     <button
                       type="button"
                       onClick={() => setSelectedType(selectedType === 'complaint' ? 'all' : 'complaint')}
-                      className={`p-2 rounded-2xl border text-left transition-all ${
+                      className={`p-2 rounded-2xl border text-left transition ${
                         selectedType === 'complaint'
                           ? 'bg-rose-500/10 border-rose-500/50 shadow-xs ring-1 ring-rose-500/30'
                           : 'bg-[var(--color-bg-secondary)] border-[var(--color-border)]/60 hover:border-rose-300'
@@ -185,7 +199,7 @@ export default function StakeholderDashboard() {
                         <AlertTriangle size={11} /> Aduan
                       </div>
                       <div className="text-base font-extrabold font-mono text-[var(--color-text)] mt-0.5">
-                        {typeCounts.complaint}
+                        <CountUp value={typeCounts.complaint} />
                       </div>
                       <div className="text-[9px] text-[var(--color-text-muted)] truncate">7 Tahap SLA</div>
                     </button>
@@ -194,7 +208,7 @@ export default function StakeholderDashboard() {
                     <button
                       type="button"
                       onClick={() => setSelectedType(selectedType === 'feedback' ? 'all' : 'feedback')}
-                      className={`p-2 rounded-2xl border text-left transition-all ${
+                      className={`p-2 rounded-2xl border text-left transition ${
                         selectedType === 'feedback'
                           ? 'bg-sky-500/10 border-sky-500/50 shadow-xs ring-1 ring-sky-500/30'
                           : 'bg-[var(--color-bg-secondary)] border-[var(--color-border)]/60 hover:border-sky-300'
@@ -204,7 +218,7 @@ export default function StakeholderDashboard() {
                         <MessageSquare size={11} /> Masukan
                       </div>
                       <div className="text-base font-extrabold font-mono text-[var(--color-text)] mt-0.5">
-                        {typeCounts.feedback}
+                        <CountUp value={typeCounts.feedback} />
                       </div>
                       <div className="text-[9px] text-[var(--color-text-muted)] truncate">Evaluasi Mutu</div>
                     </button>
@@ -213,17 +227,17 @@ export default function StakeholderDashboard() {
                     <button
                       type="button"
                       onClick={() => setSelectedType(selectedType === 'suggestion' ? 'all' : 'suggestion')}
-                      className={`p-2 rounded-2xl border text-left transition-all ${
+                      className={`p-2 rounded-2xl border text-left transition ${
                         selectedType === 'suggestion'
-                          ? 'bg-amber-500/10 border-amber-500/50 shadow-xs ring-1 ring-amber-500/30'
-                          : 'bg-[var(--color-bg-secondary)] border-[var(--color-border)]/60 hover:border-amber-300'
+                          ? 'bg-orange-500/10 border-orange-500/50 shadow-xs ring-1 ring-orange-500/30'
+                          : 'bg-[var(--color-bg-secondary)] border-[var(--color-border)]/60 hover:border-orange-300'
                       }`}
                     >
-                      <div className="flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                      <div className="flex items-center gap-1 text-[10px] font-bold text-orange-600 dark:text-orange-400">
                         <Lightbulb size={11} /> Saran
                       </div>
                       <div className="text-base font-extrabold font-mono text-[var(--color-text)] mt-0.5">
-                        {typeCounts.suggestion}
+                        <CountUp value={typeCounts.suggestion} />
                       </div>
                       <div className="text-[9px] text-[var(--color-text-muted)] truncate">Ide Inovasi</div>
                     </button>
@@ -234,13 +248,13 @@ export default function StakeholderDashboard() {
                 <div className="mt-4 grid grid-cols-2 gap-2.5">
                   <Link
                     to="/stakeholder/followups"
-                    className="py-2.5 px-4 rounded-full text-xs font-bold text-center text-white bg-[#0B1F3A] hover:bg-[#153460] dark:bg-[var(--color-primary)] dark:hover:bg-blue-600 transition-all shadow-xs flex items-center justify-center gap-1.5"
+                    className="py-2.5 px-4 rounded-full text-xs font-bold text-center text-white bg-[var(--color-navy)] hover:bg-[var(--color-navy-hover)] dark:bg-[var(--color-primary)] dark:hover:bg-blue-600 transition shadow-xs flex items-center justify-center gap-1.5"
                   >
                     <Send size={13} /> Tindak Lanjut
                   </Link>
                   <Link
                     to="/stakeholder/complaints"
-                    className="py-2.5 px-4 rounded-full text-xs font-bold text-center text-[var(--color-text)] bg-[var(--color-bg-secondary)] hover:bg-[var(--color-border)]/50 border border-[var(--color-border)] transition-all flex items-center justify-center gap-1.5"
+                    className="py-2.5 px-4 rounded-full text-xs font-bold text-center text-[var(--color-text)] bg-[var(--color-bg-secondary)] hover:bg-[var(--color-border)]/50 border border-[var(--color-border)] transition flex items-center justify-center gap-1.5"
                   >
                     <MessageSquare size={13} /> Semua Laporan
                   </Link>
@@ -263,10 +277,10 @@ export default function StakeholderDashboard() {
                   </div>
                   <div className="p-2 rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/60 text-center">
                     <div className="text-[10px] font-medium text-[var(--color-text-muted)] truncate">Tindakan</div>
-                    <div className="text-xs font-bold font-mono mt-0.5 text-amber-600">
+                    <div className="text-xs font-bold font-mono mt-0.5 text-orange-600">
                       {unitStats?.actionTaken || 0}
                     </div>
-                    <div className="text-[9px] font-bold text-amber-600 mt-0.5">Lapangan</div>
+                    <div className="text-[9px] font-bold text-orange-600 mt-0.5">Lapangan</div>
                   </div>
                   <div className="p-2 rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/60 text-center">
                     <div className="text-[10px] font-medium text-[var(--color-text-muted)] truncate">Selesai</div>
@@ -282,19 +296,19 @@ export default function StakeholderDashboard() {
             {/* Card 2: 2x2 Metric Cards (With BOLD BLUE Highlight Card) */}
             <div className="lg:col-span-4 grid grid-cols-2 gap-3.5">
               {/* Highlight Card 1: Dominan Biru Bold (Finexy Coral -> SuaraLens Bold Blue) */}
-              <div className="rounded-3xl p-5 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-900 text-white shadow-md shadow-blue-900/20 flex flex-col justify-between relative overflow-hidden">
-                <div className="absolute -right-4 -top-4 w-20 h-20 bg-white/10 rounded-full blur-xs pointer-events-none" />
+              <div className="p-5 banner-blue !rounded-3xl shadow-[0_16px_40px_-20px_rgba(10,36,99,0.7)] flex flex-col justify-between">
+                <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full border border-[var(--color-gold)]/30" />
                 <div className="flex items-center justify-between relative z-10">
-                  <span className="text-xs font-medium text-blue-100">Perlu Tindakan Unit</span>
-                  <span className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white">
+                  <span className="text-xs font-medium text-white/75">Perlu Tindakan Unit</span>
+                  <span className="w-7 h-7 rounded-full bg-[var(--color-gold)] flex items-center justify-center text-[var(--color-on-gold)]">
                     <AlertTriangle size={14} />
                   </span>
                 </div>
                 <div className="my-3 relative z-10">
                   <div className="text-3xl font-extrabold font-mono tracking-tight">
-                    {urgentComplaints.length}
+                    <CountUp value={urgentComplaints.length} />
                   </div>
-                  <div className="text-[11px] text-blue-200 mt-1 flex items-center gap-1 font-medium">
+                  <div className="text-[11px] text-white/65 mt-1 flex items-center gap-1 font-medium">
                     <ArrowUpRight size={12} /> Urgensi tinggi / baru
                   </div>
                 </div>
@@ -310,15 +324,15 @@ export default function StakeholderDashboard() {
               <div className="rounded-3xl p-5 bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xs flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-[var(--color-text-muted)]">Sedang Ditangani</span>
-                  <span className="w-7 h-7 rounded-full bg-amber-50 dark:bg-amber-950 text-amber-600 flex items-center justify-center">
+                  <span className="w-7 h-7 rounded-full bg-orange-50 dark:bg-orange-950 text-orange-600 flex items-center justify-center">
                     <Clock size={14} />
                   </span>
                 </div>
                 <div className="my-3">
                   <div className="text-3xl font-extrabold font-mono text-[var(--color-text)]">
-                    {(unitStats?.dispatched || 0) + (unitStats?.inProgress || 0) + (unitStats?.actionTaken || 0)}
+                    <CountUp value={(unitStats?.dispatched || 0) + (unitStats?.inProgress || 0) + (unitStats?.actionTaken || 0)} />
                   </div>
-                  <div className="text-[11px] text-amber-600 mt-1 flex items-center gap-1 font-medium">
+                  <div className="text-[11px] text-orange-600 mt-1 flex items-center gap-1 font-medium">
                     <Clock size={12} /> {unitStats?.inProgress || 0} proses aktif
                   </div>
                 </div>
@@ -337,7 +351,7 @@ export default function StakeholderDashboard() {
                 </div>
                 <div className="my-3">
                   <div className="text-3xl font-extrabold font-mono text-emerald-600">
-                    {unitStats?.slaComplianceRate || 95}%
+                    <CountUp value={unitStats?.slaComplianceRate || 95} suffix="%" />
                   </div>
                   <div className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1 font-medium">
                     <ArrowUpRight size={12} /> Rata-rata 2 hari
@@ -352,8 +366,8 @@ export default function StakeholderDashboard() {
               <div className="rounded-3xl p-5 bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xs flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-[var(--color-text-muted)]">Skor Kepuasan</span>
-                  <span className="w-7 h-7 rounded-full bg-amber-50 dark:bg-amber-950 text-amber-500 flex items-center justify-center">
-                    <Star size={14} className="fill-amber-500" />
+                  <span className="w-7 h-7 rounded-full bg-orange-50 dark:bg-orange-950 text-orange-500 flex items-center justify-center">
+                    <Star size={14} className="fill-orange-500" />
                   </span>
                 </div>
                 <div className="my-3">
@@ -380,31 +394,31 @@ export default function StakeholderDashboard() {
                   </div>
                   <div className="flex items-center gap-3 text-[11px] font-medium text-[var(--color-text-muted)]">
                     <span className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-sm bg-[#1D4ED8]" /> Selesai
+                      <span className="w-2.5 h-2.5 rounded-sm bg-[var(--color-primary)]" /> Selesai
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-sm bg-[#0B1F3A] dark:bg-slate-700" /> Proses
+                      <span className="w-2.5 h-2.5 rounded-sm bg-[var(--color-gold)]" /> Proses
                     </span>
                   </div>
                 </div>
 
                 {/* Stylized Vertical Bar Chart */}
                 <div className="mt-8 flex items-end justify-between gap-2 h-44 px-2 border-b border-[var(--color-border)] pb-2">
-                  {monthlyUnitStats.map((item) => {
+                  {monthlyUnitStats.map((item, idx) => {
                     const total = item.completed + item.inProgress
                     const heightPercent = Math.min(100, Math.round((total / 50) * 100))
                     return (
                       <div key={item.month} className="flex-1 flex flex-col items-center gap-1.5 group">
-                        <div className="w-full max-w-[20px] flex flex-col items-center justify-end rounded-t-lg overflow-hidden h-36 bg-[var(--color-bg-secondary)]">
+                        <div className="grow-y w-full max-w-[20px] flex flex-col items-center justify-end rounded-t-lg overflow-hidden h-36 bg-[var(--color-bg-secondary)]" style={{ '--i': idx }}>
                           {/* Top: Selesai (Bold Blue) */}
                           <div
-                            className="w-full bg-[#1D4ED8] transition-all group-hover:brightness-110"
+                            className="w-full bg-[var(--color-primary)] transition-[filter] group-hover:brightness-110"
                             style={{ height: `${(item.completed / total) * heightPercent}%` }}
                             title={`${item.month}: ${item.completed} Selesai`}
                           />
                           {/* Bottom: In Progress (Navy / Dark) */}
                           <div
-                            className="w-full bg-[#0B1F3A] dark:bg-slate-700 transition-all group-hover:brightness-110"
+                            className="w-full bg-[var(--color-gold)] transition-[filter] group-hover:brightness-110"
                             style={{ height: `${(item.inProgress / total) * heightPercent}%` }}
                             title={`${item.month}: ${item.inProgress} Diproses`}
                           />
@@ -435,7 +449,7 @@ export default function StakeholderDashboard() {
                   Waktu Tanggap Unit ({selectedUnit})
                 </div>
                 <div className="w-full h-3 rounded-full bg-[var(--color-bg-secondary)] overflow-hidden flex border border-[var(--color-border)]/50">
-                  <div className="h-full bg-gradient-to-r from-blue-600 to-indigo-700 w-3/5 rounded-full" />
+                  <div className="h-full grow-x bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-gold)] w-3/5 rounded-full" />
                   <div className="h-full bg-blue-300 dark:bg-blue-900 w-1/5" />
                 </div>
                 <div className="flex items-center justify-between text-[11px] font-mono mt-3 text-[var(--color-text-muted)]">
@@ -456,7 +470,7 @@ export default function StakeholderDashboard() {
 
                 <div className="grid grid-cols-2 gap-3">
                   {/* Card 1: Dark Slate Card */}
-                  <div className="rounded-2xl p-3.5 bg-[#0B1F3A] text-white shadow-sm flex flex-col justify-between min-h-[95px]">
+                  <div className="rounded-2xl p-3.5 bg-[var(--color-navy)] text-white shadow-sm flex flex-col justify-between min-h-[95px]">
                     <div className="flex items-center justify-between">
                       <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/20">Koordinator</span>
                       <Wrench size={13} className="text-blue-300" />
@@ -468,7 +482,7 @@ export default function StakeholderDashboard() {
                   </div>
 
                   {/* Card 2: Bold Blue Card */}
-                  <div className="rounded-2xl p-3.5 bg-gradient-to-br from-blue-600 to-blue-800 text-white shadow-sm flex flex-col justify-between min-h-[95px]">
+                  <div className="rounded-2xl p-3.5 banner-blue !rounded-2xl text-white shadow-sm flex flex-col justify-between min-h-[95px]">
                     <div className="flex items-center justify-between">
                       <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/20">Teknisi</span>
                       <Server size={13} className="text-sky-200" />
@@ -518,7 +532,7 @@ export default function StakeholderDashboard() {
                       onClick={() => setSelectedType('all')}
                       className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                         selectedType === 'all'
-                          ? 'bg-[#0B1F3A] text-white dark:bg-[var(--color-primary)]'
+                          ? 'bg-[var(--color-navy)] text-white dark:bg-[var(--color-primary)]'
                           : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
                       }`}
                     >
@@ -551,8 +565,8 @@ export default function StakeholderDashboard() {
                       onClick={() => setSelectedType('suggestion')}
                       className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                         selectedType === 'suggestion'
-                          ? 'bg-amber-600 text-white shadow-xs'
-                          : 'bg-[var(--color-bg-secondary)] text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30'
+                          ? 'bg-orange-600 text-white shadow-xs'
+                          : 'bg-[var(--color-bg-secondary)] text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/30'
                       }`}
                     >
                       <Lightbulb size={12} /> Saran ({typeCounts.suggestion})
@@ -601,7 +615,7 @@ export default function StakeholderDashboard() {
                                     <MessageSquare size={10} /> Masukan
                                   </span>
                                 ) : typeKey === 'suggestion' ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-900/60">
                                     <Lightbulb size={10} /> Saran
                                   </span>
                                 ) : (

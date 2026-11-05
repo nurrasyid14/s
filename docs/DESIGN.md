@@ -22,28 +22,28 @@
 |---|---|---|---|
 | **ENERGY** | Level 2 | Balanced | Menghadirkan wibawa institusional tanpa kaku, lebih hidup dibanding formulir birokrasi konvensional, namun jauh dari kesan halaman promosi startup AI yang penuh kilau. |
 | **RHYTHM** | Level 2 | Balanced with Breaks | Memadukan alur linier pelaporan dengan blok informasi terstruktur, membedakan seksi alur pelaporan, unit layanan, dan status tindak lanjut. |
-| **MOTION** | Level 1 | Calm & Functional | Transisi mikro hanya untuk feedback interaksi nyata (hover tombol, buka accordion riwayat, indikator loading); tanpa animasi mengambang (floating) atau bouncing yang mengganggu konsentrasi. |
+| **MOTION** | Level 3 | Expressive, tetap cepat | Setiap section landing punya pengalaman berbeda (judul kata per kata, parallax gedung, marquee unit, timeline alur yang terisi mengikuti scroll, kartu sorotan kursor, foto tirai). Dashboard: section muncul saat terlihat, angka menghitung naik, batang grafik tumbuh. Durasi UI tetap di bawah 300ms; animasi masuk 600 sampai 900ms hanya sekali. Semua menghormati `prefers-reduced-motion` (gerak dihapus, fade dipertahankan). |
 
 ---
 
-## 3. Sistem Palet Warna (Color System — R-29 & R-01)
+## 3. Sistem Palet Warna (Color System: Biru 60 · Putih 20 · Emas 10)
 
-Sistem warna dibatasi secara ketat pada 3 warna inti netral/institusional + 1 aksen fungsional:
+Komposisi dihitung per aplikasi, bukan per layar. Sisa 10% untuk teks navy/abu dan warna status.
 
-1. **Core Primary (Deep Institutional Navy):** `#0B1F3A`
-   - *Alasan:* Mewakili otoritas, keamanan, dan ketegasan institusi kampus.
-2. **Core Secondary (Neutral Surface & Light Slate):**
-   - Mode Terang: Background `#FFFFFF`, Secondary Surface `#F4F7FC`, Border `#0A1220` (alpha 14%)
-   - Mode Gelap: Background `#070C16`, Secondary Surface `#0E1726`, Border `#FFFFFF` (alpha 18%)
-   - *Alasan:* Memberikan ruang baca yang tenang dengan kontras tinggi (> 7:1) di atas standar WCAG AA.
-3. **Core Interactive (Sapphire Blue):** `#1D4ED8` (Light) / `#3B82F6` (Dark)
-   - *Alasan:* Warna aksi primer untuk tombol submit, tautan aktif, dan penanda tab aktif.
-4. **Accent Functional (Amber Urgent & Safety Emerald):**
-   - Urgent/Penting: `#D97706` (Light) / `#F59E0B` (Dark)
-   - Selesai/Aman: `#15803D` (Light) / `#22C55E` (Dark)
-   - *Alasan:* Aksen warna hanya muncul pada status tiket nyata dan tag urgensi, tidak dijadikan warna dekorasi liar pada latar belakang.
+| Peran | Token | Terang | Gelap | Dipakai untuk |
+|---|---|---|---|---|
+| Biru navy (60%) | `--color-navy` | `#0A2463` | `#0A1C4D` | Hero, CTA, footer, sidebar, banner dashboard, pita unit |
+| Biru aksi | `--color-primary` | `#1E4FD8` | `#5B86F7` | Link, fokus, grafik, chip aktif |
+| Biru muda | `--color-bg-secondary` | `#F3F6FD` | `#081430` | Latar section dan area kerja dashboard |
+| Putih (20%) | `--color-surface` | `#FFFFFF` | `#0C1A3B` | Kartu, tabel, form |
+| Emas (10%) | `--color-gold` | `#F5B700` | `#F5B700` | CTA utama (`.btn-gold`), item sidebar aktif, highlight judul, badge |
+| Teks di atas emas | `--color-on-gold` | `#0A2463` | `#0A2463` | Selalu navy, jangan putih |
+| Emas muda | `--color-gold-soft` / `--color-gold-ink` | `#FFF4CC` / `#5C4300` | 14% emas / `#FFD54D` | Badge dan label lembut |
 
----
+Aturan:
+- Emas hanya untuk satu aksi utama per layar dan penanda aktif. Jangan dipakai sebagai teks di atas putih (kontras kurang).
+- Status peringatan memakai **oranye** (`--color-status-warning`: `#C2410C` / `#FB923C`) agar tidak tertukar dengan emas merek. Sentimen netral memakai abu.
+- Dashboard: biru ada di sidebar, banner sapaan, kartu sorotan, dan grafik; area data tetap putih agar mudah dibaca.
 
 ## 4. Tipografi (Typography — R-06)
 

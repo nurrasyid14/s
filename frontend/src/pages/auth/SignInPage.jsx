@@ -44,6 +44,7 @@ export default function SignInPage() {
 
   return (
     <AuthShell
+      variant="signin"
       title={t('auth.signin')}
       subtitle="Masuk ke akun SuaraLens Anda"
       footer={
@@ -56,7 +57,7 @@ export default function SignInPage() {
           </div>
           <div className="pt-2 border-t border-[var(--color-border)] text-center">
             <Link to="/admin/signin" className="text-xs font-mono font-semibold text-[var(--color-primary)] hover:underline">
-              Portal Khusus Administrator Sentral →
+              Portal Khusus Administrator Sentral
             </Link>
           </div>
         </div>
@@ -108,16 +109,16 @@ export default function SignInPage() {
           <a href="#" className="mt-1.5 block text-right text-xs font-medium text-[var(--color-primary)] hover:underline">{t('auth.forgot_password')}</a>
         </div>
 
-        <button type="submit" disabled={loading} className="btn-solid w-full !py-3 rounded-xl min-h-[44px] flex items-center justify-center gap-2">
+        <button type="submit" disabled={loading} className="btn-gold w-full !h-12 !text-base">
           {loading ? (
-            <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--color-on-gold)]/25 border-t-[var(--color-on-gold)]" />
           ) : (
             <><LogIn size={17} /> {t('auth.signin')}</>
           )}
         </button>
       </form>
 
-      <div className="mt-5 space-y-1 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-4 text-xs text-[var(--color-text-muted)] rounded-xl shadow-xs">
+      <div className="mt-5 space-y-1 rounded-xl border border-dashed border-[var(--color-primary)]/30 bg-[var(--color-primary-soft)]/60 p-4 text-xs text-[var(--color-text-muted)]">
         <p className="font-semibold text-[var(--color-text)]">Demo credentials:</p>
         <p>Admin: <span className="font-mono font-medium text-[var(--color-primary)]">admin@pens.ac.id</span> <span className="text-[11px]">(pw: admin123)</span></p>
         <p>Stakeholder: <span className="font-mono font-medium text-[var(--color-primary)]">sari@pens.ac.id</span> <span className="text-[11px] text-[var(--color-text-muted)]">(Kemahasiswaan - pw: password123)</span></p>

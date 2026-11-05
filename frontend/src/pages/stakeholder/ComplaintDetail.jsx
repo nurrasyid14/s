@@ -214,7 +214,7 @@ export default function ComplaintDetail() {
             return (
               <div
                 key={s.key}
-                className={`p-2 border truncate rounded-lg transition-all ${
+                className={`p-2 border truncate rounded-lg transition ${
                   isMatch
                     ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)] font-bold shadow-xs'
                     : 'border-[var(--color-border)] opacity-60 text-[var(--color-text-muted)]'
@@ -363,8 +363,8 @@ export default function ComplaintDetail() {
                 <h3 className="text-xs font-bold uppercase tracking-wider font-mono text-[var(--color-status-success)]">
                   Penilaian & Ulasan Kepuasan Pelapor (Status Selesai)
                 </h3>
-                <div className="flex items-center gap-1 text-amber-500 font-bold font-mono text-sm">
-                  <Star size={16} className="fill-amber-400 text-amber-400" />
+                <div className="flex items-center gap-1 text-orange-500 font-bold font-mono text-sm">
+                  <Star size={16} className="fill-orange-400 text-orange-400" />
                   {data.feedback.rating}/5 Bintang
                 </div>
               </div>
@@ -389,7 +389,7 @@ export default function ComplaintDetail() {
             {/* Skenario A: Status Didisposisikan -> Terima Tugas */}
             {data.status === 'dispatched' && (
               <div className="space-y-3">
-                <div className="p-3.5 border border-amber-300 bg-amber-50/30 text-amber-800 text-xs leading-relaxed rounded-xl">
+                <div className="p-3.5 border border-orange-300 bg-orange-50/30 text-orange-800 text-xs leading-relaxed rounded-xl">
                   Aduan ini telah didisposisikan oleh Admin Sentral ke unit Anda. Klik tombol di bawah untuk mengonfirmasi penerimaan tugas.
                 </div>
                 <button

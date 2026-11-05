@@ -1,10 +1,12 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { Bell, Globe, Sun, Moon, Menu, X, AlertTriangle, CheckCircle2, Clock, ScanSearch } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Bell, Globe, Sun, Moon, Menu, X, AlertTriangle, CheckCircle2, Clock, Search } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useTheme } from '../../context/ThemeContext.jsx'
 import { getUrgentComplaints } from '../../services/analyticsApi.js'
+import { STAKEHOLDER_NAV, stakeholderActiveIndex } from './Sidebar.jsx'
+import { PillNav, BrandMark } from './NavParts.jsx'
 import { formatUrgencyScore } from '../../utils/formatter.js'
 
 /**
@@ -18,6 +20,7 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
   const { user, logout } = useAuth()
   const { dark, toggle } = useTheme()
   const navigate = useNavigate()
+  const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifs, setNotifs] = useState([])
@@ -62,69 +65,44 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
 
   // ---- Stakeholder variant (inside sidebar layout) ----
   if (variant === 'stakeholder') {
-    const navItems = [
-      { to: '/stakeholder', label: 'Overview' },
-      { to: '/stakeholder/complaints', label: 'Aduan' },
-      { to: '/stakeholder/analytics', label: 'Analitik' },
-      { to: '/stakeholder/followups', label: 'Tindak Lanjut' },
-      { to: '/stakeholder/evidence', label: 'Bukti' },
-      { to: '/stakeholder/settings', label: 'Pengaturan' },
-    ]
+    const navItems = STAKEHOLDER_NAV.map(({ to, label }) => ({ to, label }))
 
     return (
-      <header className="h-20 flex items-center justify-between px-4 sm:px-8 bg-[var(--color-surface)] border-b border-[var(--color-border)] sticky top-0 z-20 gap-4">
-        {/* Left: Brand / Title */}
-        <div className="flex items-center gap-3 min-w-0">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-[#0B1F3A] dark:bg-[var(--color-primary)] text-white flex items-center justify-center shadow-md shadow-blue-950/20">
-              <ScanSearch size={20} />
+      <header className="sticky top-0 z-20 flex h-20 items-center justify-between gap-4 border-b border-[var(--color-border)] bg-[var(--color-surface)]/85 px-4 backdrop-blur-md sm:px-8">
+        {/* Kiri: judul halaman */}
+        <div className="flex min-w-0 items-center gap-3">
+          <Link to="/" className="md:hidden" aria-label="Beranda SuaraLens"><BrandMark size={36} /></Link>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">Portal Unit</span>
+              <span className="rounded-full bg-[var(--color-gold-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-gold-ink)]">Stakeholder</span>
             </div>
-            <div className="hidden sm:block">
-              <span className="font-extrabold text-base tracking-tight text-[var(--color-text)]">SuaraLens</span>
-              <span className="ml-2 text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                Stakeholder
-              </span>
-            </div>
-          </Link>
+            <h1 className="truncate text-lg font-bold tracking-tight text-[var(--color-text)]">{title || 'SuaraLens'}</h1>
+          </div>
         </div>
 
-        {/* Center: Floating Pill Navigation (Finexy Signature) */}
-        <nav className="hidden lg:flex items-center p-1.5 rounded-full bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/80 shadow-2xs">
-          {navItems.map(({ to, label }) => {
-            const active = location.pathname === to || (to !== '/stakeholder' && location.pathname.startsWith(to))
-            return (
-              <Link
-                key={to}
-                to={to}
-                className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
-                  active
-                    ? 'bg-[#0B1F3A] text-white shadow-sm dark:bg-[var(--color-primary)] dark:text-white'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]'
-                }`}
-              >
-                {label}
-              </Link>
-            )
-          })}
-        </nav>
+        <PillNav items={navItems} activeIndex={stakeholderActiveIndex(location.pathname)} label="Menu stakeholder" />
 
         {/* Right: Search, Notif Dropdown, User Profile Pill */}
         <div className="flex items-center gap-2.5 sm:gap-3">
           {/* Quick Search */}
           <Link
             to="/stakeholder/complaints"
-            className="w-10 h-10 rounded-full border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-all shadow-2xs"
+            className="w-10 h-10 rounded-full border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition shadow-2xs"
             title="Cari Aduan"
+            aria-label="Cari aduan"
           >
-            <ScanSearch size={17} />
+            <Search size={17} strokeWidth={2.2} />
           </Link>
 
           {/* Bell Notification with dropdown */}
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => setNotifOpen(o => !o)}
-              className="relative w-10 h-10 rounded-full border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-all shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+              className="relative w-10 h-10 rounded-full border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
               aria-label="Notifikasi"
+              aria-haspopup="true"
+              aria-expanded={notifOpen}
             >
               <Bell size={17} className={notifOpen ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'} />
               {notifCount > 0 && (
@@ -133,7 +111,7 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
             </button>
 
             {notifOpen && (
-              <div className="absolute right-0 top-12 w-80 shadow-xl border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl z-50 overflow-hidden animate-fade-in">
+              <div className="absolute right-0 top-12 w-80 shadow-xl border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl z-50 overflow-hidden popover-in">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
                   <div className="flex items-center gap-2">
                     <Bell size={14} className="text-[var(--color-primary)]" />
@@ -203,7 +181,7 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
 
           {/* User Profile Pill (Finexy Avatar & Dropdown Pill) */}
           <div className="flex items-center gap-2.5 pl-1.5 pr-3 py-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xs">
-            <div className="w-8 h-8 rounded-full bg-[#1D4ED8] text-white flex items-center justify-center text-xs font-bold font-mono shadow-xs">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-navy)] font-mono text-xs font-bold text-[var(--color-gold)] dark:bg-[var(--color-primary)] dark:text-white">
               {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
             </div>
             <div className="hidden xl:block text-left leading-tight">
@@ -222,30 +200,28 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
 
   // ---- Public / User variant ----
   return (
-    <nav className="sticky top-0 z-50 bg-[var(--color-surface)] border-b border-[var(--color-border)]">
+    <nav className="sticky top-0 z-50 border-b border-white/10 bg-[var(--color-navy)] text-white shadow-[0_8px_30px_-16px_rgba(4,12,36,0.7)]">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg shadow-xs flex items-center justify-center bg-[var(--color-btn)] text-[var(--color-btn-text)]">
-              <ScanSearch size={18} strokeWidth={2.2} />
-            </div>
-            <span className="font-bold text-[var(--color-text)] text-xl tracking-tight">SuaraLens</span>
+            <BrandMark size={34} />
+            <span className="text-xl font-bold tracking-tight">SuaraLens</span>
           </Link>
 
           {/* Desktop */}
           <div className="hidden md:flex items-center gap-3">
             <button
               onClick={toggle}
-              className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-card-hover)] transition-colors"
+              className="press flex h-10 w-10 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white"
               aria-label="Toggle theme"
             >
-              {dark ? <Sun size={18} /> : <Moon size={18} />}
+              {dark ? <Sun size={18} className="text-[var(--color-gold)]" /> : <Moon size={18} />}
             </button>
 
             <button
               onClick={switchLang}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-[var(--color-text)] border border-[var(--color-border)] hover:bg-[var(--color-card-hover)] transition-colors shadow-xs"
+              className="press flex h-10 items-center gap-1.5 rounded-lg border border-white/20 px-3 text-sm font-medium text-white/90 transition-colors hover:bg-white/10"
             >
               <Globe size={14} /> {i18n.language === 'id' ? 'EN' : 'ID'}
             </button>
@@ -254,31 +230,34 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
               <>
                 {user.role === 'user' ? (
                   <>
-                    <Link to="/user/dashboard" className="px-3 py-1.5 text-xs font-semibold rounded-lg text-[var(--color-text)] hover:bg-[var(--color-card-hover)] transition-colors">
-                      Transparansi
-                    </Link>
-                    <Link to="/user/complaints" className="px-3 py-1.5 text-xs font-semibold rounded-lg text-[var(--color-text)] hover:bg-[var(--color-card-hover)] transition-colors">
-                      Riwayat Saya
-                    </Link>
-                    <Link to="/user/submit" className="btn-solid !py-1.5 !px-3 rounded-lg shadow-xs text-xs font-semibold">
+                    {[['/user/dashboard', 'Transparansi'], ['/user/complaints', 'Riwayat Saya']].map(([to, text]) => {
+                      const active = location.pathname === to || (to === '/user/complaints' && location.pathname.startsWith(to))
+                      return (
+                        <Link key={to} to={to} aria-current={active ? 'page' : undefined} className={`group relative rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${active ? 'text-white' : 'text-white/70 hover:text-white'}`}>
+                          {text}
+                          <span className={`absolute inset-x-3 -bottom-[13px] h-[3px] origin-center rounded-t-full bg-[var(--color-gold)] transition-transform duration-300 ${active ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-50'}`} />
+                        </Link>
+                      )
+                    })}
+                    <Link to="/user/submit" className="btn-gold !h-10 !px-4 !text-sm">
                       + Ajukan
                     </Link>
                   </>
                 ) : (
-                  <Link to={user.role === 'stakeholder' ? '/stakeholder' : '/admin/dashboard'} className="btn-outline !py-2 !px-4 rounded-lg shadow-xs">
+                  <Link to={user.role === 'stakeholder' ? '/stakeholder' : '/admin/dashboard'} className="btn-ghost-light !h-10 !px-4">
                     {t('nav.dashboard')}
                   </Link>
                 )}
-                <button onClick={logout} className="btn-outline !py-1.5 !px-3 rounded-lg shadow-xs text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-status-danger)]">
+                <button onClick={logout} className="press h-10 rounded-lg px-3 text-sm font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-rose-300">
                   {t('nav.logout')}
                 </button>
               </>
             ) : (
               <>
-                <Link to="/signin" className="btn-outline !py-2 !px-4 rounded-lg shadow-xs">
+                <Link to="/signin" className="btn-ghost-light !h-10 !px-4">
                   {t('nav.login')}
                 </Link>
-                <Link to="/signup-user" className="btn-solid !py-2 !px-4 rounded-lg shadow-xs">
+                <Link to="/signup-user" className="btn-gold !h-10 !px-4">
                   {t('nav.register')}
                 </Link>
               </>
@@ -286,14 +265,14 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
           </div>
 
           {/* Mobile hamburger */}
-          <button className="md:hidden p-2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg" onClick={() => setMenuOpen(m => !m)} aria-label="Toggle menu">
+          <button className="press md:hidden flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 text-white/85 hover:bg-white/10" onClick={() => setMenuOpen(m => !m)} aria-label="Toggle menu" aria-expanded={menuOpen}>
             {menuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
 
         {/* Mobile menu */}
         {menuOpen && (
-          <div className="md:hidden py-3 border-t border-[var(--color-border)] space-y-2 animate-fade-in">
+          <div className="md:hidden space-y-2 border-t border-white/10 py-3 animate-fade-in-up [&_a]:text-white/90 [&_button]:text-white/85">
             <div className="flex items-center justify-between px-4 py-1">
               <button onClick={switchLang} className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
                 <Globe size={15} /> {i18n.language === 'id' ? 'English' : 'Bahasa Indonesia'}
@@ -303,13 +282,13 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
               </button>
             </div>
             {!user && (
-              <div className="pt-2 border-t border-[var(--color-border)] space-y-1">
+              <div className="pt-2 border-t border-white/10 space-y-1">
                 <Link to="/signin" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)]">{t('nav.login')}</Link>
                 <Link to="/signup-user" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-[var(--color-primary)] font-semibold">{t('nav.register')}</Link>
               </div>
             )}
             {user && (
-              <div className="pt-2 border-t border-[var(--color-border)] space-y-1">
+              <div className="pt-2 border-t border-white/10 space-y-1">
                 {user.role === 'user' ? (
                   <>
                     <Link to="/user/dashboard" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-medium text-[var(--color-text)]">

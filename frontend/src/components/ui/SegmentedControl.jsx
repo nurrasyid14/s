@@ -17,7 +17,7 @@ export default function SegmentedControl({ options, value, onChange, label }) {
                         type="button"
                         aria-pressed={active}
                         onClick={() => onChange(option.key)}
-                        className={`whitespace-nowrap px-3.5 py-1.5 text-sm font-medium rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${active
+                        className={`whitespace-nowrap px-3.5 py-1.5 text-sm font-medium rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${active
                                 ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-xs font-semibold'
                                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]/50'
                             }`}

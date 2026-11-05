@@ -337,7 +337,7 @@ export default function Analytics() {
               Sentimen Negatif: <strong className="text-rose-500">{aiSummary.metrics.sentiment?.negative_pct}%</strong>
             </span>
             <span className="rounded-lg bg-[var(--color-bg-secondary)] px-2.5 py-1 text-[var(--color-text-muted)]">
-              Tiket Kritis Tertunda: <strong className="text-amber-500">{aiSummary.metrics.high_urgency_pending}</strong>
+              Tiket Kritis Tertunda: <strong className="text-orange-500">{aiSummary.metrics.high_urgency_pending}</strong>
             </span>
           </div>
         )}

@@ -21,6 +21,7 @@ export default function ComplaintForm() {
   const navigate = useNavigate()
 
   const [step, setStep] = useState(1)
+  const [dir, setDir] = useState(1)
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(null)
   const [error, setError] = useState('')
@@ -42,10 +43,11 @@ export default function ComplaintForm() {
       setError(step === 3 ? `Minimal 50 karakter (sekarang: ${form.description.length})` : 'Pilih salah satu dulu.')
       return
     }
+    setDir(1)
     setStep(s => Math.min(s + 1, TOTAL_STEPS))
     setError('')
   }
-  function prevStep() { setStep(s => Math.max(s - 1, 1)); setError('') }
+  function prevStep() { setDir(-1); setStep(s => Math.max(s - 1, 1)); setError('') }
 
   async function handleSubmit() {
     setLoading(true)
@@ -62,19 +64,27 @@ export default function ComplaintForm() {
   // ---- Success screen ----
   if (submitted) {
     return (
-      <div className="min-h-screen bg-[var(--color-bg)]">
+      <div className="min-h-screen bg-[var(--color-bg-secondary)]">
         <Navbar variant="user" />
-        <div className="max-w-md mx-auto px-4 pt-24 text-center">
-          <div className="w-16 h-16 border border-[var(--color-status-success)]/40 flex items-center justify-center mx-auto mb-6" style={{ background: 'color-mix(in srgb, var(--color-status-success) 12%, transparent)' }}>
-            <CheckCircle size={32} className="text-[var(--color-status-success)]" />
+        <div className="mx-auto max-w-md px-4 pt-20 text-center">
+          <div className="relative mx-auto mb-8 h-24 w-24">
+            <span className="success-ring absolute inset-0 rounded-full border-2 border-[var(--color-gold)]" />
+            <span className="success-ring absolute inset-0 rounded-full border-2 border-[var(--color-primary)]" style={{ animationDelay: '250ms' }} />
+            <div className="pop-check relative flex h-24 w-24 items-center justify-center rounded-full bg-[var(--color-navy)] text-[var(--color-gold)] shadow-[0_16px_40px_-12px_rgba(10,36,99,0.6)] dark:bg-[var(--color-primary)] dark:text-white">
+              <CheckCircle size={44} strokeWidth={2.2} />
+            </div>
+            {[0, 1, 2, 3, 4, 5, 6, 7].map(i => (
+              <span key={i} className="spark absolute left-1/2 top-1/2 h-2 w-2 rounded-full" style={{ '--a': `${i * 45}deg`, background: i % 2 ? 'var(--color-gold)' : 'var(--color-primary)' }} />
+            ))}
           </div>
-          <h2 className="text-3xl font-bold tracking-tight text-[var(--color-text)] mb-2">{t('form.success_title')}</h2>
-          <p className="text-[var(--color-text-muted)] text-sm mb-4">{t('form.success_desc')}</p>
-          <div className="text-2xl font-mono font-bold text-[var(--color-primary)] border border-[var(--color-border)] bg-[var(--color-surface)] py-3 px-6 mb-8 inline-block">
-            {submitted.ticket_id}
+          <h2 className="animate-fade-in-up delay-200 mb-2 text-3xl font-bold tracking-tight text-[var(--color-text)]">{t('form.success_title')}</h2>
+          <p className="animate-fade-in-up delay-300 mb-5 text-sm text-[var(--color-text-muted)]">{t('form.success_desc')}</p>
+          <div className="animate-fade-in-up delay-400 mb-8 inline-flex flex-col items-center rounded-2xl border border-[var(--color-gold)]/40 bg-[var(--color-gold-soft)] px-8 py-3">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-gold-ink)]">Nomor tiket</span>
+            <span className="font-mono text-2xl font-bold text-[var(--color-text)]">{submitted.ticket_id}</span>
           </div>
           <div className="flex gap-3 justify-center">
-            <button onClick={() => navigate(`/user/complaints/${submitted.id}`)} className="btn-solid">
+            <button onClick={() => navigate(`/user/complaints/${submitted.id}`)} className="btn-gold">
               {t('form.track_status')}
             </button>
             <button
@@ -90,13 +100,14 @@ export default function ComplaintForm() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)]">
+    <div className="min-h-screen bg-[var(--color-bg-secondary)]">
       <Navbar variant="user" />
-      <div className="max-w-2xl mx-auto px-4 py-12">
+      <div className="max-w-2xl mx-auto px-4 py-8 md:py-12">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text)]">{t('form.title')}</h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1.5">Sampaikan keluhan, aspirasi, atau masukan Anda dengan aman dan terverifikasi.</p>
+        <div className="banner-blue mb-8 p-6 md:p-8">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-gold)]">Langkah {step} dari {TOTAL_STEPS}</div>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight">{t('form.title')}</h1>
+          <p className="mt-1.5 text-sm text-white/75">Sampaikan keluhan, aspirasi, atau masukan Anda dengan aman dan terverifikasi.</p>
         </div>
 
         {/* Step Progress */}
@@ -110,12 +121,14 @@ export default function ComplaintForm() {
                 <div
                   aria-current={active ? 'step' : undefined}
                   aria-label={`Langkah ${n}: ${t(['form.step1_title', 'form.step2_title', 'form.step3_title', 'form.step4_title', 'form.step5_title'][i])}`}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-xs flex-shrink-0
-                  ${done ? 'bg-[var(--color-btn)] text-[var(--color-btn-text)]' : active ? 'bg-[var(--color-primary)] text-white ring-4 ring-[var(--color-primary)]/20' : 'border border-[var(--color-border)] text-[var(--color-text-muted)] bg-[var(--color-surface)]'}`}>
+                  className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition shadow-xs flex-shrink-0
+                  ${done ? 'bg-[var(--color-navy)] text-white dark:bg-[var(--color-primary)]' : active ? 'bg-[var(--color-gold)] text-[var(--color-on-gold)] ring-4 ring-[var(--color-gold)]/25 scale-110' : 'border border-[var(--color-border)] text-[var(--color-text-muted)] bg-[var(--color-surface)]'}`}>
                   {done ? <Check size={15} aria-hidden="true" /> : n}
                 </div>
                 {n < TOTAL_STEPS && (
-                  <div className={`flex-1 h-1 mx-2 rounded-full transition-colors ${done ? 'bg-[var(--color-btn)]' : 'bg-[var(--color-border)]'}`} />
+                  <div className="mx-2 h-1 flex-1 overflow-hidden rounded-full bg-[var(--color-border)]">
+                    <div className="h-full origin-left rounded-full bg-[var(--color-navy)] transition-transform duration-500 ease-[var(--ease-out)] dark:bg-[var(--color-primary)]" style={{ transform: `scaleX(${done ? 1 : 0})` }} />
+                  </div>
                 )}
               </div>
             )
@@ -135,7 +148,7 @@ export default function ComplaintForm() {
         )}
 
         {/* Card */}
-        <div className="card-elevated rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 md:p-8 mb-6 shadow-sm">
+        <div key={step} className={`card-elevated rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 md:p-8 mb-6 shadow-sm ${dir > 0 ? 'step-next' : 'step-prev'}`}>
           {/* Step 1: Jenis */}
           {step === 1 && (
             <div>
@@ -143,7 +156,7 @@ export default function ComplaintForm() {
               <div className="grid gap-3">
                 {TYPES.map(({ key, icon: Icon, titleKey, descKey }) => (
                   <button key={key} type="button" onClick={() => setField('type', key)}
-                    className={`w-full text-left p-4.5 border rounded-xl transition-all flex items-start gap-3.5 shadow-2xs hover:shadow-xs min-h-[44px]
+                    className={`w-full text-left p-4.5 border rounded-xl transition flex items-start gap-3.5 shadow-2xs hover:shadow-xs min-h-[44px]
                       ${form.type === key ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20' : 'border-[var(--color-border)] hover:border-[var(--color-text-muted)] hover:bg-[var(--color-bg-secondary)]'}`}>
                     <Icon size={20} className="flex-shrink-0 mt-0.5 text-[var(--color-primary)]" aria-hidden="true" />
                     <div>
@@ -238,7 +251,7 @@ export default function ComplaintForm() {
               
               <label
                 htmlFor="file-upload"
-                className="border-2 border-dashed border-[var(--color-border)] rounded-2xl p-10 text-center hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]/20 transition-all cursor-pointer bg-[var(--color-bg-secondary)] block focus-within:ring-2 focus-within:ring-[var(--color-primary)]"
+                className="border-2 border-dashed border-[var(--color-border)] rounded-2xl p-10 text-center hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]/20 transition cursor-pointer bg-[var(--color-bg-secondary)] block focus-within:ring-2 focus-within:ring-[var(--color-primary)]"
               >
                 <input
                   id="file-upload"
@@ -352,7 +365,7 @@ export default function ComplaintForm() {
             </button>
           )}
           {step < TOTAL_STEPS ? (
-            <button onClick={nextStep} className="btn-solid flex-1 !py-3">
+            <button onClick={nextStep} className="btn-solid flex-1 !py-3 group">
               {t('form.next')}
             </button>
           ) : (

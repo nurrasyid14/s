@@ -51,13 +51,14 @@ export default function DataTable({
       <div className="flex flex-wrap gap-3 mb-4">
         {onSearchChange && (
           <div className="relative flex-1 min-w-[200px]">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
+            <Search size={17} strokeWidth={2.2} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-primary)]" aria-hidden="true" />
             <input
               type="text"
               value={searchValue}
               onChange={e => onSearchChange(e.target.value)}
               placeholder={t('complaints.search_placeholder')}
-              className="input-field pl-9 pr-4 py-2.5"
+              aria-label={t('complaints.search_placeholder')}
+              className="input-field h-11 rounded-xl pl-10 pr-4"
             />
           </div>
         )}
@@ -164,7 +165,7 @@ export default function DataTable({
                     onClick={() => onPageChange?.(p)}
                     aria-current={p === page ? 'page' : undefined}
                     aria-label={`Halaman ${p}`}
-                    className={`min-h-[44px] min-w-[44px] rounded-xl border text-xs font-mono font-semibold transition-all shadow-2xs focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${
+                    className={`min-h-[44px] min-w-[44px] rounded-xl border text-xs font-mono font-semibold transition shadow-2xs focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${
                       p === page
                         ? 'bg-[var(--color-btn)] text-[var(--color-btn-text)] border-[var(--color-btn)] shadow-xs'
                         : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-card-hover)] text-[var(--color-text)]'
