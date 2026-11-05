@@ -25,6 +25,7 @@ function useL() {
 /* Reveal saat scroll: blur + naik 14px (animasi seperti referensi). */
 function useReveal() {
   const ref = useRef(null)
+  const { i18n } = useTranslation()
   useEffect(() => {
     const root = ref.current
     if (!root) return undefined
@@ -46,7 +47,7 @@ function useReveal() {
       io.observe(el)
     })
     return () => io.disconnect()
-  }, [])
+  }, [i18n.language])
   return ref
 }
 
@@ -428,12 +429,12 @@ function MobileShowcase() {
 function Units() {
   const L = useL()
   const units = [
-    [GraduationCap, L('Akademik', 'Academic')],
-    [Users, L('Kemahasiswaan', 'Student Affairs')],
-    [Wallet, L('Keuangan', 'Finance')],
-    [Wrench, L('Sarana & Prasarana', 'Facilities')],
-    [Server, 'IT Center'],
-    [Library, L('Perpustakaan', 'Library')],
+    { key: 'academic', icon: GraduationCap, name: L('Akademik', 'Academic') },
+    { key: 'student',  icon: Users,         name: L('Kemahasiswaan', 'Student Affairs') },
+    { key: 'finance',  icon: Wallet,        name: L('Keuangan', 'Finance') },
+    { key: 'sarpras',  icon: Wrench,        name: L('Sarana & Prasarana', 'Facilities') },
+    { key: 'it',       icon: Server,        name: L('TIK / IT Center', 'IT Center') },
+    { key: 'library',  icon: Library,       name: L('Perpustakaan', 'Library') },
   ]
   return (
     <section id="units" className="w-full flex flex-col items-center pt-8 pb-12 relative z-20" style={{ background: 'var(--color-bg)' }}>
@@ -441,10 +442,11 @@ function Units() {
         {L('Dipercaya oleh unit layanan kampus EEPIS', 'Trusted by EEPIS campus service units')}
       </h2>
       <div className="w-full flex flex-col max-w-6xl px-4">
-        <div className="w-full border rounded-2xl overflow-hidden shadow-xs grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 divide-x divide-y lg:divide-y-0" style={{ borderColor: 'var(--color-border)', background: 'color-mix(in srgb, var(--color-surface) 75%, transparent)' }}>
-          {units.map(([Icon, name]) => (
-            <div key={name} className="reveal flex h-24 items-center justify-center gap-2.5 p-4 text-[var(--color-text)] hover:bg-black/5 dark:hover:bg-white/5 transition-all" style={{ borderColor: 'var(--color-border)' }}>
-              <Icon size={20} className="text-[var(--color-primary)]" /><span className="text-base font-semibold tracking-tight">{name}</span>
+        <div className="reveal w-full border rounded-2xl overflow-hidden shadow-xs grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 divide-x divide-y lg:divide-y-0" style={{ borderColor: 'var(--color-border)', background: 'color-mix(in srgb, var(--color-surface) 75%, transparent)' }}>
+          {units.map(({ key, icon: Icon, name }) => (
+            <div key={key} className="flex h-24 items-center justify-center gap-2.5 p-4 text-[var(--color-text)] hover:bg-black/5 dark:hover:bg-white/5 transition-all" style={{ borderColor: 'var(--color-border)' }}>
+              <Icon size={20} className="text-[var(--color-primary)] flex-shrink-0" />
+              <span className="text-sm sm:text-base font-semibold tracking-tight text-center">{name}</span>
             </div>
           ))}
         </div>
