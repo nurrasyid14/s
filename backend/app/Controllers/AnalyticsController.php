@@ -265,7 +265,7 @@ class AnalyticsController extends ResourceController
         $summaryData = null;
         try {
             $client = \Config\Services::curlrequest();
-            $resp = $client->post('http://127.0.0.1:8000/summary', [
+            $resp = $client->post(rtrim(env('ML_SERVICE_URL', getenv('ML_SERVICE_URL') ?: 'http://127.0.0.1:8000'), '/') . '/summary', [
                 'headers' => [
                     'Content-Type' => 'application/json',
                     'Accept'       => 'application/json',

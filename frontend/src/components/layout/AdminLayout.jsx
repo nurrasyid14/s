@@ -19,8 +19,7 @@ export default function AdminLayout({ title, notifCount = 0, children }) {
   const [profileOpen, setProfileOpen] = useState(false)
 
   function handleSignOut() {
-    logout()
-    navigate('/signin')
+    logout('/admin/signin')
   }
 
   function switchLang() {

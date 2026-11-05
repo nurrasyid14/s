@@ -25,7 +25,9 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('suaralens_token')
       localStorage.removeItem('suaralens_user')
-      window.location.href = '/signin'
+      const path = window.location.pathname || ''
+      const isAdminOrStakeholder = path.startsWith('/admin') || path.startsWith('/stakeholder')
+      window.location.href = isAdminOrStakeholder ? '/admin/signin' : '/signin'
     }
     return Promise.reject(error)
   }

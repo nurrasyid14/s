@@ -81,25 +81,46 @@ export const WORKFLOW_STEPS = [
   { key: 'resolved',     label: 'Selesai',        labelEn: 'Resolved' },
 ]
 
+export const STREAMLINED_STEPS = [
+  { key: 'received', label: 'Diterima',       labelEn: 'Received' },
+  { key: 'verified', label: 'Ditinjau Unit',  labelEn: 'Reviewed' },
+  { key: 'answered', label: 'Dijawab Resmi',  labelEn: 'Answered' },
+  { key: 'resolved', label: 'Selesai & Dicatat', labelEn: 'Recorded' },
+]
+
 export function getStatusInfo(status) {
   return STATUS_MAP[status] || { label: status, labelEn: status, color: 'gray' }
+}
+
+/**
+ * Normalisasi skor urgensi ke skala 0-10 jika model ML menghasilkan rentang 0.0 - 1.0
+ */
+export function normalizeUrgencyScore(score) {
+  const num = Number(score)
+  if (isNaN(num) || num <= 0) return 0
+  // Jika nilai <= 1.0, berarti dari ML scale [0.0, 1.0] -> konversi ke [0, 10]
+  if (num <= 1.0) {
+    return Math.min(10, Math.round(num * 100) / 10)
+  }
+  return Math.min(10, num)
 }
 
 /**
  * Map urgency score (0-10) ke level
  */
 export function getUrgencyLevel(score) {
-  if (score >= 8) return { level: 'Tinggi', levelEn: 'High',   color: 'red'    }
-  if (score >= 5) return { level: 'Sedang', levelEn: 'Medium', color: 'amber'  }
+  const normalized = normalizeUrgencyScore(score)
+  if (normalized >= 8) return { level: 'Tinggi', levelEn: 'High',   color: 'red'    }
+  if (normalized >= 5) return { level: 'Sedang', levelEn: 'Medium', color: 'amber'  }
   return              { level: 'Rendah', levelEn: 'Low',    color: 'emerald'}
 }
 
 /**
- * Format skor urgensi menjadi 2 angka di belakang koma (contoh: 6.50)
+ * Format skor urgensi menjadi angka dengan 1 desimal (contoh: 8.5) atau '0'
  */
 export function formatUrgencyScore(score) {
-  const num = Number(score)
-  return isNaN(num) ? '0.00' : num.toFixed(2)
+  const normalized = normalizeUrgencyScore(score)
+  return normalized === 0 ? '0' : (normalized % 1 === 0 ? normalized.toString() : normalized.toFixed(1))
 }
 
 /**

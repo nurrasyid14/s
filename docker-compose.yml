@@ -1,0 +1,89 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: suaralens-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: suaralens
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d suaralens"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  ml-service:
+    build:
+      context: .
+      dockerfile: ml-service/Dockerfile
+    container_name: suaralens-ml
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      PYTHONPATH: /app/notebooks:/app
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3.5:4b}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./ml-service:/app/ml-service
+      - ./notebooks:/app/notebooks
+      - hf_cache:/root/.cache/huggingface
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: suaralens-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      ml-service:
+        condition: service_started
+    ports:
+      - "8090:8090"
+    environment:
+      CI_ENVIRONMENT: development
+      app.baseURL: "http://localhost:8090/"
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASS: postgres
+      DB_NAME: suaralens
+      database.default.hostname: db
+      database.default.database: suaralens
+      database.default.username: postgres
+      database.default.password: postgres
+      database.default.DBDriver: Postgre
+      database.default.port: 5432
+      ML_SERVICE_URL: http://ml-service:8000
+    volumes:
+      - ./backend:/var/www/html
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: suaralens-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_BACKEND_PROXY_TARGET: http://backend:8090
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
+  hf_cache:

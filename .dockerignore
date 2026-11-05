@@ -1,0 +1,17 @@
+**/.git
+**/.github
+**/node_modules
+**/dist
+**/.venv
+**/venv
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/writable/cache/*
+**/writable/logs/*
+**/writable/session/*
+**/writable/debugbar/*
+**/.idea
+**/.vscode
+

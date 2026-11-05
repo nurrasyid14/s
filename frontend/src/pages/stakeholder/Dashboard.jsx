@@ -6,7 +6,7 @@ import StakeholderLayout from '../../components/layout/StakeholderLayout.jsx'
 import { StatusBadge, UrgencyBadge } from '../../components/ui/StatusBadge.jsx'
 import ErrorState from '../../components/ui/ErrorState.jsx'
 import UnitReportModal from '../../components/pdf/UnitReportModal.jsx'
-import { formatDate, formatRelative, formatUrgencyScore } from '../../utils/formatter.js'
+import { formatDate, formatRelative, formatUrgencyScore, normalizeUrgencyScore } from '../../utils/formatter.js'
 import { UNITS } from '../../data/units.js'
 import { getUnitDashboardStats } from '../../services/complaintApi.js'
 import { useDebounce } from '../../hooks/useDebounce.js'
@@ -61,7 +61,7 @@ export default function StakeholderDashboard() {
   }, [items])
 
   const urgentComplaints = useMemo(
-    () => items.filter(c => (c.type === 'complaint' || !c.type) && (c.urgency_score >= 7 || ['dispatched', 'in_progress'].includes(c.status))),
+    () => items.filter(c => (c.type === 'complaint' || !c.type) && (normalizeUrgencyScore(c.urgency_score) >= 7 || ['dispatched', 'in_progress'].includes(c.status))),
     [items]
   )
 
@@ -586,7 +586,7 @@ export default function StakeholderDashboard() {
                       <tbody className="divide-y divide-[var(--color-border)]/40">
                         {filteredItems.slice(0, 6).map(c => {
                           const isResolved = c.status === 'resolved'
-                          const isUrgent = c.urgency_score >= 7
+                          const isUrgent = normalizeUrgencyScore(c.urgency_score) >= 7
                           const typeKey = c.type || 'complaint'
                           return (
                             <tr key={c.id} className="hover:bg-[var(--color-bg-secondary)]/60 transition-colors group">

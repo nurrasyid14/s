@@ -110,13 +110,15 @@ export async function signUpStakeholder(data) {
  * Sign out
  */
 export async function signOut() {
-  try {
-    await api.post('/auth/logout')
-  } catch (err) {
-    // Ignore error on logout if token already expired
-  } finally {
-    localStorage.removeItem('suaralens_token')
-    localStorage.removeItem('suaralens_user')
+  // Clear local credentials immediately and synchronously
+  localStorage.removeItem('suaralens_token')
+  localStorage.removeItem('suaralens_user')
+  if (!USE_MOCK) {
+    try {
+      await api.post('/auth/logout', {}, { timeout: 3000 })
+    } catch {
+      // Ignore network errors or expired sessions on logout
+    }
   }
 }
 
