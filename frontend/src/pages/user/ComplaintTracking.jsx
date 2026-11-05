@@ -78,7 +78,7 @@ export default function ComplaintTracking() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[var(--color-bg)]">
+      <div className="min-h-screen bg-[var(--color-bg-secondary)]">
         <Navbar variant="user" />
         <div className="max-w-4xl mx-auto px-4 py-10 space-y-4">
           <div className="skeleton h-12 border border-[var(--color-border)]" />
@@ -91,7 +91,7 @@ export default function ComplaintTracking() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-[var(--color-bg)]">
+      <div className="min-h-screen bg-[var(--color-bg-secondary)]">
         <Navbar variant="user" />
         <div className="max-w-md mx-auto px-4 py-20 text-center">
           <AlertTriangle size={36} className="text-[var(--color-status-danger)] mx-auto mb-3" />
@@ -113,7 +113,7 @@ export default function ComplaintTracking() {
   const isResolved = data.status === 'resolved'
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] pb-16">
+    <div className="min-h-screen bg-[var(--color-bg-secondary)] pb-16">
       <Navbar variant="user" />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-6">
@@ -176,7 +176,7 @@ export default function ComplaintTracking() {
               return (
                 <div
                   key={stepItem.key}
-                  className={`p-3 border text-center rounded-xl transition-all ${
+                  className={`p-3 border text-center rounded-xl transition ${
                     isCurrent
                       ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] shadow-xs'
                       : isPast
@@ -413,11 +413,11 @@ export default function ComplaintTracking() {
                           onMouseEnter={() => setHoverRating(star)}
                           onMouseLeave={() => setHoverRating(0)}
                           aria-label={`Beri nilai ${star} dari 5 bintang`}
-                          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl text-[var(--color-border)] hover:text-amber-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-colors"
+                          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl text-[var(--color-border)] hover:text-orange-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-colors"
                         >
                           <Star
                             size={24}
-                            className={(hoverRating || rating) >= star ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}
+                            className={(hoverRating || rating) >= star ? 'fill-orange-400 text-orange-400' : 'text-gray-300'}
                           />
                         </button>
                       ))}
@@ -505,7 +505,7 @@ export default function ComplaintTracking() {
                     <Star
                       key={i}
                       size={18}
-                      className={i < data.feedback.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}
+                      className={i < data.feedback.rating ? 'fill-orange-400 text-orange-400' : 'text-gray-300'}
                     />
                   ))}
                   <span className="text-xs font-bold font-mono ml-1 text-[var(--color-text)]">

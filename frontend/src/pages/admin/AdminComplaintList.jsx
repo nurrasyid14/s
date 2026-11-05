@@ -158,7 +158,7 @@ export default function AdminComplaintList() {
                           <MessageSquare size={10} /> Masukan
                         </span>
                       ) : typeKey === 'suggestion' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-900/60">
                           <Lightbulb size={10} /> Saran
                         </span>
                       ) : (

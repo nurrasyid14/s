@@ -1,11 +1,12 @@
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { CountUp } from '../motion/Motion.jsx'
 
 /**
  * StatCard: summary metric card for dashboard (square, border-led styling)
  */
 
 const COLOR_MAP = {
-  blue: { icon: 'bg-[var(--color-primary-soft)] text-[var(--color-primary)] border-[var(--color-primary)]/20' },
+  blue: { icon: 'bg-[var(--color-navy)] text-[var(--color-gold)] border-transparent dark:bg-[var(--color-primary-soft)]' },
   amber: { icon: 'bg-[color-mix(in_srgb,var(--color-status-warning)_15%,transparent)] text-[var(--color-status-warning)] border-[var(--color-status-warning)]/20' },
   red: { icon: 'bg-[color-mix(in_srgb,var(--color-status-danger)_15%,transparent)] text-[var(--color-status-danger)] border-[var(--color-status-danger)]/20' },
   emerald: { icon: 'bg-[color-mix(in_srgb,var(--color-status-success)_15%,transparent)] text-[var(--color-status-success)] border-[var(--color-status-success)]/20' },
@@ -18,8 +19,13 @@ export default function StatCard({ title, value, subtitle, trend, icon: Icon, co
 
   return (
     <div
-      className={`card-elevated rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 transition-all hover:bg-[var(--color-card-hover)] hover:-translate-y-0.5 ${onClick ? 'cursor-pointer' : ''}`}
+      className={`card-elevated rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 ${onClick ? 'press cursor-pointer hover:bg-[var(--color-card-hover)] hover:border-[var(--color-text-muted)]' : ''}`}
       onClick={onClick}
+      {...(onClick && {
+        role: 'button',
+        tabIndex: 0,
+        onKeyDown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } },
+      })}
     >
       <div className="flex items-start justify-between">
         {/* Icon */}
@@ -42,7 +48,7 @@ export default function StatCard({ title, value, subtitle, trend, icon: Icon, co
 
       {/* Value */}
       <div className="mt-3">
-        <div className="text-3xl font-bold tracking-tight text-[var(--color-text)]">{value}</div>
+        <div className="text-3xl font-bold tracking-tight tabular text-[var(--color-text)]">{typeof value === 'number' ? <CountUp value={value} /> : value}</div>
         {subtitle && <div className="text-xs text-[var(--color-text-muted)] mt-0.5">{subtitle}</div>}
       </div>
 

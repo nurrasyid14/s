@@ -39,6 +39,7 @@ export default function AdminSignInPage() {
 
   return (
     <AuthShell
+      variant="admin"
       title="Portal Administrator Sentral"
       subtitle="Otentikasi khusus verifikasi masukan dan disposisi 14 unit kerja"
       footer={
@@ -94,9 +95,9 @@ export default function AdminSignInPage() {
           />
         </div>
 
-        <button type="submit" disabled={loading} className="btn-solid w-full !py-3 text-xs font-bold tracking-wider uppercase rounded-xl min-h-[44px] flex items-center justify-center gap-2">
+        <button type="submit" disabled={loading} className="btn-gold w-full !h-12 !text-base">
           {loading ? (
-            <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--color-on-gold)]/25 border-t-[var(--color-on-gold)]" />
           ) : (
             <><Lock size={15} /> Masuk ke Pusat Kendali Admin</>
           )}

@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import Navbar from '../../components/layout/Navbar.jsx'
+import { useAuth } from '../../context/AuthContext.jsx'
+import { CountUp, useAutoReveal } from '../../components/motion/Motion.jsx'
 import {
   getStudentDashboardData,
   COMPLAINT_STAGES,
@@ -35,14 +37,14 @@ function CustomChartTooltip({ active, payload, label }) {
       <div className="space-y-1.5 font-mono">
         <div className="flex items-center justify-between gap-3">
           <span className="flex items-center gap-1.5 text-[var(--color-text-muted)]">
-            <span className="w-2.5 h-2.5 rounded-sm bg-[#10B981]" />
+            <span className="w-2.5 h-2.5 rounded-sm bg-[var(--color-gold)]" />
             Selesai
           </span>
           <span className="font-bold text-emerald-600 dark:text-emerald-400">{resolved} tiket</span>
         </div>
         <div className="flex items-center justify-between gap-3">
           <span className="flex items-center gap-1.5 text-[var(--color-text-muted)]">
-            <span className="w-2.5 h-2.5 rounded-sm bg-[#3B82F6]" />
+            <span className="w-2.5 h-2.5 rounded-sm bg-[var(--color-primary)]" />
             Diproses
           </span>
           <span className="font-bold text-blue-600 dark:text-blue-400">{inProgress} tiket</span>
@@ -57,6 +59,8 @@ function CustomChartTooltip({ active, payload, label }) {
 }
 
 export default function UserDashboard() {
+  const revealRef = useAutoReveal()
+  const { user } = useAuth()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -187,48 +191,37 @@ export default function UserDashboard() {
   }, [data, selectedType])
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] flex flex-col text-[var(--color-text)]">
+    <div className="min-h-screen bg-[var(--color-bg-secondary)] flex flex-col text-[var(--color-text)]">
       {/* Top Navbar */}
       <Navbar variant="user" />
 
       {/* Main Container */}
-      <main id="main-content" className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main id="main-content" ref={revealRef} className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
-        {/* Header & Sub-navigation Section */}
-        <section aria-labelledby="dashboard-header" className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-[var(--color-border)]">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[11px] font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full font-bold bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
-                Transparansi Publik & Mahasiswa
+        {/* Banner biru transparansi */}
+        <section aria-labelledby="dashboard-header" className="banner-blue p-6 sm:p-9">
+          <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+            <div className="max-w-2xl">
+              <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/85">
+                <span className="live-dot h-1.5 w-1.5 rounded-full bg-[var(--color-gold)]" />
+                Transparansi publik sivitas PENS
               </span>
-              <span className="text-xs text-[var(--color-text-muted)] font-mono">
-                Sivitas Akademika PENS
-              </span>
+              <h1 id="dashboard-header" className="mt-4 text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+                Halo, {user?.name ? user.name.split(' ')[0] : 'Sivitas'}.<br />
+                <span className="text-[var(--color-gold)]">Begini kinerja layanan kampus.</span>
+              </h1>
+              <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/75">
+                Pantau jumlah laporan, tahapan penanganan di setiap divisi, dan kepatuhan SLA untuk tiga jenis aspirasi: aduan, masukan, dan saran.
+              </p>
             </div>
-            <h1 id="dashboard-header" className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--color-text)]">
-              Dashboard Aspirasi & Kinerja Unit
-            </h1>
-            <p className="text-sm text-[var(--color-text-muted)] mt-1 max-w-2xl leading-relaxed">
-              Pantau total laporan, pergerakan tahapan di setiap divisi, distribusi beban, dan kepatuhan SLA layanan kampus secara terbuka terbagi dalam 3 jenis: <strong>Aduan</strong>, <strong>Masukan</strong>, dan <strong>Saran</strong>.
-            </p>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3 shrink-0">
-            <Link
-              to="/user/complaints"
-              className="px-4 py-2.5 rounded-xl text-xs font-semibold text-[var(--color-text)] bg-[var(--color-surface)] border border-[var(--color-border)] hover:bg-[var(--color-card-hover)] transition-all shadow-2xs inline-flex items-center gap-2"
-            >
-              <FileText size={15} className="text-[var(--color-text-muted)]" />
-              Riwayat Saya
-            </Link>
-            <Link
-              to="/user/submit"
-              className="px-4 py-2.5 rounded-xl text-xs font-semibold text-white bg-[#0B1F3A] hover:bg-[#153460] dark:bg-[var(--color-primary)] dark:hover:bg-blue-600 transition-all shadow-xs inline-flex items-center gap-2"
-            >
-              <PlusCircle size={15} />
-              Ajukan Baru
-            </Link>
+            <div className="flex shrink-0 flex-wrap gap-2.5">
+              <Link to="/user/submit" className="btn-gold !h-12 !px-6 !text-base">
+                <PlusCircle size={18} /> Ajukan Baru
+              </Link>
+              <Link to="/user/complaints" className="btn-ghost-light !h-12 !px-5">
+                <FileText size={16} /> Riwayat Saya
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -243,7 +236,7 @@ export default function UserDashboard() {
           </div>
         ) : error ? (
           <div className="p-8 text-center border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl">
-            <AlertCircle size={32} className="text-amber-500 mx-auto mb-3" />
+            <AlertCircle size={32} className="text-orange-500 mx-auto mb-3" />
             <h3 className="font-bold text-base">Gagal memuat data transparansi</h3>
             <p className="text-xs text-[var(--color-text-muted)] mt-1 mb-4">
               Terjadi kendala dalam mengambil data analitik kampus.
@@ -254,226 +247,138 @@ export default function UserDashboard() {
           </div>
         ) : (
           <>
-            {/* ============================================================== */}
-            {/* BAGIAN 1: REKAPITULASI LAPORAN & 3 JENIS ASPIRASI              */}
-            {/* ============================================================== */}
-            <section aria-labelledby="section-summary" className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 id="section-summary" className="text-sm font-bold uppercase tracking-wider font-mono text-[var(--color-text-muted)] flex items-center gap-2">
-                  <BarChart3 size={15} className="text-[var(--color-primary)]" />
-                  1. Rekapitulasi & Klasifikasi 3 Jenis Aspirasi
-                </h2>
-                <span className="text-[11px] font-mono text-[var(--color-text-muted)]">
-                  Data Terverifikasi Kampus
-                </span>
-              </div>
+            {/* Ringkasan: satu strip KPI, bukan empat kartu terpisah */}
+            <section aria-labelledby="section-summary" className="space-y-5">
+              <h2 id="section-summary" className="sr-only">Ringkasan laporan</h2>
 
-              {/* 4 Kartu Metrik Utama */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Metric 1: Total */}
-                <div className="p-5 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-2xs hover:shadow-xs transition-all">
-                  <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
-                    <span className="font-medium">Total Seluruh Pengajuan</span>
-                    <span className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-[var(--color-primary)] flex items-center justify-center">
-                      <FileText size={16} />
-                    </span>
-                  </div>
-                  <div className="mt-3 flex items-baseline gap-2">
-                    <span className="text-3xl font-extrabold font-mono tracking-tight text-[var(--color-text)]">
-                      {data.summary.total}
-                    </span>
-                    <span className="text-xs font-mono text-[var(--color-text-muted)]">laporan</span>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-[var(--color-border)]/60 flex items-center justify-between text-[11px] font-mono text-[var(--color-text-muted)]">
-                    <span>14 Unit Layanan PENS</span>
-                    <span className="text-blue-600 font-semibold">100% Tercatat</span>
-                  </div>
-                </div>
-
-                {/* Metric 2: Selesai */}
-                <div className="p-5 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-2xs hover:shadow-xs transition-all">
-                  <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
-                    <span className="font-medium">Selesai Dituntaskan</span>
-                    <span className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center">
-                      <CheckCircle2 size={16} />
-                    </span>
-                  </div>
-                  <div className="mt-3 flex items-baseline gap-2">
-                    <span className="text-3xl font-extrabold font-mono tracking-tight text-emerald-600">
-                      {data.summary.resolved}
-                    </span>
-                    <span className="text-xs font-mono text-[var(--color-text-muted)]">
-                      ({data.summary.completionRate}%)
-                    </span>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-[var(--color-border)]/60 flex items-center justify-between text-[11px] font-mono text-[var(--color-text-muted)]">
-                    <span>Solusi terverifikasi</span>
-                    <span className="text-emerald-600 font-semibold">Ditutup Tuntas</span>
-                  </div>
-                </div>
-
-                {/* Metric 3: Dalam Penanganan */}
-                <div className="p-5 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-2xs hover:shadow-xs transition-all">
-                  <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
-                    <span className="font-medium">Sedang Ditangani Unit</span>
-                    <span className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 flex items-center justify-center">
-                      <Clock size={16} />
-                    </span>
-                  </div>
-                  <div className="mt-3 flex items-baseline gap-2">
-                    <span className="text-3xl font-extrabold font-mono tracking-tight text-amber-600">
-                      {data.summary.active}
-                    </span>
-                    <span className="text-xs font-mono text-[var(--color-text-muted)]">proses aktif</span>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-[var(--color-border)]/60 flex items-center justify-between text-[11px] font-mono text-[var(--color-text-muted)]">
-                    <span>Investigasi & eksekusi</span>
-                    <span className="text-amber-600 font-semibold">Di Lapangan</span>
-                  </div>
-                </div>
-
-                {/* Metric 4: Kepatuhan SLA */}
-                <div className="p-5 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-2xs hover:shadow-xs transition-all">
-                  <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
-                    <span className="font-medium">Kepatuhan SLA & Rating</span>
-                    <span className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-[var(--color-primary)] flex items-center justify-center">
-                      <ShieldCheck size={16} />
-                    </span>
-                  </div>
-                  <div className="mt-3 flex items-baseline justify-between">
-                    <div>
-                      <div className="text-2xl font-extrabold font-mono tracking-tight text-blue-600">
-                        {data.summary.slaComplianceRate}%
-                      </div>
-                      <div className="text-[10px] font-mono text-[var(--color-text-muted)] mt-0.5">Tepat Waktu</div>
+              <div className="overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_12px_40px_-24px_rgba(10,36,99,0.35)]">
+                <div className="grid grid-cols-2 lg:grid-cols-4 [&>div]:p-5 sm:[&>div]:p-6">
+                  <div className="border-b border-r border-[var(--color-border)] lg:border-b-0">
+                    <div className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-muted)]">
+                      <FileText size={14} className="text-[var(--color-primary)]" /> Total pengajuan
                     </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-extrabold font-mono tracking-tight text-[var(--color-text)] flex items-center gap-1">
-                        <Star size={18} className="fill-amber-400 text-amber-400" />
-                        {data.summary.avgRating}
-                      </div>
-                      <div className="text-[10px] font-mono text-[var(--color-text-muted)] mt-0.5">Skor CSAT / 5.0</div>
+                    <div className="mt-2 text-4xl font-bold tracking-tight tabular">
+                      <CountUp value={data.summary.total} />
+                    </div>
+                    <div className="mt-1 text-xs text-[var(--color-text-muted)]">dari 14 unit layanan</div>
+                  </div>
+
+                  <div className="border-b border-[var(--color-border)] lg:border-b-0 lg:border-r">
+                    <div className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-muted)]">
+                      <CheckCircle2 size={14} className="text-[var(--color-status-success)]" /> Selesai
+                    </div>
+                    <div className="mt-2 flex items-baseline gap-2">
+                      <span className="text-4xl font-bold tracking-tight tabular text-[var(--color-status-success)]">
+                        <CountUp value={data.summary.resolved} />
+                      </span>
+                      <span className="text-sm font-semibold tabular text-[var(--color-text-muted)]">{data.summary.completionRate}%</span>
+                    </div>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-sunken)]">
+                      <div className="grow-x h-full rounded-full bg-[var(--color-status-success)]" style={{ width: `${data.summary.completionRate}%` }} />
                     </div>
                   </div>
-                  <div className="mt-3 pt-3 border-t border-[var(--color-border)]/60 flex items-center justify-between text-[11px] font-mono text-[var(--color-text-muted)]">
-                    <span>Rata-rata {data.summary.avgResolutionDays} hari</span>
-                    <span className="text-emerald-600 font-semibold">Sesuai Standar</span>
+
+                  <div className="border-r border-[var(--color-border)]">
+                    <div className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-muted)]">
+                      <Clock size={14} className="text-[var(--color-status-warning)]" /> Sedang ditangani
+                    </div>
+                    <div className="mt-2 text-4xl font-bold tracking-tight tabular text-[var(--color-status-warning)]">
+                      <CountUp value={data.summary.active} />
+                    </div>
+                    <div className="mt-1 text-xs text-[var(--color-text-muted)]">rata-rata {data.summary.avgResolutionDays} hari</div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-muted)]">
+                      <ShieldCheck size={14} className="text-[var(--color-primary)]" /> Tepat waktu (SLA)
+                    </div>
+                    <div className="mt-2 flex items-end justify-between gap-3">
+                      <span className="text-4xl font-bold tracking-tight tabular text-[var(--color-primary)]">
+                        <CountUp value={data.summary.slaComplianceRate} suffix="%" />
+                      </span>
+                      <span className="flex items-center gap-1 rounded-full bg-[var(--color-gold-soft)] px-2.5 py-1 text-sm font-bold tabular text-[var(--color-gold-ink)]">
+                        <Star size={14} className="fill-[var(--color-gold)] text-[var(--color-gold)]" />
+                        <CountUp value={data.summary.avgRating} decimals={1} />
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-[var(--color-text-muted)]">skor kepuasan dari 5,0</div>
                   </div>
                 </div>
               </div>
 
-              {/* 3 KARTU KHUSUS: ADUAN vs MASUKAN vs SARAN */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-                {/* 1. Aduan Card */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedType(selectedType === 'complaint' ? 'all' : 'complaint')}
-                  className={`p-4 rounded-2xl border text-left transition-all ${
-                    selectedType === 'complaint'
-                      ? 'border-rose-500 bg-rose-50/50 dark:bg-rose-950/30 ring-2 ring-rose-500/20 shadow-xs'
-                      : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:border-rose-300 dark:hover:border-rose-900 shadow-2xs'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                      <AlertTriangle size={13} /> Aduan
-                    </span>
-                    <span className="text-xs font-mono font-bold text-rose-600">
-                      {data.typesBreakdown.complaint.pct}%
-                    </span>
+              {/* Jenis aspirasi: bar proporsi + pemilih filter */}
+              <div className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-6">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-bold tracking-tight">Jenis aspirasi</h3>
+                    <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">Pilih satu jenis untuk menyaring seluruh dashboard di bawah.</p>
                   </div>
-                  <div className="mt-3 flex items-baseline gap-2">
-                    <span className="text-2xl font-extrabold font-mono text-[var(--color-text)]">
-                      {data.typesBreakdown.complaint.count}
-                    </span>
-                    <span className="text-xs text-[var(--color-text-muted)]">laporan masuk</span>
-                  </div>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5 leading-snug">
-                    Masalah fisik, teknis, atau administrasi yang memerlukan investigasi & eksekusi <strong>7 Tahap SLA</strong>.
-                  </p>
-                  <div className="mt-3 text-[10px] font-mono font-bold text-rose-600 flex items-center justify-between">
-                    <span>{selectedType === 'complaint' ? '✓ Sedang Difilter' : 'Klik untuk filter →'}</span>
-                    <span className="px-1.5 py-0.2 rounded bg-rose-100 dark:bg-rose-950/80">Alur Penuh</span>
-                  </div>
-                </button>
+                  {selectedType !== 'all' && (
+                    <button onClick={() => setSelectedType('all')} className="animate-fade-in rounded-full border border-[var(--color-border)] px-3 py-1 text-xs font-semibold text-[var(--color-primary)] transition-colors hover:bg-[var(--color-primary-soft)]">
+                      Tampilkan semua
+                    </button>
+                  )}
+                </div>
 
-                {/* 2. Masukan Card */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedType(selectedType === 'feedback' ? 'all' : 'feedback')}
-                  className={`p-4 rounded-2xl border text-left transition-all ${
-                    selectedType === 'feedback'
-                      ? 'border-sky-500 bg-sky-50/50 dark:bg-sky-950/30 ring-2 ring-sky-500/20 shadow-xs'
-                      : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:border-sky-300 dark:hover:border-sky-900 shadow-2xs'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
-                      <MessageCircle size={13} /> Masukan
-                    </span>
-                    <span className="text-xs font-mono font-bold text-sky-600">
-                      {data.typesBreakdown.feedback.pct}%
-                    </span>
-                  </div>
-                  <div className="mt-3 flex items-baseline gap-2">
-                    <span className="text-2xl font-extrabold font-mono text-[var(--color-text)]">
-                      {data.typesBreakdown.feedback.count}
-                    </span>
-                    <span className="text-xs text-[var(--color-text-muted)]">laporan masuk</span>
-                  </div>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5 leading-snug">
-                    Ulasan dan kritik konstruktif civitas terkait kualitas pelayanan kampus yang ditangani lewat <strong>Alur Ringkas</strong>.
-                  </p>
-                  <div className="mt-3 text-[10px] font-mono font-bold text-sky-600 flex items-center justify-between">
-                    <span>{selectedType === 'feedback' ? '✓ Sedang Difilter' : 'Klik untuk filter →'}</span>
-                    <span className="px-1.5 py-0.2 rounded bg-sky-100 dark:bg-sky-950/80">Alur Ringkas</span>
-                  </div>
-                </button>
+                <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-[var(--color-surface-sunken)]" role="img" aria-label="Proporsi aduan, masukan, dan saran">
+                  {[
+                    ['complaint', 'var(--color-navy)'],
+                    ['feedback', 'var(--color-primary)'],
+                    ['suggestion', 'var(--color-gold)'],
+                  ].map(([key, color]) => (
+                    <div
+                      key={key}
+                      className="h-full transition-[opacity,flex-basis] duration-500 ease-[var(--ease-out)] first:rounded-l-full last:rounded-r-full dark:first:bg-[var(--color-primary-dark)]"
+                      style={{ flexBasis: `${data.typesBreakdown[key].pct}%`, background: color, opacity: selectedType === 'all' || selectedType === key ? 1 : 0.25 }}
+                    />
+                  ))}
+                </div>
 
-                {/* 3. Saran Card */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedType(selectedType === 'suggestion' ? 'all' : 'suggestion')}
-                  className={`p-4 rounded-2xl border text-left transition-all ${
-                    selectedType === 'suggestion'
-                      ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/30 ring-2 ring-amber-500/20 shadow-xs'
-                      : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:border-amber-300 dark:hover:border-amber-900 shadow-2xs'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                      <Lightbulb size={13} /> Saran
-                    </span>
-                    <span className="text-xs font-mono font-bold text-amber-600">
-                      {data.typesBreakdown.suggestion.pct}%
-                    </span>
-                  </div>
-                  <div className="mt-3 flex items-baseline gap-2">
-                    <span className="text-2xl font-extrabold font-mono text-[var(--color-text)]">
-                      {data.typesBreakdown.suggestion.count}
-                    </span>
-                    <span className="text-xs text-[var(--color-text-muted)]">laporan masuk</span>
-                  </div>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-1.5 leading-snug">
-                    Ide segar, gagasan inovatif, dan usulan pengembangan sarana/layanan baru melalui <strong>Alur Ringkas</strong>.
-                  </p>
-                  <div className="mt-3 text-[10px] font-mono font-bold text-amber-600 flex items-center justify-between">
-                    <span>{selectedType === 'suggestion' ? '✓ Sedang Difilter' : 'Klik untuk filter →'}</span>
-                    <span className="px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/80">Alur Ringkas</span>
-                  </div>
-                </button>
+                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+                  {[
+                    { key: 'complaint', label: 'Aduan', icon: AlertTriangle, color: 'var(--color-navy)', note: 'Masalah yang butuh investigasi, alur 7 tahap SLA.' },
+                    { key: 'feedback', label: 'Masukan', icon: MessageCircle, color: 'var(--color-primary)', note: 'Kritik dan ulasan layanan, alur ringkas 4 tahap.' },
+                    { key: 'suggestion', label: 'Saran', icon: Lightbulb, color: 'var(--color-gold)', note: 'Ide pengembangan sarana dan layanan, alur ringkas.' },
+                  ].map(({ key, label, icon: Icon, color, note }) => {
+                    const active = selectedType === key
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setSelectedType(active ? 'all' : key)}
+                        aria-pressed={active}
+                        className={`press rounded-2xl border p-4 text-left transition-[border-color,background-color,box-shadow] duration-200 ${
+                          active
+                            ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-primary)_18%,transparent)]'
+                            : 'border-[var(--color-border)] bg-[var(--color-bg-secondary)] hover:border-[var(--color-primary)]/50 hover:bg-[var(--color-card-hover)]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="flex items-center gap-2 text-sm font-bold">
+                            <Icon size={15} style={{ color: key === 'suggestion' ? 'var(--color-gold-ink)' : color }} className={key === 'complaint' ? 'dark:!text-[var(--color-primary)]' : ''} /> {label}
+                          </span>
+                          <span className="text-xs font-semibold tabular text-[var(--color-text-muted)]">{data.typesBreakdown[key].pct}%</span>
+                        </div>
+                        <div className="mt-2 text-3xl font-bold tracking-tight tabular">
+                          <CountUp value={data.typesBreakdown[key].count} />
+                        </div>
+                        <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-muted)]">{note}</p>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </section>
 
             {/* ============================================================== */}
             {/* BAGIAN 2: STATUS DI SETIAP TAHAPAN PER DIVISI                  */}
             {/* ============================================================== */}
-            <section aria-labelledby="section-stages" className="p-6 rounded-3xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xs space-y-6">
+            <section aria-labelledby="section-stages" className="p-6 rounded-3xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-[0_12px_40px_-24px_rgba(10,36,99,0.3)] space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--color-border)]">
                 <div>
                   <h2 id="section-stages" className="text-base font-bold text-[var(--color-text)] flex items-center gap-2">
                     <Layers size={18} className="text-[var(--color-primary)]" />
-                    2. Status Tahapan {isStreamlined ? (selectedType === 'feedback' ? 'Masukan (Alur Ringkas)' : 'Saran (Alur Ringkas)') : 'Aduan (Alur 7 Tahap SLA)'}
+                    Status Tahapan {isStreamlined ? (selectedType === 'feedback' ? 'Masukan (Alur Ringkas)' : 'Saran (Alur Ringkas)') : 'Aduan (Alur 7 Tahap SLA)'}
                   </h2>
                   <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                     {isStreamlined
@@ -511,15 +416,15 @@ export default function UserDashboard() {
                       <button
                         key={t.key}
                         onClick={() => setSelectedType(t.key)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
                           isActive
-                            ? 'bg-[#0B1F3A] dark:bg-[var(--color-primary)] text-white shadow-xs'
+                            ? 'bg-[var(--color-navy)] dark:bg-[var(--color-primary)] text-white shadow-xs'
                             : 'bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
                         }`}
                       >
                         {t.key === 'complaint' && <AlertTriangle size={12} className={isActive ? 'text-white' : 'text-rose-500'} />}
                         {t.key === 'feedback' && <MessageCircle size={12} className={isActive ? 'text-white' : 'text-sky-500'} />}
-                        {t.key === 'suggestion' && <Lightbulb size={12} className={isActive ? 'text-white' : 'text-amber-500'} />}
+                        {t.key === 'suggestion' && <Lightbulb size={12} className={isActive ? 'text-white' : 'text-orange-500'} />}
                         {t.label}
                         <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-[var(--color-surface)] text-[var(--color-text-muted)]'}`}>
                           {t.key === 'all' ? data.summary.total : data.typesBreakdown[t.key]?.count}
@@ -533,13 +438,13 @@ export default function UserDashboard() {
                 <div className="flex items-center rounded-xl bg-[var(--color-bg-secondary)] p-1 border border-[var(--color-border)] text-xs self-start md:self-auto">
                   <button
                     onClick={() => setActiveTab('pipeline')}
-                    className={`px-3 py-1 rounded-lg font-medium transition-all ${activeTab === 'pipeline' ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-2xs font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
+                    className={`px-3 py-1 rounded-lg font-medium transition ${activeTab === 'pipeline' ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-2xs font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
                   >
                     Alur Visual ({activeStages.length} Tahap)
                   </button>
                   <button
                     onClick={() => setActiveTab('matrix')}
-                    className={`px-3 py-1 rounded-lg font-medium transition-all ${activeTab === 'matrix' ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-2xs font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
+                    className={`px-3 py-1 rounded-lg font-medium transition ${activeTab === 'matrix' ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-2xs font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
                   >
                     Tabel Matriks per Divisi
                   </button>
@@ -556,11 +461,11 @@ export default function UserDashboard() {
                     return (
                       <div
                         key={stage.key}
-                        className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between ${
+                        className={`p-3.5 rounded-2xl border transition flex flex-col justify-between ${
                           isResolved
                             ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-300/60 dark:border-emerald-800/40'
                             : isInProgress
-                            ? 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-300/60 dark:border-amber-800/40'
+                            ? 'bg-orange-50/40 dark:bg-orange-950/20 border-orange-300/60 dark:border-orange-800/40'
                             : 'bg-[var(--color-bg-secondary)] border-[var(--color-border)]'
                         }`}
                       >
@@ -570,9 +475,9 @@ export default function UserDashboard() {
                               Tahap {stage.step}
                             </span>
                             {isResolved ? (
-                              <CheckCircle2 size={13} className="text-emerald-600" />
+                              <CheckCircle2 size={13} className="text-[var(--color-status-success)]" />
                             ) : (
-                              <Clock size={13} className="text-amber-600" />
+                              <Clock size={13} className="text-orange-600" />
                             )}
                           </div>
                           <div className="text-xs font-bold text-[var(--color-text)] mt-1">
@@ -607,7 +512,7 @@ export default function UserDashboard() {
                         {/* 3 Tipe mini counter */}
                         <th scope="col" className="py-3 px-2 text-center font-semibold text-rose-600">Aduan</th>
                         <th scope="col" className="py-3 px-2 text-center font-semibold text-sky-600">Masukan</th>
-                        <th scope="col" className="py-3 px-2 text-center font-semibold text-amber-600">Saran</th>
+                        <th scope="col" className="py-3 px-2 text-center font-semibold text-orange-600">Saran</th>
                         <th scope="col" className="py-3 px-2 text-center font-semibold">Diterima</th>
                         <th scope="col" className="py-3 px-2 text-center font-semibold">Diproses</th>
                         <th scope="col" className="py-3 px-2 text-center font-semibold text-emerald-600 font-bold">Selesai</th>
@@ -627,7 +532,7 @@ export default function UserDashboard() {
                           </td>
                           <td className="py-3 px-2 text-center font-mono text-rose-600 font-medium">{u.types.complaint}</td>
                           <td className="py-3 px-2 text-center font-mono text-sky-600 font-medium">{u.types.feedback}</td>
-                          <td className="py-3 px-2 text-center font-mono text-amber-600 font-medium">{u.types.suggestion}</td>
+                          <td className="py-3 px-2 text-center font-mono text-orange-600 font-medium">{u.types.suggestion}</td>
                           <td className="py-3 px-2 text-center font-mono text-[var(--color-text-muted)]">{u.stages.received + u.stages.verified}</td>
                           <td className="py-3 px-2 text-center font-mono text-blue-600 font-medium">{u.activeCount}</td>
                           <td className="py-3 px-2 text-center font-mono text-emerald-600 font-bold bg-emerald-50/30 dark:bg-emerald-950/20">{u.stages.resolved}</td>
@@ -646,13 +551,13 @@ export default function UserDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               
               {/* Kolom Kiri (6 Cols): DISTRIBUSI LAPORAN PER DIVISI */}
-              <section aria-labelledby="section-distribution" className="lg:col-span-6 p-6 rounded-3xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xs flex flex-col justify-between space-y-6">
+              <section aria-labelledby="section-distribution" className="lg:col-span-6 p-6 rounded-3xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-[0_12px_40px_-24px_rgba(10,36,99,0.3)] flex flex-col justify-between space-y-6">
                 <div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[var(--color-border)]">
                     <div>
                       <h2 id="section-distribution" className="text-base font-bold text-[var(--color-text)] flex items-center gap-2">
                         <BarChart3 size={18} className="text-[var(--color-primary)]" />
-                        3. Distribusi Laporan per Divisi
+                        Distribusi laporan per divisi
                       </h2>
                       <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                         Proporsi {selectedType === 'all' ? 'seluruh pengajuan' : selectedType === 'complaint' ? 'Aduan' : selectedType === 'feedback' ? 'Masukan' : 'Saran'} di unit kerja kampus
@@ -662,11 +567,11 @@ export default function UserDashboard() {
                     {/* Chart Legend */}
                     <div className="flex items-center gap-3 text-xs self-start sm:self-auto">
                       <span className="inline-flex items-center gap-1.5 font-medium text-[var(--color-text-muted)]">
-                        <span className="w-2.5 h-2.5 rounded-sm bg-[#10B981]" />
+                        <span className="w-2.5 h-2.5 rounded-sm bg-[var(--color-gold)]" />
                         Selesai
                       </span>
                       <span className="inline-flex items-center gap-1.5 font-medium text-[var(--color-text-muted)]">
-                        <span className="w-2.5 h-2.5 rounded-sm bg-[#3B82F6]" />
+                        <span className="w-2.5 h-2.5 rounded-sm bg-[var(--color-primary)]" />
                         Diproses
                       </span>
                     </div>
@@ -683,8 +588,8 @@ export default function UserDashboard() {
                           content={<CustomChartTooltip />}
                           cursor={{ fill: 'var(--color-bg-secondary)', opacity: 0.6 }}
                         />
-                        <Bar dataKey="resolved" name="resolved" stackId="a" fill="#10B981" radius={[0, 0, 4, 4]} maxBarSize={34} />
-                        <Bar dataKey="inProgress" name="inProgress" stackId="a" fill="#3B82F6" radius={[4, 4, 0, 0]} maxBarSize={34} />
+                        <Bar dataKey="resolved" name="resolved" stackId="a" fill="var(--color-gold)" radius={[0, 0, 4, 4]} maxBarSize={34} />
+                        <Bar dataKey="inProgress" name="inProgress" stackId="a" fill="var(--color-primary)" radius={[4, 4, 0, 0]} maxBarSize={34} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -713,12 +618,12 @@ export default function UserDashboard() {
                             {/* Segmented Mini Progress Bar: Selesai (Emerald) & Diproses (Blue) */}
                             <div className="w-full h-2 rounded-full bg-[var(--color-border)]/50 overflow-hidden flex">
                               <div
-                                className="bg-[#10B981] h-full transition-all"
+                                className="bg-[var(--color-gold)] h-full transition-all"
                                 style={{ width: `${(resolved / Math.max(1, count)) * 100}%` }}
                                 title={`Selesai: ${resolved}`}
                               />
                               <div
-                                className="bg-[#3B82F6] h-full transition-all"
+                                className="bg-[var(--color-primary)] h-full transition-all"
                                 style={{ width: `${(inProgress / Math.max(1, count)) * 100}%` }}
                                 title={`Diproses: ${inProgress}`}
                               />
@@ -746,13 +651,13 @@ export default function UserDashboard() {
               </section>
 
               {/* Kolom Kanan (6 Cols): KINERJA DIVISI (SLA & KEPUASAN) */}
-              <section aria-labelledby="section-performance" className="lg:col-span-6 p-6 rounded-3xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xs flex flex-col justify-between space-y-6">
+              <section aria-labelledby="section-performance" className="lg:col-span-6 p-6 rounded-3xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-[0_12px_40px_-24px_rgba(10,36,99,0.3)] flex flex-col justify-between space-y-6">
                 <div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--color-border)]">
                     <div>
                       <h2 id="section-performance" className="text-base font-bold text-[var(--color-text)] flex items-center gap-2">
-                        <Award size={18} className="text-emerald-600" />
-                        4. Kinerja Divisi (Kepatuhan SLA & Kualitas)
+                        <Award size={18} className="text-[var(--color-status-success)]" />
+                        Kinerja divisi: SLA dan kualitas
                       </h2>
                       <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                         Tingkat ketepatan waktu penanganan terhadap batas standar SLA
@@ -786,7 +691,7 @@ export default function UserDashboard() {
                         return (
                           <div
                             key={unit.id}
-                            className="p-3.5 rounded-2xl bg-[var(--color-bg-secondary)]/70 border border-[var(--color-border)]/70 hover:border-[var(--color-border-strong)] transition-all flex flex-col justify-between gap-2.5"
+                            className="p-3.5 rounded-2xl bg-[var(--color-bg-secondary)]/70 border border-[var(--color-border)]/70 hover:border-[var(--color-border-strong)] transition flex flex-col justify-between gap-2.5"
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div>
@@ -809,7 +714,7 @@ export default function UserDashboard() {
                                   ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300/40'
                                   : isGood
                                   ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-300/40'
-                                  : 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300/40'
+                                  : 'bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border border-orange-300/40'
                               }`}>
                                 SLA {unit.slaComplianceRate}%
                               </span>
@@ -832,7 +737,7 @@ export default function UserDashboard() {
                               <div className="text-right">
                                 <span className="text-[10px] text-[var(--color-text-muted)] block">Kepuasan:</span>
                                 <span className="font-bold text-[var(--color-text)] inline-flex items-center gap-0.5 justify-end">
-                                  <Star size={11} className="fill-amber-400 text-amber-400" />
+                                  <Star size={11} className="fill-[var(--color-gold)] text-[var(--color-gold)]" />
                                   {unit.rating}
                                 </span>
                               </div>

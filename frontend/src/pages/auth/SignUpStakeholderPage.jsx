@@ -45,7 +45,8 @@ export default function SignUpStakeholderPage() {
 
   return (
     <AuthShell
-      accent
+      variant="stakeholder"
+      wide
       title={t('auth.as_stakeholder')}
       subtitle="Akun stakeholder untuk memantau & menindaklanjuti aduan"
       footer={
@@ -119,9 +120,9 @@ export default function SignUpStakeholderPage() {
           <input name="agree" type="checkbox" checked={form.agree} onChange={handleChange} className="mt-1 h-4 w-4 rounded accent-[var(--color-primary)]" />
           <span className="text-xs leading-relaxed text-[var(--color-text-muted)]">{t('auth.privacy_agree')}</span>
         </label>
-        <button type="submit" disabled={loading} className="btn-solid w-full min-h-[44px] !py-3 rounded-xl shadow-xs hover:shadow-md transition-all">
+        <button type="submit" disabled={loading} className="btn-gold w-full !h-12 !text-base">
           {loading ? (
-            <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--color-on-gold)]/25 border-t-[var(--color-on-gold)]" />
           ) : (
             <><UserPlus size={17} /> {t('auth.register')}</>
           )}

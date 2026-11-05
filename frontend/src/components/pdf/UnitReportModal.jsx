@@ -13,8 +13,8 @@ export default function UnitReportModal({ unitData, complaints = [], onClose }) 
   const currentDate = new Date()
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl">
+    <div className="fixed inset-0 z-50 backdrop-in bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="modal-in bg-[var(--color-surface)] border border-[var(--color-border)] max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl">
         {/* Modal Controls (Not printed) */}
         <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between print:hidden bg-[var(--color-bg-secondary)]">
           <div className="flex items-center gap-2">
@@ -90,8 +90,8 @@ export default function UnitReportModal({ unitData, complaints = [], onClose }) 
             </div>
             <div className="p-2">
               <div className="text-[10px] font-mono uppercase text-gray-500">Skor CSAT Pelapor</div>
-              <div className="text-xl font-bold font-mono text-amber-600 mt-0.5 flex items-center justify-center gap-1">
-                <Star size={16} className="fill-amber-500 text-amber-500" />
+              <div className="text-xl font-bold font-mono text-orange-600 mt-0.5 flex items-center justify-center gap-1">
+                <Star size={16} className="fill-orange-500 text-orange-500" />
                 {unitData.avgRating || 4.8}/5
               </div>
             </div>
@@ -140,7 +140,7 @@ export default function UnitReportModal({ unitData, complaints = [], onClose }) 
                       <td className="p-2 border-r border-gray-200 text-gray-600 whitespace-nowrap">
                         {c.disposition?.assigned_pic || 'Staf Unit'}
                       </td>
-                      <td className="p-2 text-center whitespace-nowrap font-mono font-bold text-amber-600">
+                      <td className="p-2 text-center whitespace-nowrap font-mono font-bold text-orange-600">
                         {c.feedback?.rating ? `${c.feedback.rating} ★` : '-'}
                       </td>
                     </tr>

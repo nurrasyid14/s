@@ -104,7 +104,7 @@ export default function Followups() {
             <li key={c.id}>
               <Link
                 to={`/stakeholder/complaints/${c.id}`}
-                className="block border border-[var(--color-border)] border-l-4 bg-[var(--color-surface)] p-4 sm:p-5 rounded-2xl shadow-sm transition-all hover:bg-[var(--color-bg-secondary)] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+                className="block border border-[var(--color-border)] border-l-4 bg-[var(--color-surface)] p-4 sm:p-5 rounded-2xl shadow-sm transition hover:bg-[var(--color-bg-secondary)] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
                 style={{
                   borderLeftColor: normalizeUrgencyScore(c.urgency_score) >= 7 ? 'var(--color-status-danger)' : 'var(--color-status-warning)',
                 }}

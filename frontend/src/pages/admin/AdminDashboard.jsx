@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 import AdminLayout from '../../components/layout/AdminLayout.jsx'
+import { CountUp } from '../../components/motion/Motion.jsx'
 import { StatusBadge } from '../../components/ui/StatusBadge.jsx'
 import ErrorState from '../../components/ui/ErrorState.jsx'
 import { getComplaints, verifyComplaint, dispatchComplaint } from '../../services/complaintApi.js'
@@ -154,31 +155,43 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout title="Dashboard Administrator Sentral">
-      {/* 1. Header Greeting (Finexy Style) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--color-text)] tracking-tight">
-            Selamat pagi, {user?.name ? user.name.split(' ')[0] : 'Admin'}
-          </h1>
-          <p className="text-xs sm:text-sm text-[var(--color-text-muted)] mt-1">
-            Pantau aduan, masukan sivitas, saran inovasi, dan progres tindak lanjut kampus secara real-time.
-          </p>
+      {/* 1. Banner sapaan biru */}
+      <section className="banner-blue p-6 sm:p-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-2xl">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-gold)]">
+              {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            </div>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+              Selamat datang, {user?.name ? user.name.split(' ')[0] : 'Admin'}
+            </h2>
+            <p className="mt-2 text-sm text-white/75">
+              Ada <strong className="text-white">{verificationQueue.length} laporan</strong> menunggu verifikasi dan{' '}
+              <strong className="text-white">{dispositionQueue.length}</strong> siap didisposisikan ke unit.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2.5">
+              <Link to="/admin/verifikasi" className="btn-gold !h-11 !px-5">
+                <CheckSquare size={16} /> Mulai Verifikasi ({verificationQueue.length})
+              </Link>
+              <Link to="/admin/disposisi" className="btn-ghost-light !h-11 !px-5">
+                <Send size={16} /> Disposisi Tiket
+              </Link>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:w-[420px]">
+            {[
+              ['Total laporan', complaints.length],
+              ['Diproses unit', activeDispatched.length],
+              ['Selesai', resolvedList.length],
+            ].map(([label, val]) => (
+              <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 sm:p-4 backdrop-blur-sm">
+                <div className="text-2xl font-bold tracking-tight sm:text-3xl"><CountUp value={val} /></div>
+                <div className="mt-1 text-[11px] text-white/65 sm:text-xs">{label}</div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="flex items-center gap-2.5">
-          <Link
-            to="/admin/disposisi"
-            className="px-4 py-2.5 rounded-full text-xs font-bold text-white bg-[#0B1F3A] hover:bg-[#153460] dark:bg-[var(--color-primary)] dark:hover:bg-blue-600 transition-all shadow-sm flex items-center gap-2"
-          >
-            <Send size={14} /> Disposisi Tiket
-          </Link>
-          <Link
-            to="/admin/verifikasi"
-            className="px-4 py-2.5 rounded-full text-xs font-bold text-[var(--color-text)] bg-[var(--color-surface)] border border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)] transition-all shadow-2xs flex items-center gap-2"
-          >
-            <CheckSquare size={14} /> Verifikasi ({verificationQueue.length})
-          </Link>
-        </div>
-      </div>
+      </section>
 
       {/* Notification Toasts */}
       {actionSuccess && (
@@ -212,7 +225,7 @@ export default function AdminDashboard() {
             </div>
             <div className="mt-3 flex items-baseline gap-2">
               <span className="text-3xl sm:text-4xl font-extrabold font-mono tracking-tight text-[var(--color-text)]">
-                {complaints.length > 0 ? complaints.length.toLocaleString('id-ID') : '0'}
+                <CountUp value={complaints.length} />
               </span>
               <span className="text-xs font-mono text-[var(--color-text-muted)]">laporan</span>
             </div>
@@ -230,7 +243,7 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   onClick={() => setFilterType(filterType === 'complaint' ? 'all' : 'complaint')}
-                  className={`p-2 rounded-2xl border text-left transition-all ${
+                  className={`p-2 rounded-2xl border text-left transition ${
                     filterType === 'complaint'
                       ? 'bg-rose-500/10 border-rose-500/50 shadow-xs ring-1 ring-rose-500/30'
                       : 'bg-[var(--color-bg-secondary)] border-[var(--color-border)]/60 hover:border-rose-300'
@@ -240,7 +253,7 @@ export default function AdminDashboard() {
                     <AlertTriangle size={11} /> Aduan
                   </div>
                   <div className="text-base font-extrabold font-mono text-[var(--color-text)] mt-0.5">
-                    {typeCounts.complaint}
+                    <CountUp value={typeCounts.complaint} />
                   </div>
                   <div className="text-[9px] text-[var(--color-text-muted)] truncate">7 Tahap SLA</div>
                 </button>
@@ -248,7 +261,7 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   onClick={() => setFilterType(filterType === 'feedback' ? 'all' : 'feedback')}
-                  className={`p-2 rounded-2xl border text-left transition-all ${
+                  className={`p-2 rounded-2xl border text-left transition ${
                     filterType === 'feedback'
                       ? 'bg-sky-500/10 border-sky-500/50 shadow-xs ring-1 ring-sky-500/30'
                       : 'bg-[var(--color-bg-secondary)] border-[var(--color-border)]/60 hover:border-sky-300'
@@ -258,7 +271,7 @@ export default function AdminDashboard() {
                     <MessageSquare size={11} /> Masukan
                   </div>
                   <div className="text-base font-extrabold font-mono text-[var(--color-text)] mt-0.5">
-                    {typeCounts.feedback}
+                    <CountUp value={typeCounts.feedback} />
                   </div>
                   <div className="text-[9px] text-[var(--color-text-muted)] truncate">Evaluasi Mutu</div>
                 </button>
@@ -266,17 +279,17 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   onClick={() => setFilterType(filterType === 'suggestion' ? 'all' : 'suggestion')}
-                  className={`p-2 rounded-2xl border text-left transition-all ${
+                  className={`p-2 rounded-2xl border text-left transition ${
                     filterType === 'suggestion'
-                      ? 'bg-amber-500/10 border-amber-500/50 shadow-xs ring-1 ring-amber-500/30'
-                      : 'bg-[var(--color-bg-secondary)] border-[var(--color-border)]/60 hover:border-amber-300'
+                      ? 'bg-orange-500/10 border-orange-500/50 shadow-xs ring-1 ring-orange-500/30'
+                      : 'bg-[var(--color-bg-secondary)] border-[var(--color-border)]/60 hover:border-orange-300'
                   }`}
                 >
-                  <div className="flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                  <div className="flex items-center gap-1 text-[10px] font-bold text-orange-600 dark:text-orange-400">
                     <Lightbulb size={11} /> Saran
                   </div>
                   <div className="text-base font-extrabold font-mono text-[var(--color-text)] mt-0.5">
-                    {typeCounts.suggestion}
+                    <CountUp value={typeCounts.suggestion} />
                   </div>
                   <div className="text-[9px] text-[var(--color-text-muted)] truncate">Ide Inovasi</div>
                 </button>
@@ -287,13 +300,13 @@ export default function AdminDashboard() {
             <div className="mt-4 grid grid-cols-2 gap-2.5">
               <Link
                 to="/admin/disposisi"
-                className="py-2.5 px-4 rounded-full text-xs font-bold text-center text-white bg-[#0B1F3A] hover:bg-[#153460] dark:bg-[var(--color-primary)] dark:hover:bg-blue-600 transition-all shadow-xs flex items-center justify-center gap-1.5"
+                className="py-2.5 px-4 rounded-full text-xs font-bold text-center text-white bg-[var(--color-navy)] hover:bg-[var(--color-navy-hover)] dark:bg-[var(--color-primary)] dark:hover:bg-blue-600 transition shadow-xs flex items-center justify-center gap-1.5"
               >
                 <Send size={13} /> Disposisi
               </Link>
               <Link
                 to="/admin/complaints"
-                className="py-2.5 px-4 rounded-full text-xs font-bold text-center text-[var(--color-text)] bg-[var(--color-bg-secondary)] hover:bg-[var(--color-border)]/50 border border-[var(--color-border)] transition-all flex items-center justify-center gap-1.5"
+                className="py-2.5 px-4 rounded-full text-xs font-bold text-center text-[var(--color-text)] bg-[var(--color-bg-secondary)] hover:bg-[var(--color-border)]/50 border border-[var(--color-border)] transition flex items-center justify-center gap-1.5"
               >
                 <FileText size={13} /> Laporan
               </Link>
@@ -329,27 +342,27 @@ export default function AdminDashboard() {
         {/* Card 2: 2x2 Metric Cards Grid (With BOLD BLUE Highlight Card) */}
         <div className="lg:col-span-4 grid grid-cols-2 gap-3.5">
           {/* Highlight Card 1: Dominan Biru Bold (Finexy Coral -> SuaraLens Bold Blue) */}
-          <div className="rounded-3xl p-5 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-900 text-white shadow-md shadow-blue-900/20 flex flex-col justify-between relative overflow-hidden">
-            <div className="absolute -right-4 -top-4 w-20 h-20 bg-white/10 rounded-full blur-xs pointer-events-none" />
+          <div className="banner-blue !rounded-3xl p-5 shadow-[0_16px_40px_-20px_rgba(10,36,99,0.7)] flex flex-col justify-between">
+            <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full border border-[var(--color-gold)]/30" />
             <div className="flex items-center justify-between relative z-10">
-              <span className="text-xs font-medium text-blue-100">Perlu Verifikasi</span>
-              <span className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white">
+              <span className="text-xs font-medium text-white/75">Perlu Verifikasi</span>
+              <span className="w-7 h-7 rounded-full bg-[var(--color-gold)] flex items-center justify-center text-[var(--color-on-gold)]">
                 <CheckSquare size={14} />
               </span>
             </div>
             <div className="my-3 relative z-10">
               <div className="text-3xl font-extrabold font-mono tracking-tight">
-                {verificationQueue.length}
+                <CountUp value={verificationQueue.length} />
               </div>
-              <div className="text-[11px] text-blue-200 mt-1 flex items-center gap-1 font-medium">
+              <div className="text-[11px] text-white/65 mt-1 flex items-center gap-1 font-medium">
                 <ArrowUpRight size={12} /> +7% bulan ini
               </div>
             </div>
             <Link
               to="/admin/verifikasi"
-              className="text-[11px] font-bold text-white underline underline-offset-2 flex items-center gap-1"
+              className="group text-[11px] font-bold text-[var(--color-gold)] flex items-center gap-1"
             >
-              Tinjau Antrean <ArrowRight size={11} />
+              Tinjau Antrean <ArrowRight size={11} className="transition-transform duration-200 group-hover:translate-x-0.5" />
             </Link>
           </div>
 
@@ -363,7 +376,7 @@ export default function AdminDashboard() {
             </div>
             <div className="my-3">
               <div className="text-3xl font-extrabold font-mono text-[var(--color-text)]">
-                {dispositionQueue.length}
+                <CountUp value={dispositionQueue.length} />
               </div>
               <div className="text-[11px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
                 <ArrowDownRight size={12} /> -5% bulan ini
@@ -381,13 +394,13 @@ export default function AdminDashboard() {
           <div className="rounded-3xl p-5 bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xs flex flex-col justify-between">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-[var(--color-text-muted)]">Disposisi Aktif</span>
-              <span className="w-7 h-7 rounded-full bg-amber-50 dark:bg-amber-950 text-amber-600 flex items-center justify-center">
+              <span className="w-7 h-7 rounded-full bg-orange-50 dark:bg-orange-950 text-orange-600 flex items-center justify-center">
                 <Clock size={14} />
               </span>
             </div>
             <div className="my-3">
               <div className="text-3xl font-extrabold font-mono text-[var(--color-text)]">
-                {activeDispatched.length}
+                <CountUp value={activeDispatched.length} />
               </div>
               <div className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1 font-medium">
                 <ArrowUpRight size={12} /> +8% diproses
@@ -408,7 +421,7 @@ export default function AdminDashboard() {
             </div>
             <div className="my-3">
               <div className="text-3xl font-extrabold font-mono text-[var(--color-text)]">
-                {resolvedList.length}
+                <CountUp value={resolvedList.length} />
               </div>
               <div className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1 font-medium">
                 <ArrowUpRight size={12} /> +4% tuntas
@@ -430,31 +443,31 @@ export default function AdminDashboard() {
               </div>
               <div className="flex items-center gap-3 text-[11px] font-medium text-[var(--color-text-muted)]">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-[#1D4ED8]" /> Selesai
+                  <span className="w-2.5 h-2.5 rounded-sm bg-[var(--color-primary)]" /> Selesai
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-[#0B1F3A] dark:bg-slate-700" /> Proses
+                  <span className="w-2.5 h-2.5 rounded-sm bg-[var(--color-gold)]" /> Proses
                 </span>
               </div>
             </div>
 
             {/* Stylized Vertical Bar Chart (Finexy aesthetic) */}
             <div className="mt-8 flex items-end justify-between gap-2 h-44 px-2 border-b border-[var(--color-border)] pb-2">
-              {monthlyStats.map((item) => {
+              {monthlyStats.map((item, idx) => {
                 const total = item.completed + item.inProgress
                 const heightPercent = Math.min(100, Math.round((total / 100) * 100))
                 return (
                   <div key={item.month} className="flex-1 flex flex-col items-center gap-1.5 group">
-                    <div className="w-full max-w-[20px] flex flex-col items-center justify-end rounded-t-lg overflow-hidden h-36 bg-[var(--color-bg-secondary)]">
+                    <div className="grow-y w-full max-w-[20px] flex flex-col items-center justify-end rounded-t-lg overflow-hidden h-36 bg-[var(--color-bg-secondary)]" style={{ '--i': idx }}>
                       {/* Top Bar: Selesai (Bold Blue) */}
                       <div
-                        className="w-full bg-[#1D4ED8] transition-all group-hover:brightness-110"
+                        className="w-full bg-[var(--color-primary)] transition-[filter] group-hover:brightness-110"
                         style={{ height: `${(item.completed / total) * heightPercent}%` }}
                         title={`${item.month}: ${item.completed} Selesai`}
                       />
                       {/* Bottom Bar: In Progress (Navy / Slate) */}
                       <div
-                        className="w-full bg-[#0B1F3A] dark:bg-slate-700 transition-all group-hover:brightness-110"
+                        className="w-full bg-[var(--color-gold)] transition-[filter] group-hover:brightness-110"
                         style={{ height: `${(item.inProgress / total) * heightPercent}%` }}
                         title={`${item.month}: ${item.inProgress} Diproses`}
                       />
@@ -486,7 +499,7 @@ export default function AdminDashboard() {
             </div>
             {/* Progress Bar with Bold Blue Striped Fill */}
             <div className="w-full h-3 rounded-full bg-[var(--color-bg-secondary)] overflow-hidden flex border border-[var(--color-border)]/50">
-              <div className="h-full bg-gradient-to-r from-blue-600 to-indigo-700 w-2/5 rounded-full" />
+              <div className="h-full grow-x bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-gold)] w-2/5 rounded-full" />
               <div className="h-full bg-blue-300 dark:bg-blue-900 w-1/4" />
             </div>
             <div className="flex items-center justify-between text-[11px] font-mono mt-3 text-[var(--color-text-muted)]">
@@ -510,7 +523,7 @@ export default function AdminDashboard() {
             {/* 2 Visual Preview Cards */}
             <div className="grid grid-cols-2 gap-3">
               {/* Card 1: Dark Slate Card */}
-              <div className="rounded-2xl p-3.5 bg-[#0B1F3A] text-white shadow-sm flex flex-col justify-between min-h-[95px]">
+              <div className="rounded-2xl p-3.5 bg-[var(--color-navy)] text-white shadow-sm flex flex-col justify-between min-h-[95px]">
                 <div className="flex items-center justify-between">
                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/20">Aktif</span>
                   <Wrench size={13} className="text-blue-300" />
@@ -522,7 +535,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Card 2: Bold Blue Card */}
-              <div className="rounded-2xl p-3.5 bg-gradient-to-br from-blue-600 to-blue-800 text-white shadow-sm flex flex-col justify-between min-h-[95px]">
+              <div className="rounded-2xl p-3.5 banner-blue !rounded-2xl text-white shadow-sm flex flex-col justify-between min-h-[95px]">
                 <div className="flex items-center justify-between">
                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/20">Aktif</span>
                   <Server size={13} className="text-sky-200" />
@@ -578,7 +591,7 @@ export default function AdminDashboard() {
                   onClick={() => setFilterType('all')}
                   className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                     filterType === 'all'
-                      ? 'bg-[#0B1F3A] text-white dark:bg-[var(--color-primary)]'
+                      ? 'bg-[var(--color-navy)] text-white dark:bg-[var(--color-primary)]'
                       : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
                   }`}
                 >
@@ -611,8 +624,8 @@ export default function AdminDashboard() {
                   onClick={() => setFilterType('suggestion')}
                   className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
                     filterType === 'suggestion'
-                      ? 'bg-amber-600 text-white shadow-xs'
-                      : 'bg-[var(--color-bg-secondary)] text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30'
+                      ? 'bg-orange-600 text-white shadow-xs'
+                      : 'bg-[var(--color-bg-secondary)] text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/30'
                   }`}
                 >
                   <Lightbulb size={12} /> Saran ({typeCounts.suggestion})
@@ -662,7 +675,7 @@ export default function AdminDashboard() {
                                 <MessageSquare size={10} /> Masukan
                               </span>
                             ) : typeKey === 'suggestion' ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-900/60">
                                 <Lightbulb size={10} /> Saran
                               </span>
                             ) : (
@@ -693,7 +706,7 @@ export default function AdminDashboard() {
                           <td className="py-3.5 px-3 whitespace-nowrap">
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-[var(--color-border)] bg-[var(--color-surface)]">
                               <span className={`w-2 h-2 rounded-full ${
-                                isResolved ? 'bg-emerald-500' : isPending ? 'bg-amber-500' : 'bg-blue-500'
+                                isResolved ? 'bg-emerald-500' : isPending ? 'bg-orange-500' : 'bg-blue-500'
                               }`} />
                               {isResolved ? 'Selesai' : isPending ? 'Verifikasi' : 'Diproses'}
                             </span>
@@ -751,12 +764,12 @@ export default function AdminDashboard() {
 
       {/* Modal Disposisi Cepat */}
       {selectedTicket && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 backdrop-in bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="modal-quick-disposition-title"
-            className="bg-[var(--color-surface)] border border-[var(--color-border)] max-w-lg w-full p-6 rounded-3xl shadow-2xl space-y-4 animate-fade-in"
+            className="bg-[var(--color-surface)] border border-[var(--color-border)] max-w-lg w-full p-6 rounded-3xl shadow-2xl space-y-4 modal-in"
           >
             <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
               <div>
@@ -768,7 +781,7 @@ export default function AdminDashboard() {
                     selectedTicket.type === 'feedback'
                       ? 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300'
                       : selectedTicket.type === 'suggestion'
-                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
                       : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
                   }`}>
                     {selectedTicket.type === 'feedback' ? <MessageSquare size={10} /> : selectedTicket.type === 'suggestion' ? <Lightbulb size={10} /> : <AlertTriangle size={10} />}

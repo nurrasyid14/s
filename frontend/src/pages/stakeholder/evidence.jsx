@@ -59,7 +59,7 @@ export default function Evidence() {
                         <li key={c.id}>
                             <Link
                                 to={`/stakeholder/complaints/${c.id}`}
-                                className="block h-full border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl shadow-sm overflow-hidden transition-all hover:shadow-md hover:border-[var(--color-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] group"
+                                className="block h-full border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl shadow-sm overflow-hidden transition hover:shadow-md hover:border-[var(--color-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] group"
                             >
                                 <div className="aspect-[16/10] overflow-hidden bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)]">
                                     <img

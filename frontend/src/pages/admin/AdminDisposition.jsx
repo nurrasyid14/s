@@ -150,7 +150,7 @@ export default function AdminDisposition() {
 
       {/* Modal Disposisi Lengkap */}
       {selectedTicket && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 backdrop-in bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div
             role="dialog"
             aria-modal="true"
