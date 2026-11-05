@@ -4,7 +4,7 @@ import { getCurrentUser, signOut as apiSignOut } from '../services/authApi.js'
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(null)
+  const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -13,7 +13,9 @@ export function AuthProvider({ children }) {
     setLoading(false)
   }, [])
 
-  function login(userData) { setUser(userData) }
+  function login(userData) {
+    setUser(userData)
+  }
 
   function logout(redirectTo = '/') {
     // 1. Hapus token & sesi pengguna dari localStorage seketika (sinkron)
@@ -22,7 +24,7 @@ export function AuthProvider({ children }) {
     setUser(null)
 
     // 2. Beri tahu backend tanpa memblokir redirect
-    apiSignOut().catch(() => {})
+    apiSignOut().catch(() => { })
 
     // 3. Arahkan pengguna ke landing page (atau rute tujuan) secara bersih
     if (window.location.pathname === redirectTo) {
