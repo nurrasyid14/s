@@ -8,11 +8,12 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
+    host: '0.0.0.0',
     port: 5173,
-    open: true,
+    open: false,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8090',
+        target: process.env.VITE_BACKEND_PROXY_TARGET || 'http://127.0.0.1:8090',
         changeOrigin: true,
         secure: false,
       },
@@ -54,4 +55,3 @@ export default defineConfig({
     },
   },
 })
-

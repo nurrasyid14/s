@@ -267,7 +267,7 @@ class ComplaintController extends ResourceController
         try {
             $startTime = microtime(true);
             $response = $client->post(
-                'http://127.0.0.1:8000/analyze',
+                rtrim(env('ML_SERVICE_URL', getenv('ML_SERVICE_URL') ?: 'http://127.0.0.1:8000'), '/') . '/analyze',
                 [
                     'headers' => [
                         'Content-Type' => 'application/json',
@@ -1045,7 +1045,7 @@ class ComplaintController extends ResourceController
             $startTime = microtime(true);
 
             $response = $client->post(
-                'http://127.0.0.1:8000/analyze',
+                rtrim(env('ML_SERVICE_URL', getenv('ML_SERVICE_URL') ?: 'http://127.0.0.1:8000'), '/') . '/analyze',
                 [
                     'headers' => [
                         'Content-Type' => 'application/json',
