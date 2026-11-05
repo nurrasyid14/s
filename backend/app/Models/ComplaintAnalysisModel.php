@@ -21,6 +21,8 @@ class ComplaintAnalysisModel extends Model
         'urgency_reason',
         'sentiment',
         'sentiment_score',
+        'sentiment_scores',
+        'submission_type',
         'requires_review',
         'model_version',
         'inference_time_ms',

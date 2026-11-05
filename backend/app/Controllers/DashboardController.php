@@ -13,7 +13,17 @@ class DashboardController extends ResourceController
      */
     public function unitStats()
     {
+        $user = (new \App\Libraries\ApiTokenService())->userFromAuthorization(
+            $this->request->getHeaderLine('Authorization')
+        );
+
         $unitName = trim((string) ($this->request->getGet('unit') ?? ''));
+
+        // Jika user adalah stakeholder, kunci filter HANYA ke divisi miliknya
+        if ($user && $user['role'] === 'stakeholder' && !empty($user['unit'])) {
+            $unitName = trim($user['unit']);
+        }
+
         $db = \Config\Database::connect();
 
         $latest = '(SELECT complaint_id, MAX(id) AS latest_id FROM complaint_analysis GROUP BY complaint_id) latest_analysis';

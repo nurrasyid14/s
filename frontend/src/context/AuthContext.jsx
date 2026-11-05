@@ -17,14 +17,18 @@ export function AuthProvider({ children }) {
     setUser(userData)
   }
 
-  function logout(redirectTo = '/') {
+  async function logout(redirectTo = '/') {
     // 1. Hapus token & sesi pengguna dari localStorage seketika (sinkron)
     localStorage.removeItem('suaralens_token')
     localStorage.removeItem('suaralens_user')
     setUser(null)
 
     // 2. Beri tahu backend tanpa memblokir redirect
-    apiSignOut().catch(() => { })
+    try {
+      await apiSignOut()
+    } catch {
+      // abaikan error jaringan saat logout
+    }
 
     // 3. Arahkan pengguna ke landing page (atau rute tujuan) secara bersih
     if (window.location.pathname === redirectTo) {

@@ -14,9 +14,11 @@ class SentimentModel:
 
     def predict(self, text: str):
 
-        result = self.pipeline(text)[0]
-
+        predictions = self.pipeline(text, top_k=None, truncation=True)[0]
+        scores = {item["label"]: float(item["score"]) for item in predictions}
+        predicted = max(scores, key=scores.get)
         return {
-            "label": result["label"],
-            "score": float(result["score"])
+            "label": predicted,
+            "score": scores[predicted],
+            "scores": scores,
         }

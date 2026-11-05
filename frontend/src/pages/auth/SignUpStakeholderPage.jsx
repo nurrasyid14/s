@@ -5,6 +5,7 @@ import { UserPlus, AlertCircle, Info } from 'lucide-react'
 import { signUpStakeholder } from '../../services/authApi.js'
 import { useAuth } from '../../context/AuthContext.jsx'
 import AuthShell from '../../components/layout/AuthShell.jsx'
+import { UNITS } from '../../data/units.js'
 
 const label = 'mb-1 block text-xs font-semibold text-[var(--color-text)]'
 
@@ -14,7 +15,7 @@ export default function SignUpStakeholderPage() {
   const navigate = useNavigate()
 
   const [form, setForm] = useState({
-    name: '', email: '', position: '', institution: 'PENS',
+    name: '', email: '', position: '', unit: UNITS[4].name, institution: 'PENS',
     password: '', confirm_password: '', agree: false,
   })
   const [loading, setLoading] = useState(false)
@@ -82,7 +83,27 @@ export default function SignUpStakeholderPage() {
         </div>
         <div>
           <label htmlFor="stakeholder-position" className={label}>{t('auth.position')}</label>
-          <input id="stakeholder-position" name="position" required placeholder="Kepala Bagian / Departemen..." value={form.position} onChange={handleChange} className="input-field rounded-xl" />
+          <input id="stakeholder-position" name="position" required placeholder="Kepala Bagian / Staf Operasional..." value={form.position} onChange={handleChange} className="input-field rounded-xl" />
+        </div>
+        <div>
+          <label htmlFor="stakeholder-unit" className={label}>Unit Kerja / Divisi Resmi PENS</label>
+          <select
+            id="stakeholder-unit"
+            name="unit"
+            required
+            value={form.unit}
+            onChange={handleChange}
+            className="input-field rounded-xl bg-[var(--color-surface)] text-[var(--color-text)]"
+          >
+            {UNITS.map(u => (
+              <option key={u.id} value={u.name}>
+                {u.name} ({u.code})
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-[11px] text-[var(--color-text-muted)]">
+            Dashboard Anda nantinya akan otomatis menampilkan aduan untuk unit ini.
+          </span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div>

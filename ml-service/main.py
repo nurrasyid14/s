@@ -54,6 +54,7 @@ app = FastAPI(
 class ComplaintRequest(BaseModel):
     complaint_id: int
     text: str
+    submission_type: str | None = None
 
 
 class SummaryRequest(BaseModel):
@@ -344,6 +345,18 @@ def analyze(request: ComplaintRequest):
 
             "sentiment_raw_label": sentiment_result.get(
                 "raw_label"
+            ),
+
+            "sentiment_scores": sentiment_result.get(
+                "scores"
+            ),
+
+            "submission_type": (
+                "aspiration"
+                if request.submission_type in ("suggestion", "aspiration")
+                else "feedback"
+                if request.submission_type == "feedback"
+                else "complaint"
             ),
 
 

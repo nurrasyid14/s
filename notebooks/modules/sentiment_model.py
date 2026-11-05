@@ -97,15 +97,27 @@ def classify_sentiment(teks_aduan: str,
     untuk mendeteksi degradasi.
     """
     pipe = load_sentiment_model(model_name)
-    result = pipe(teks_aduan)[0]
+    predictions = pipe(teks_aduan, truncation=True, max_length=512, top_k=None)
+    if predictions and isinstance(predictions[0], list):
+        predictions = predictions[0]
 
-    raw_label = result["label"]
-    mapped    = LABEL_MAP.get(raw_label.lower(), LABEL_MAP.get(raw_label, "neutral"))
+    scores = {}
+    raw_labels = {}
+    for prediction in predictions:
+        raw_label = prediction["label"]
+        mapped = LABEL_MAP.get(raw_label.lower(), LABEL_MAP.get(raw_label, "neutral"))
+        scores[mapped] = round(float(prediction["score"]), 4)
+        raw_labels[mapped] = raw_label
 
+    for sentiment in ("positive", "neutral", "negative"):
+        scores.setdefault(sentiment, 0.0)
+
+    predicted = max(scores, key=scores.get)
     return {
-        "sentiment": mapped,
-        "score":     round(result["score"], 4),
-        "raw_label": raw_label,
+        "sentiment": predicted,
+        "score": scores[predicted],
+        "scores": scores,
+        "raw_label": raw_labels.get(predicted, predicted),
     }
 
 
@@ -130,14 +142,27 @@ def classify_sentiment_batch(texts: list[str],
 
     for i in range(0, len(texts), batch_size):
         batch = texts[i:i + batch_size]
-        preds = pipe(batch, truncation=True, max_length=512)
+        preds = pipe(batch, truncation=True, max_length=512, top_k=None)
         for pred in preds:
-            raw_label = pred["label"]
-            mapped    = LABEL_MAP.get(raw_label.lower(), LABEL_MAP.get(raw_label, "neutral"))
+            if pred and isinstance(pred, list):
+                rows = pred
+            else:
+                rows = [pred]
+            scores = {}
+            raw_labels = {}
+            for row in rows:
+                raw_label = row["label"]
+                mapped = LABEL_MAP.get(raw_label.lower(), LABEL_MAP.get(raw_label, "neutral"))
+                scores[mapped] = round(float(row["score"]), 4)
+                raw_labels[mapped] = raw_label
+            for sentiment in ("positive", "neutral", "negative"):
+                scores.setdefault(sentiment, 0.0)
+            predicted = max(scores, key=scores.get)
             results.append({
-                "sentiment": mapped,
-                "score":     round(pred["score"], 4),
-                "raw_label": raw_label,
+                "sentiment": predicted,
+                "score": scores[predicted],
+                "scores": scores,
+                "raw_label": raw_labels.get(predicted, predicted),
             })
         print(f"  Processed {min(i + batch_size, len(texts))}/{len(texts)}", end="\r")
 

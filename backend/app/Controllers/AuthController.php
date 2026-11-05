@@ -147,6 +147,7 @@ class AuthController extends ResourceController
                     PASSWORD_DEFAULT
                 ),
                 'position'      => $data['position'] ?? null,
+                'unit'          => !empty($data['unit']) ? trim((string) $data['unit']) : null,
                 'institution'   => $data['institution'] ?? null,
                 'role'          => 'stakeholder',
             ]);
@@ -165,6 +166,7 @@ class AuthController extends ResourceController
                 'email'       => $data['email'],
                 'role'        => 'stakeholder',
                 'position'    => $data['position'] ?? null,
+                'unit'        => !empty($data['unit']) ? trim((string) $data['unit']) : null,
                 'institution' => $data['institution'] ?? null,
             ];
 
@@ -236,6 +238,7 @@ class AuthController extends ResourceController
                 'user_role' => $user['user_role'] ?? null,
                 'institution' => $user['institution'] ?? null,
                 'position' => $user['position'] ?? null,
+                'unit'     => $user['unit'] ?? null,
             ];
 
             return $this->respond([

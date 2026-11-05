@@ -20,13 +20,19 @@ import {
 export default function StakeholderDashboard() {
   const { t } = useTranslation()
   const { user } = useAuth()
-  const [selectedUnit, setSelectedUnit] = useState(UNITS[4].name) // Default: Sarpras
+  const [selectedUnit, setSelectedUnit] = useState(user?.unit || UNITS[4].name)
   const [unitStats, setUnitStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [showPdfModal, setShowPdfModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedType, setSelectedType] = useState('all') // 'all' | 'complaint' | 'feedback' | 'suggestion'
+
+  useEffect(() => {
+    if (user?.unit && user?.role !== 'admin') {
+      setSelectedUnit(user.unit)
+    }
+  }, [user])
 
   useEffect(() => {
     loadUnitStats(selectedUnit)
@@ -100,20 +106,27 @@ export default function StakeholderDashboard() {
         </div>
 
         <div className="flex items-center gap-2.5">
-          {/* Unit Selector Pill */}
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xs">
-            <Building2 size={15} className="text-[var(--color-primary)]" />
-            <select
-              id="unit-select"
-              value={selectedUnit}
-              onChange={e => setSelectedUnit(e.target.value)}
-              className="text-xs font-bold text-[var(--color-text)] bg-transparent border-none focus:outline-none cursor-pointer dark:bg-transparent"
-            >
-              {UNITS.map(u => (
-                <option key={u.id} value={u.name}>{u.name} ({u.code})</option>
-              ))}
-            </select>
-          </div>
+          {/* Unit Selector: Stakeholder terkunci ke unitnya, Admin bisa memilih unit */}
+          {user?.role === 'admin' ? (
+            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xs">
+              <Building2 size={15} className="text-[var(--color-primary)]" />
+              <select
+                id="unit-select"
+                value={selectedUnit}
+                onChange={e => setSelectedUnit(e.target.value)}
+                className="text-xs font-bold text-[var(--color-text)] bg-transparent border-none focus:outline-none cursor-pointer dark:bg-transparent"
+              >
+                {UNITS.map(u => (
+                  <option key={u.id} value={u.name}>{u.name} ({u.code})</option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary-soft)] text-[var(--color-primary)] shadow-2xs">
+              <Building2 size={15} />
+              <span className="text-xs font-bold tracking-tight">Divisi: {user?.unit || selectedUnit}</span>
+            </div>
+          )}
 
           <button
             onClick={() => setShowPdfModal(true)}
