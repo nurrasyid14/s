@@ -37,6 +37,7 @@ class Cors extends BaseConfig
         'allowedOrigins' => [
             'http://localhost:5173',
             'http://127.0.0.1:5173',
+            'https://suaralens.vercel.app',
         ],
 
         /**
@@ -50,7 +51,9 @@ class Cors extends BaseConfig
          * E.g.:
          *   - ['https://\w+\.example\.com']
          */
-        'allowedOriginsPatterns' => [],
+        'allowedOriginsPatterns' => [
+            'https://suaralens-[a-z0-9-]+\.vercel\.app',
+        ],
 
         /**
          * Weather to send the `Access-Control-Allow-Credentials` header.

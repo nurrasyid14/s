@@ -1,6 +1,13 @@
 import axios from 'axios'
 
-const BASE_URL = import.meta.env.VITE_API_URL || '/api'
+const configuredBaseUrl = import.meta.env.VITE_API_URL?.trim()
+const BASE_URL = configuredBaseUrl || '/api'
+
+if (import.meta.env.PROD && !configuredBaseUrl) {
+  console.error(
+    'SuaraLens backend is not configured. Set VITE_API_URL in Vercel to the public backend URL, including /api.'
+  )
+}
 
 const api = axios.create({
   baseURL: BASE_URL,
