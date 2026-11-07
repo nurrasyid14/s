@@ -11,7 +11,7 @@ import {
   submitUnitOfficialAnswer, updateComplaintStatus
 } from '../../services/complaintApi.js'
 import { formatDateTime, formatDate, getUrgencyLevel, formatUrgencyScore, WORKFLOW_STEPS } from '../../utils/formatter.js'
-import { useComplaintLabels } from '../../utils/complaintLabels.js'
+import { useComplaintLabels } from '../../utils/ComplaintLabels.js'
 import {
   ArrowLeft, Send, AlertTriangle, Inbox, Check, Printer,
   ShieldCheck, FileText, CheckCircle2, Wrench, MessageSquare, Star
