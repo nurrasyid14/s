@@ -1,0 +1,860 @@
+{
+  "generated_at": "2026-11-07T19:16:21.979864",
+  "total_records": 5150,
+  "date_range": {
+    "start": "2026-03-04",
+    "end": "2026-08-31"
+  },
+  "monthly_trend": [
+    {
+      "bulan": "2026-03",
+      "kategori": "Akademik",
+      "jumlah": 116
+    },
+    {
+      "bulan": "2026-03",
+      "kategori": "Fasilitas",
+      "jumlah": 102
+    },
+    {
+      "bulan": "2026-03",
+      "kategori": "Kemahasiswaan",
+      "jumlah": 51
+    },
+    {
+      "bulan": "2026-03",
+      "kategori": "Keuangan",
+      "jumlah": 175
+    },
+    {
+      "bulan": "2026-03",
+      "kategori": "Sarana IT",
+      "jumlah": 116
+    },
+    {
+      "bulan": "2026-04",
+      "kategori": "Akademik",
+      "jumlah": 124
+    },
+    {
+      "bulan": "2026-04",
+      "kategori": "Fasilitas",
+      "jumlah": 123
+    },
+    {
+      "bulan": "2026-04",
+      "kategori": "Kemahasiswaan",
+      "jumlah": 66
+    },
+    {
+      "bulan": "2026-04",
+      "kategori": "Keuangan",
+      "jumlah": 92
+    },
+    {
+      "bulan": "2026-04",
+      "kategori": "Sarana IT",
+      "jumlah": 98
+    },
+    {
+      "bulan": "2026-05",
+      "kategori": "Akademik",
+      "jumlah": 131
+    },
+    {
+      "bulan": "2026-05",
+      "kategori": "Fasilitas",
+      "jumlah": 114
+    },
+    {
+      "bulan": "2026-05",
+      "kategori": "Kemahasiswaan",
+      "jumlah": 67
+    },
+    {
+      "bulan": "2026-05",
+      "kategori": "Keuangan",
+      "jumlah": 102
+    },
+    {
+      "bulan": "2026-05",
+      "kategori": "Sarana IT",
+      "jumlah": 116
+    },
+    {
+      "bulan": "2026-06",
+      "kategori": "Akademik",
+      "jumlah": 229
+    },
+    {
+      "bulan": "2026-06",
+      "kategori": "Fasilitas",
+      "jumlah": 120
+    },
+    {
+      "bulan": "2026-06",
+      "kategori": "Kemahasiswaan",
+      "jumlah": 54
+    },
+    {
+      "bulan": "2026-06",
+      "kategori": "Keuangan",
+      "jumlah": 95
+    },
+    {
+      "bulan": "2026-06",
+      "kategori": "Sarana IT",
+      "jumlah": 96
+    },
+    {
+      "bulan": "2026-07",
+      "kategori": "Akademik",
+      "jumlah": 229
+    },
+    {
+      "bulan": "2026-07",
+      "kategori": "Fasilitas",
+      "jumlah": 108
+    },
+    {
+      "bulan": "2026-07",
+      "kategori": "Kemahasiswaan",
+      "jumlah": 89
+    },
+    {
+      "bulan": "2026-07",
+      "kategori": "Keuangan",
+      "jumlah": 89
+    },
+    {
+      "bulan": "2026-07",
+      "kategori": "Sarana IT",
+      "jumlah": 90
+    },
+    {
+      "bulan": "2026-08",
+      "kategori": "Akademik",
+      "jumlah": 128
+    },
+    {
+      "bulan": "2026-08",
+      "kategori": "Fasilitas",
+      "jumlah": 116
+    },
+    {
+      "bulan": "2026-08",
+      "kategori": "Kemahasiswaan",
+      "jumlah": 75
+    },
+    {
+      "bulan": "2026-08",
+      "kategori": "Keuangan",
+      "jumlah": 214
+    },
+    {
+      "bulan": "2026-08",
+      "kategori": "Sarana IT",
+      "jumlah": 115
+    }
+  ],
+  "anomalies": [
+    {
+      "bulan": "2026-03",
+      "kategori": "Akademik",
+      "jumlah": 116,
+      "mean": 159.5,
+      "threshold": 208.86,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-04",
+      "kategori": "Akademik",
+      "jumlah": 124,
+      "mean": 159.5,
+      "threshold": 208.86,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-05",
+      "kategori": "Akademik",
+      "jumlah": 131,
+      "mean": 159.5,
+      "threshold": 208.86,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-06",
+      "kategori": "Akademik",
+      "jumlah": 229,
+      "mean": 159.5,
+      "threshold": 208.86,
+      "is_anomaly": true
+    },
+    {
+      "bulan": "2026-07",
+      "kategori": "Akademik",
+      "jumlah": 229,
+      "mean": 159.5,
+      "threshold": 208.86,
+      "is_anomaly": true
+    },
+    {
+      "bulan": "2026-08",
+      "kategori": "Akademik",
+      "jumlah": 128,
+      "mean": 159.5,
+      "threshold": 208.86,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-03",
+      "kategori": "Beasiswa",
+      "jumlah": 46,
+      "mean": 54.33,
+      "threshold": 64.62,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-04",
+      "kategori": "Beasiswa",
+      "jumlah": 55,
+      "mean": 54.33,
+      "threshold": 64.62,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-05",
+      "kategori": "Beasiswa",
+      "jumlah": 65,
+      "mean": 54.33,
+      "threshold": 64.62,
+      "is_anomaly": true
+    },
+    {
+      "bulan": "2026-06",
+      "kategori": "Beasiswa",
+      "jumlah": 49,
+      "mean": 54.33,
+      "threshold": 64.62,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-07",
+      "kategori": "Beasiswa",
+      "jumlah": 41,
+      "mean": 54.33,
+      "threshold": 64.62,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-08",
+      "kategori": "Beasiswa",
+      "jumlah": 70,
+      "mean": 54.33,
+      "threshold": 64.62,
+      "is_anomaly": true
+    },
+    {
+      "bulan": "2026-03",
+      "kategori": "Fasilitas",
+      "jumlah": 102,
+      "mean": 113.83,
+      "threshold": 120.91,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-04",
+      "kategori": "Fasilitas",
+      "jumlah": 123,
+      "mean": 113.83,
+      "threshold": 120.91,
+      "is_anomaly": true
+    },
+    {
+      "bulan": "2026-05",
+      "kategori": "Fasilitas",
+      "jumlah": 114,
+      "mean": 113.83,
+      "threshold": 120.91,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-06",
+      "kategori": "Fasilitas",
+      "jumlah": 120,
+      "mean": 113.83,
+      "threshold": 120.91,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-07",
+      "kategori": "Fasilitas",
+      "jumlah": 108,
+      "mean": 113.83,
+      "threshold": 120.91,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-08",
+      "kategori": "Fasilitas",
+      "jumlah": 116,
+      "mean": 113.83,
+      "threshold": 120.91,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-03",
+      "kategori": "Kebersihan & Lingkungan",
+      "jumlah": 41,
+      "mean": 42.0,
+      "threshold": 47.72,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-04",
+      "kategori": "Kebersihan & Lingkungan",
+      "jumlah": 45,
+      "mean": 42.0,
+      "threshold": 47.72,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-05",
+      "kategori": "Kebersihan & Lingkungan",
+      "jumlah": 33,
+      "mean": 42.0,
+      "threshold": 47.72,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-06",
+      "kategori": "Kebersihan & Lingkungan",
+      "jumlah": 41,
+      "mean": 42.0,
+      "threshold": 47.72,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-07",
+      "kategori": "Kebersihan & Lingkungan",
+      "jumlah": 52,
+      "mean": 42.0,
+      "threshold": 47.72,
+      "is_anomaly": true
+    },
+    {
+      "bulan": "2026-08",
+      "kategori": "Kebersihan & Lingkungan",
+      "jumlah": 40,
+      "mean": 42.0,
+      "threshold": 47.72,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-03",
+      "kategori": "Kemahasiswaan",
+      "jumlah": 51,
+      "mean": 67.0,
+      "threshold": 79.74,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-04",
+      "kategori": "Kemahasiswaan",
+      "jumlah": 66,
+      "mean": 67.0,
+      "threshold": 79.74,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-05",
+      "kategori": "Kemahasiswaan",
+      "jumlah": 67,
+      "mean": 67.0,
+      "threshold": 79.74,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-06",
+      "kategori": "Kemahasiswaan",
+      "jumlah": 54,
+      "mean": 67.0,
+      "threshold": 79.74,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-07",
+      "kategori": "Kemahasiswaan",
+      "jumlah": 89,
+      "mean": 67.0,
+      "threshold": 79.74,
+      "is_anomaly": true
+    },
+    {
+      "bulan": "2026-08",
+      "kategori": "Kemahasiswaan",
+      "jumlah": 75,
+      "mean": 67.0,
+      "threshold": 79.74,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-03",
+      "kategori": "Kerjasama & Mitra",
+      "jumlah": 52,
+      "mean": 52.33,
+      "threshold": 54.76,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-04",
+      "kategori": "Kerjasama & Mitra",
+      "jumlah": 56,
+      "mean": 52.33,
+      "threshold": 54.76,
+      "is_anomaly": true
+    },
+    {
+      "bulan": "2026-05",
+      "kategori": "Kerjasama & Mitra",
+      "jumlah": 51,
+      "mean": 52.33,
+      "threshold": 54.76,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-06",
+      "kategori": "Kerjasama & Mitra",
+      "jumlah": 49,
+      "mean": 52.33,
+      "threshold": 54.76,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-07",
+      "kategori": "Kerjasama & Mitra",
+      "jumlah": 51,
+      "mean": 52.33,
+      "threshold": 54.76,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-08",
+      "kategori": "Kerjasama & Mitra",
+      "jumlah": 55,
+      "mean": 52.33,
+      "threshold": 54.76,
+      "is_anomaly": true
+    },
+    {
+      "bulan": "2026-03",
+      "kategori": "Keuangan",
+      "jumlah": 175,
+      "mean": 127.83,
+      "threshold": 176.46,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-04",
+      "kategori": "Keuangan",
+      "jumlah": 92,
+      "mean": 127.83,
+      "threshold": 176.46,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-05",
+      "kategori": "Keuangan",
+      "jumlah": 102,
+      "mean": 127.83,
+      "threshold": 176.46,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-06",
+      "kategori": "Keuangan",
+      "jumlah": 95,
+      "mean": 127.83,
+      "threshold": 176.46,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-07",
+      "kategori": "Keuangan",
+      "jumlah": 89,
+      "mean": 127.83,
+      "threshold": 176.46,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-08",
+      "kategori": "Keuangan",
+      "jumlah": 214,
+      "mean": 127.83,
+      "threshold": 176.46,
+      "is_anomaly": true
+    },
+    {
+      "bulan": "2026-03",
+      "kategori": "Lainnya",
+      "jumlah": 10,
+      "mean": 9.17,
+      "threshold": 10.06,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-04",
+      "kategori": "Lainnya",
+      "jumlah": 9,
+      "mean": 9.17,
+      "threshold": 10.06,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-05",
+      "kategori": "Lainnya",
+      "jumlah": 8,
+      "mean": 9.17,
+      "threshold": 10.06,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-06",
+      "kategori": "Lainnya",
+      "jumlah": 8,
+      "mean": 9.17,
+      "threshold": 10.06,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-07",
+      "kategori": "Lainnya",
+      "jumlah": 10,
+      "mean": 9.17,
+      "threshold": 10.06,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-08",
+      "kategori": "Lainnya",
+      "jumlah": 10,
+      "mean": 9.17,
+      "threshold": 10.06,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-03",
+      "kategori": "Parkir & Keamanan",
+      "jumlah": 46,
+      "mean": 53.33,
+      "threshold": 62.04,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-04",
+      "kategori": "Parkir & Keamanan",
+      "jumlah": 49,
+      "mean": 53.33,
+      "threshold": 62.04,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-05",
+      "kategori": "Parkir & Keamanan",
+      "jumlah": 46,
+      "mean": 53.33,
+      "threshold": 62.04,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-06",
+      "kategori": "Parkir & Keamanan",
+      "jumlah": 67,
+      "mean": 53.33,
+      "threshold": 62.04,
+      "is_anomaly": true
+    },
+    {
+      "bulan": "2026-07",
+      "kategori": "Parkir & Keamanan",
+      "jumlah": 48,
+      "mean": 53.33,
+      "threshold": 62.04,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-08",
+      "kategori": "Parkir & Keamanan",
+      "jumlah": 64,
+      "mean": 53.33,
+      "threshold": 62.04,
+      "is_anomaly": true
+    },
+    {
+      "bulan": "2026-03",
+      "kategori": "Pelayanan Administrasi",
+      "jumlah": 34,
+      "mean": 30.83,
+      "threshold": 37.04,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-04",
+      "kategori": "Pelayanan Administrasi",
+      "jumlah": 37,
+      "mean": 30.83,
+      "threshold": 37.04,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-05",
+      "kategori": "Pelayanan Administrasi",
+      "jumlah": 39,
+      "mean": 30.83,
+      "threshold": 37.04,
+      "is_anomaly": true
+    },
+    {
+      "bulan": "2026-06",
+      "kategori": "Pelayanan Administrasi",
+      "jumlah": 26,
+      "mean": 30.83,
+      "threshold": 37.04,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-07",
+      "kategori": "Pelayanan Administrasi",
+      "jumlah": 22,
+      "mean": 30.83,
+      "threshold": 37.04,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-08",
+      "kategori": "Pelayanan Administrasi",
+      "jumlah": 27,
+      "mean": 30.83,
+      "threshold": 37.04,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-03",
+      "kategori": "Perpustakaan",
+      "jumlah": 40,
+      "mean": 43.0,
+      "threshold": 46.27,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-04",
+      "kategori": "Perpustakaan",
+      "jumlah": 38,
+      "mean": 43.0,
+      "threshold": 46.27,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-05",
+      "kategori": "Perpustakaan",
+      "jumlah": 42,
+      "mean": 43.0,
+      "threshold": 46.27,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-06",
+      "kategori": "Perpustakaan",
+      "jumlah": 47,
+      "mean": 43.0,
+      "threshold": 46.27,
+      "is_anomaly": true
+    },
+    {
+      "bulan": "2026-07",
+      "kategori": "Perpustakaan",
+      "jumlah": 46,
+      "mean": 43.0,
+      "threshold": 46.27,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-08",
+      "kategori": "Perpustakaan",
+      "jumlah": 45,
+      "mean": 43.0,
+      "threshold": 46.27,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-03",
+      "kategori": "Sarana IT",
+      "jumlah": 116,
+      "mean": 105.17,
+      "threshold": 115.94,
+      "is_anomaly": true
+    },
+    {
+      "bulan": "2026-04",
+      "kategori": "Sarana IT",
+      "jumlah": 98,
+      "mean": 105.17,
+      "threshold": 115.94,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-05",
+      "kategori": "Sarana IT",
+      "jumlah": 116,
+      "mean": 105.17,
+      "threshold": 115.94,
+      "is_anomaly": true
+    },
+    {
+      "bulan": "2026-06",
+      "kategori": "Sarana IT",
+      "jumlah": 96,
+      "mean": 105.17,
+      "threshold": 115.94,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-07",
+      "kategori": "Sarana IT",
+      "jumlah": 90,
+      "mean": 105.17,
+      "threshold": 115.94,
+      "is_anomaly": false
+    },
+    {
+      "bulan": "2026-08",
+      "kategori": "Sarana IT",
+      "jumlah": 115,
+      "mean": 105.17,
+      "threshold": 115.94,
+      "is_anomaly": false
+    }
+  ],
+  "stakeholder_monthly": [
+    {
+      "bulan": "2026-03",
+      "stakeholder_type": "Mahasiswa",
+      "jumlah": 542
+    },
+    {
+      "bulan": "2026-03",
+      "stakeholder_type": "Masyarakat Umum",
+      "jumlah": 93
+    },
+    {
+      "bulan": "2026-03",
+      "stakeholder_type": "Mitra",
+      "jumlah": 67
+    },
+    {
+      "bulan": "2026-03",
+      "stakeholder_type": "Orang Tua",
+      "jumlah": 127
+    },
+    {
+      "bulan": "2026-04",
+      "stakeholder_type": "Mahasiswa",
+      "jumlah": 495
+    },
+    {
+      "bulan": "2026-04",
+      "stakeholder_type": "Masyarakat Umum",
+      "jumlah": 108
+    },
+    {
+      "bulan": "2026-04",
+      "stakeholder_type": "Mitra",
+      "jumlah": 79
+    },
+    {
+      "bulan": "2026-04",
+      "stakeholder_type": "Orang Tua",
+      "jumlah": 110
+    },
+    {
+      "bulan": "2026-05",
+      "stakeholder_type": "Mahasiswa",
+      "jumlah": 528
+    },
+    {
+      "bulan": "2026-05",
+      "stakeholder_type": "Masyarakat Umum",
+      "jumlah": 105
+    },
+    {
+      "bulan": "2026-05",
+      "stakeholder_type": "Mitra",
+      "jumlah": 71
+    },
+    {
+      "bulan": "2026-05",
+      "stakeholder_type": "Orang Tua",
+      "jumlah": 110
+    },
+    {
+      "bulan": "2026-06",
+      "stakeholder_type": "Mahasiswa",
+      "jumlah": 577
+    },
+    {
+      "bulan": "2026-06",
+      "stakeholder_type": "Masyarakat Umum",
+      "jumlah": 114
+    },
+    {
+      "bulan": "2026-06",
+      "stakeholder_type": "Mitra",
+      "jumlah": 80
+    },
+    {
+      "bulan": "2026-06",
+      "stakeholder_type": "Orang Tua",
+      "jumlah": 110
+    },
+    {
+      "bulan": "2026-07",
+      "stakeholder_type": "Mahasiswa",
+      "jumlah": 581
+    },
+    {
+      "bulan": "2026-07",
+      "stakeholder_type": "Masyarakat Umum",
+      "jumlah": 112
+    },
+    {
+      "bulan": "2026-07",
+      "stakeholder_type": "Mitra",
+      "jumlah": 65
+    },
+    {
+      "bulan": "2026-07",
+      "stakeholder_type": "Orang Tua",
+      "jumlah": 117
+    },
+    {
+      "bulan": "2026-08",
+      "stakeholder_type": "Mahasiswa",
+      "jumlah": 645
+    },
+    {
+      "bulan": "2026-08",
+      "stakeholder_type": "Masyarakat Umum",
+      "jumlah": 93
+    },
+    {
+      "bulan": "2026-08",
+      "stakeholder_type": "Mitra",
+      "jumlah": 81
+    },
+    {
+      "bulan": "2026-08",
+      "stakeholder_type": "Orang Tua",
+      "jumlah": 140
+    }
+  ]
+}

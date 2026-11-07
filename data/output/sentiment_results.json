@@ -1,0 +1,270 @@
+{
+  "generated_at": "2026-11-07T19:15:58.582907",
+  "model_used": "w11wo/indonesian-roberta-base-sentiment-classifier",
+  "sample_size": 30,
+  "accuracy_pct": 56.67,
+  "classification_report": {
+    "negative": {
+      "precision": 0.4,
+      "recall": 0.2,
+      "f1-score": 0.26666666666666666,
+      "support": 10.0
+    },
+    "neutral": {
+      "precision": 0.42857142857142855,
+      "recall": 0.6,
+      "f1-score": 0.5,
+      "support": 10.0
+    },
+    "positive": {
+      "precision": 0.8181818181818182,
+      "recall": 0.9,
+      "f1-score": 0.8571428571428571,
+      "support": 10.0
+    },
+    "accuracy": 0.5666666666666667,
+    "macro avg": {
+      "precision": 0.5489177489177489,
+      "recall": 0.5666666666666668,
+      "f1-score": 0.5412698412698412,
+      "support": 30.0
+    },
+    "weighted avg": {
+      "precision": 0.5489177489177488,
+      "recall": 0.5666666666666667,
+      "f1-score": 0.5412698412698412,
+      "support": 30.0
+    }
+  },
+  "kanal_analysis": {
+    "Informal": {
+      "n": 11,
+      "accuracy_pct": 54.5
+    },
+    "Formal": {
+      "n": 12,
+      "accuracy_pct": 50.0
+    },
+    "Lainnya": {
+      "n": 7,
+      "accuracy_pct": 71.4
+    }
+  },
+  "results": [
+    {
+      "id_aduan": "SL-001332",
+      "sentiment_true": "negative",
+      "sentiment_pred": "neutral",
+      "sentiment_score": 0.7262,
+      "kanal": "Web Form"
+    },
+    {
+      "id_aduan": "SL-002306",
+      "sentiment_true": "negative",
+      "sentiment_pred": "neutral",
+      "sentiment_score": 0.8984,
+      "kanal": "Email"
+    },
+    {
+      "id_aduan": "SL-001832",
+      "sentiment_true": "negative",
+      "sentiment_pred": "negative",
+      "sentiment_score": 0.8511,
+      "kanal": "Email"
+    },
+    {
+      "id_aduan": "SL-004348",
+      "sentiment_true": "negative",
+      "sentiment_pred": "neutral",
+      "sentiment_score": 0.8987,
+      "kanal": "Email"
+    },
+    {
+      "id_aduan": "SL-001128",
+      "sentiment_true": "negative",
+      "sentiment_pred": "neutral",
+      "sentiment_score": 0.5315,
+      "kanal": "Web Form"
+    },
+    {
+      "id_aduan": "SL-100053",
+      "sentiment_true": "negative",
+      "sentiment_pred": "neutral",
+      "sentiment_score": 0.7974,
+      "kanal": "Aplikasi Mobile"
+    },
+    {
+      "id_aduan": "SL-004060",
+      "sentiment_true": "negative",
+      "sentiment_pred": "positive",
+      "sentiment_score": 0.8963,
+      "kanal": "WhatsApp"
+    },
+    {
+      "id_aduan": "SL-000398",
+      "sentiment_true": "negative",
+      "sentiment_pred": "neutral",
+      "sentiment_score": 0.9622,
+      "kanal": "Email"
+    },
+    {
+      "id_aduan": "SL-100106",
+      "sentiment_true": "negative",
+      "sentiment_pred": "neutral",
+      "sentiment_score": 0.7231,
+      "kanal": null
+    },
+    {
+      "id_aduan": "SL-002119",
+      "sentiment_true": "negative",
+      "sentiment_pred": "negative",
+      "sentiment_score": 0.9781,
+      "kanal": "WhatsApp"
+    },
+    {
+      "id_aduan": "SL-004580",
+      "sentiment_true": "neutral",
+      "sentiment_pred": "positive",
+      "sentiment_score": 0.86,
+      "kanal": "WhatsApp"
+    },
+    {
+      "id_aduan": "SL-003137",
+      "sentiment_true": "neutral",
+      "sentiment_pred": "neutral",
+      "sentiment_score": 0.5249,
+      "kanal": "Aplikasi Mobile"
+    },
+    {
+      "id_aduan": "SL-100039",
+      "sentiment_true": "neutral",
+      "sentiment_pred": "neutral",
+      "sentiment_score": 0.9805,
+      "kanal": "Web Form"
+    },
+    {
+      "id_aduan": "SL-004355",
+      "sentiment_true": "neutral",
+      "sentiment_pred": "negative",
+      "sentiment_score": 0.8433,
+      "kanal": "WhatsApp"
+    },
+    {
+      "id_aduan": "SL-000833",
+      "sentiment_true": "neutral",
+      "sentiment_pred": "negative",
+      "sentiment_score": 0.5533,
+      "kanal": "WhatsApp"
+    },
+    {
+      "id_aduan": "SL-001125",
+      "sentiment_true": "neutral",
+      "sentiment_pred": "neutral",
+      "sentiment_score": 0.9391,
+      "kanal": "WhatsApp"
+    },
+    {
+      "id_aduan": "SL-002731",
+      "sentiment_true": "neutral",
+      "sentiment_pred": "neutral",
+      "sentiment_score": 0.7039,
+      "kanal": "Datang Langsung"
+    },
+    {
+      "id_aduan": "SL-000885",
+      "sentiment_true": "neutral",
+      "sentiment_pred": "neutral",
+      "sentiment_score": 0.9628,
+      "kanal": "Email"
+    },
+    {
+      "id_aduan": "SL-001077",
+      "sentiment_true": "neutral",
+      "sentiment_pred": "neutral",
+      "sentiment_score": 0.7446,
+      "kanal": "Web Form"
+    },
+    {
+      "id_aduan": "SL-003044",
+      "sentiment_true": "neutral",
+      "sentiment_pred": "negative",
+      "sentiment_score": 0.6657,
+      "kanal": "WhatsApp"
+    },
+    {
+      "id_aduan": "SL-004881",
+      "sentiment_true": "positive",
+      "sentiment_pred": "positive",
+      "sentiment_score": 0.8621,
+      "kanal": "Email"
+    },
+    {
+      "id_aduan": "SL-004915",
+      "sentiment_true": "positive",
+      "sentiment_pred": "positive",
+      "sentiment_score": 0.7285,
+      "kanal": "Web Form"
+    },
+    {
+      "id_aduan": "SL-002430",
+      "sentiment_true": "positive",
+      "sentiment_pred": "positive",
+      "sentiment_score": 0.8809,
+      "kanal": "WhatsApp"
+    },
+    {
+      "id_aduan": "SL-004466",
+      "sentiment_true": "positive",
+      "sentiment_pred": "positive",
+      "sentiment_score": 0.4665,
+      "kanal": "Media Sosial"
+    },
+    {
+      "id_aduan": "SL-002360",
+      "sentiment_true": "positive",
+      "sentiment_pred": "positive",
+      "sentiment_score": 0.8063,
+      "kanal": "WhatsApp"
+    },
+    {
+      "id_aduan": "SL-002289",
+      "sentiment_true": "positive",
+      "sentiment_pred": "positive",
+      "sentiment_score": 0.8862,
+      "kanal": "WhatsApp"
+    },
+    {
+      "id_aduan": "SL-002769",
+      "sentiment_true": "positive",
+      "sentiment_pred": "positive",
+      "sentiment_score": 0.9123,
+      "kanal": "WhatsApp"
+    },
+    {
+      "id_aduan": "SL-004560",
+      "sentiment_true": "positive",
+      "sentiment_pred": "neutral",
+      "sentiment_score": 0.5636,
+      "kanal": "Web Form"
+    },
+    {
+      "id_aduan": "SL-004647",
+      "sentiment_true": "positive",
+      "sentiment_pred": "positive",
+      "sentiment_score": 0.9852,
+      "kanal": "Kotak Saran"
+    },
+    {
+      "id_aduan": "SL-100143",
+      "sentiment_true": "positive",
+      "sentiment_pred": "positive",
+      "sentiment_score": 0.9477,
+      "kanal": "Kotak Saran"
+    }
+  ],
+  "caveats": [
+    "Label sentiment_true adalah label sintetis dari generator data, bukan anotasi manusia.",
+    "Evaluasi formal dilakukan di NB 05 dengan 500 sampel.",
+    "Performa pada teks informal belum tervalidasi dengan dataset representatif."
+  ]
+}

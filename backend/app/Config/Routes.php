@@ -7,6 +7,9 @@ use CodeIgniter\Router\RouteCollection;
  */
 
 $routes->get('/', 'Home::index');
+$routes->get('health', static function () {
+    return service('response')->setJSON(['status' => 'ok', 'service' => 'suaralens-backend']);
+});
 
 $routes->group('api', function ($routes) {
 
@@ -49,6 +52,7 @@ $routes->group('api', function ($routes) {
     });
 
     $routes->get('unit/stats', 'DashboardController::unitStats', ['filter' => 'authRole:stakeholder,admin']);
+    $routes->get('student/dashboard', 'DashboardController::studentDashboard');
     $routes->get('analytics/weekly', 'AnalyticsController::weekly', ['filter' => 'authRole:admin']);
 
     $routes->group('analytics', ['filter' => 'authRole:stakeholder,admin'], function ($routes) {

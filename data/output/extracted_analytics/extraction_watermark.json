@@ -1,0 +1,10 @@
+{
+    "pipeline_version": "1.2.0",
+    "watermark_column": "COALESCE(updated_at, created_at)",
+    "last_watermark": "2026-11-02 02:14:06",
+    "last_extracted_at": "2026-11-07T21:59:02+07:00",
+    "last_extracted_count": 0,
+    "cumulative_records_extracted": 2,
+    "status": "success",
+    "error_message": null
+}

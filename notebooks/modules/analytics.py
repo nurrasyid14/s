@@ -41,6 +41,9 @@ def compute_sla_breach_by_category(df: pd.DataFrame) -> list[dict]:
     list[dict] : [{"kategori": str, "total": int, "breach": int, "breach_pct": float}]
                  Diurutkan dari breach_pct tertinggi.
     """
+    if df.empty or "kategori_true" not in df.columns or "sla_breach_true" not in df.columns:
+        return []
+
     grouped = (
         df.groupby("kategori_true")["sla_breach_true"]
         .agg(total="count", breach="sum")
@@ -59,6 +62,9 @@ def compute_sla_breach_by_urgency(df: pd.DataFrame) -> list[dict]:
     -------
     list[dict] : [{"urgency": str, "total": int, "breach": int, "breach_pct": float}]
     """
+    if df.empty or "urgency_label_true" not in df.columns or "sla_breach_true" not in df.columns:
+        return []
+
     order = {"Low": 0, "Medium": 1, "High": 2, "Critical": 3}
     grouped = (
         df.groupby("urgency_label_true")["sla_breach_true"]
@@ -80,7 +86,13 @@ def compute_avg_resolution_time(df: pd.DataFrame) -> list[dict]:
     list[dict] : [{"kategori": str, "avg_days": float, "count": int}]
                  Diurutkan dari avg_days tertinggi.
     """
+    if df.empty or "status" not in df.columns:
+        return []
+
     done = df[df["status"] == "Selesai"].copy()
+    if done.empty or "tanggal_masuk" not in done.columns or "tanggal_selesai" not in done.columns:
+        return []
+
     done["tanggal_masuk"]   = pd.to_datetime(done["tanggal_masuk"])
     done["tanggal_selesai"] = pd.to_datetime(done["tanggal_selesai"])
     done["resolution_days"] = (done["tanggal_selesai"] - done["tanggal_masuk"]).dt.days
@@ -223,20 +235,18 @@ def build_sla_analytics_payload(df: pd.DataFrame) -> dict:
     """
     Build payload JSON lengkap untuk SLA analytics.
     Siap disimpan ke data/output/sla_analytics.json dan di-serve via API.
-
-    Returns
-    -------
-    dict dengan struktur:
-    {
-        "generated_at": str (ISO),
-        "total_records": int,
-        "overall_breach_pct": float,
-        "by_category": [...],
-        "by_urgency": [...],
-        "avg_resolution_days": [...],
-    }
     """
-    overall_breach = round(df["sla_breach_true"].mean() * 100, 2)
+    if df.empty or "sla_breach_true" not in df.columns:
+        return {
+            "generated_at":        datetime.now().isoformat(),
+            "total_records":       0,
+            "overall_breach_pct":  0.0,
+            "by_category":         [],
+            "by_urgency":          [],
+            "avg_resolution_days": [],
+        }
+
+    overall_breach = round(float(df["sla_breach_true"].mean() * 100), 2)
     return {
         "generated_at":        datetime.now().isoformat(),
         "total_records":       len(df),
@@ -251,26 +261,30 @@ def build_trend_analytics_payload(df: pd.DataFrame, top_n: int = 5) -> dict:
     """
     Build payload JSON lengkap untuk trend analytics.
     Siap disimpan ke data/output/trend_analytics.json dan di-serve via API.
-
-    Returns
-    -------
-    dict dengan struktur:
-    {
-        "generated_at": str,
-        "total_records": int,
-        "date_range": {"start": str, "end": str},
-        "monthly_trend": [...],
-        "anomalies": [...],
-        "stakeholder_monthly": [...],
-    }
     """
+    if df.empty or "tanggal_masuk" not in df.columns:
+        return {
+            "generated_at":       datetime.now().isoformat(),
+            "total_records":      0,
+            "date_range": {
+                "start": None,
+                "end":   None,
+            },
+            "monthly_trend":      [],
+            "anomalies":          [],
+            "stakeholder_monthly": [],
+        }
+
+    df = df.copy()
     df["tanggal_masuk"] = pd.to_datetime(df["tanggal_masuk"])
+    min_date = df["tanggal_masuk"].min()
+    max_date = df["tanggal_masuk"].max()
     return {
         "generated_at":       datetime.now().isoformat(),
         "total_records":      len(df),
         "date_range": {
-            "start": df["tanggal_masuk"].min().strftime("%Y-%m-%d"),
-            "end":   df["tanggal_masuk"].max().strftime("%Y-%m-%d"),
+            "start": min_date.strftime("%Y-%m-%d") if pd.notna(min_date) else None,
+            "end":   max_date.strftime("%Y-%m-%d") if pd.notna(max_date) else None,
         },
         "monthly_trend":      compute_monthly_trend(df, top_n=top_n),
         "anomalies":          detect_trend_anomalies(df),

@@ -90,9 +90,10 @@ class AuthController extends ResourceController
                 'user'    => $safeUser,
             ]);
         } catch (\Throwable $e) {
+            log_message('error', 'Gagal registrasi user: ' . $e->getMessage());
             return $this->respond([
                 'status'  => false,
-                'message' => 'Terjadi kesalahan pada server: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada server saat registrasi.',
             ], 500);
         }
     }
@@ -177,9 +178,10 @@ class AuthController extends ResourceController
                 'user'    => $safeUser,
             ]);
         } catch (\Throwable $e) {
+            log_message('error', 'Gagal registrasi user: ' . $e->getMessage());
             return $this->respond([
                 'status'  => false,
-                'message' => 'Terjadi kesalahan pada server: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada server saat registrasi.',
             ], 500);
         }
     }
@@ -248,9 +250,10 @@ class AuthController extends ResourceController
                 'user'    => $safeUser,
             ]);
         } catch (\Throwable $e) {
+            log_message('error', 'Gagal login: ' . $e->getMessage());
             return $this->respond([
                 'status'  => false,
-                'message' => 'Terjadi kesalahan saat login: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan pada server saat login.',
             ], 500);
         }
     }

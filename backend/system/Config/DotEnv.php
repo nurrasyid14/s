@@ -60,7 +60,7 @@ class DotEnv
         }
 
         // Ensure the file is readable
-        if (! is_readable($this->path)) {
+        if (! is_readable($this->path) && @file_get_contents($this->path) === false) {
             throw new InvalidArgumentException("The .env file is not readable: {$this->path}");
         }
 

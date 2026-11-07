@@ -59,6 +59,7 @@ backend/writable/session/*
 backend/writable/uploads/*
 backend/writable/heap/*
 backend/writable/queue/*
+backend/writable/locks/*
 
 # Keep directory structure
 !backend/writable/cache/.gitkeep
@@ -68,6 +69,7 @@ backend/writable/queue/*
 !backend/writable/uploads/.gitkeep
 !backend/writable/heap/.gitkeep
 !backend/writable/queue/.gitkeep
+!backend/writable/locks/.gitkeep
 
 # PHPUnit / coverage
 backend/coverage/
@@ -212,6 +214,7 @@ temp/
 
 # Scheduled analytics snapshots (backend: php spark analytics:refresh-weekly)
 data/output/weekly_analytics/
+data/output/extracted_analytics/
 
 reports/generated/*
 exports/*

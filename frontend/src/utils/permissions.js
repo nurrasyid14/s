@@ -5,6 +5,7 @@
 export const ROLES = {
   USER: 'user',
   STAKEHOLDER: 'stakeholder',
+  ADMIN: 'admin',
 }
 
 /**
@@ -41,11 +42,29 @@ export function isUser() {
 }
 
 /**
+ * Check if current user is an administrator
+ */
+export function isAdmin() {
+  return getCurrentRole() === ROLES.ADMIN
+}
+
+/**
  * HOC / guard: redirect if not authenticated
  * Used in React Router loader or component
  */
 export function requireAuth(redirectTo = '/signin') {
   if (!isAuthenticated()) {
+    window.location.href = redirectTo
+    return false
+  }
+  return true
+}
+
+/**
+ * HOC / guard: redirect if not administrator
+ */
+export function requireAdmin(redirectTo = '/admin/signin') {
+  if (!isAuthenticated() || !isAdmin()) {
     window.location.href = redirectTo
     return false
   }

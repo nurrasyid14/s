@@ -1,4 +1,7 @@
+import api from './api.js'
 import { UNITS } from '../data/units.js'
+
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 /**
  * Standard 7 Workflow Stages for Aduan (Complaints)
@@ -187,6 +190,17 @@ const DEFAULT_UNIT_DATA = {
  * Fetch and assemble student transparency analytics with 3-type breakdown
  */
 export async function getStudentDashboardData() {
+  if (!USE_MOCK) {
+    try {
+      const res = await api.get('/student/dashboard')
+      if (res.data?.status && res.data?.summary) {
+        return res.data
+      }
+    } catch (e) {
+      console.warn('Gagal memuat dashboard mahasiswa dari backend API, menggunakan benchmark lokal:', e)
+    }
+  }
+
   let localComplaints = []
   try {
     const raw = localStorage.getItem('suaralens_mock_complaints_v2')
