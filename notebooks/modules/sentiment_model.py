@@ -1,181 +1,73 @@
 """
 sentiment_model.py
 ==================
-Sentiment analysis menggunakan model pretrained HuggingFace
-untuk Bahasa Indonesia.
-
-Model default: w11wo/indonesian-roberta-base-sentiment-classifier
-Label output model: positif / netral / negatif
-Mapping ke schema SuaraLens: positive / neutral / negative
-
-Dapat diimport dari notebook lain:
-    from modules.sentiment_model import classify_sentiment, load_sentiment_model
+Sentiment analysis menggunakan model pretrained HuggingFace untuk Bahasa Indonesia.
+Kompatibel penuh dengan notebook 04 & 05 serta backend service SuaraLens.
 """
 
-import json
-from typing import Optional
+import sys
+from pathlib import Path
+from typing import Optional, List, Dict, Any
 
-# ── Konfigurasi Model ─────────────────────────────────────────────────────────
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_ML_SERVICE_DIR = _PROJECT_ROOT / "ml-service"
+if str(_ML_SERVICE_DIR) not in sys.path:
+    sys.path.insert(0, str(_ML_SERVICE_DIR))
+
+from app.services.sentiment import classify_sentiment, LABEL_MAP
+from app.core.model_loader import load_sentiment_model, get_sentiment_pipeline
 
 MODEL_NAME = "w11wo/indonesian-roberta-base-sentiment-classifier"
 
-# Mapping label model → schema SuaraLens
-LABEL_MAP = {
-    "positif":  "positive",
-    "negatif":  "negative",
-    "netral":   "neutral",
-    "positive": "positive",
-    "negative": "negative",
-    "neutral":  "neutral",
-    "LABEL_0":  "negative",   # fallback kalau model pakai LABEL_x
-    "LABEL_1":  "neutral",
-    "LABEL_2":  "positive",
-}
 
-# ── Model Singleton ───────────────────────────────────────────────────────────
-
-_pipeline = None
-
-def load_sentiment_model(model_name: str = MODEL_NAME):
-    """
-    Load HuggingFace text-classification pipeline (singleton).
-
-    Parameters
-    ----------
-    model_name : str — nama model HuggingFace
-
-    Returns
-    -------
-    transformers.Pipeline
-    """
-    global _pipeline
-    if _pipeline is None:
-        try:
-            from transformers import pipeline as hf_pipeline
-            print(f"[INFO] Loading sentiment model: {model_name} ...")
-            _pipeline = hf_pipeline(
-                task="text-classification",
-                model=model_name,
-                tokenizer=model_name,
-                max_length=512,
-                truncation=True,
-                device=-1   # CPU; ganti ke 0 jika ada GPU
-            )
-            print(f"[INFO] Sentiment model loaded.")
-        except Exception as e:
-            print(f"[ERROR] Gagal load model: {e}")
-            print("  Install: pip install transformers torch")
-            raise
-    return _pipeline
-
-
-# ── Fungsi Utama ─────────────────────────────────────────────────────────────
-
-def classify_sentiment(teks_aduan: str,
-                       model_name: str = MODEL_NAME) -> dict:
-    """
-    Klasifikasikan sentimen satu teks aduan.
-
-    Parameters
-    ----------
-    teks_aduan : str
-    model_name : str — nama model HuggingFace
-
-    Returns
-    -------
-    dict : {
-        "sentiment": "positive" | "neutral" | "negative",
-        "score":     float (0-1, kepercayaan model),
-        "raw_label": str (label asli model sebelum mapping)
-    }
-
-    Notes
-    -----
-    Model dilatih pada corpus Indonesia formal. Teks informal
-    (singkatan, ALL CAPS, emoji) mungkin menurunkan akurasi.
-    Cek performa pada subset kanal WhatsApp/Medsos vs Email/Web Form
-    untuk mendeteksi degradasi.
-    """
-    pipe = load_sentiment_model(model_name)
-    predictions = pipe(teks_aduan, truncation=True, max_length=512, top_k=None)
-    if predictions and isinstance(predictions[0], list):
-        predictions = predictions[0]
-
-    scores = {}
-    raw_labels = {}
-    for prediction in predictions:
-        raw_label = prediction["label"]
-        mapped = LABEL_MAP.get(raw_label.lower(), LABEL_MAP.get(raw_label, "neutral"))
-        scores[mapped] = round(float(prediction["score"]), 4)
-        raw_labels[mapped] = raw_label
-
-    for sentiment in ("positive", "neutral", "negative"):
-        scores.setdefault(sentiment, 0.0)
-
-    predicted = max(scores, key=scores.get)
-    return {
-        "sentiment": predicted,
-        "score": scores[predicted],
-        "scores": scores,
-        "raw_label": raw_labels.get(predicted, predicted),
-    }
-
-
-def classify_sentiment_batch(texts: list[str],
+def classify_sentiment_batch(texts: List[str],
                               model_name: str = MODEL_NAME,
-                              batch_size: int = 32) -> list[dict]:
+                              batch_size: int = 32) -> List[Dict[str, Any]]:
     """
-    Klasifikasi sentimen batch — lebih efisien dari panggilan satu-satu.
-
-    Parameters
-    ----------
-    texts      : list teks
-    model_name : nama model
-    batch_size : ukuran batch untuk inference
-
-    Returns
-    -------
-    list[dict] — satu entry per teks (sama format dengan classify_sentiment)
+    Klasifikasi sentimen batch — efisien untuk evaluasi dataset besar.
     """
-    pipe    = load_sentiment_model(model_name)
+    pipe = get_sentiment_pipeline()
+    if pipe is None:
+        pipe = load_sentiment_model(model_name)
+
     results = []
-
-    for i in range(0, len(texts), batch_size):
-        batch = texts[i:i + batch_size]
-        preds = pipe(batch, truncation=True, max_length=512, top_k=None)
-        for pred in preds:
-            if pred and isinstance(pred, list):
-                rows = pred
-            else:
-                rows = [pred]
-            scores = {}
-            raw_labels = {}
-            for row in rows:
-                raw_label = row["label"]
-                mapped = LABEL_MAP.get(raw_label.lower(), LABEL_MAP.get(raw_label, "neutral"))
-                scores[mapped] = round(float(row["score"]), 4)
-                raw_labels[mapped] = raw_label
-            for sentiment in ("positive", "neutral", "negative"):
-                scores.setdefault(sentiment, 0.0)
-            predicted = max(scores, key=scores.get)
+    if pipe is not None:
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i:i + batch_size]
+            try:
+                preds = pipe(batch, truncation=True, max_length=512)
+                for pred in preds:
+                    raw_label = pred["label"]
+                    mapped = LABEL_MAP.get(raw_label.lower(), LABEL_MAP.get(raw_label, "neutral"))
+                    results.append({
+                        "sentiment": mapped,
+                        "score": round(float(pred["score"]), 4),
+                        "raw_label": raw_label,
+                    })
+            except Exception as e:
+                # Fallback per text
+                for t in batch:
+                    res = classify_sentiment(t)
+                    results.append({
+                        "sentiment": res["sentiment"],
+                        "score": res["score"],
+                        "raw_label": res["sentiment"],
+                    })
+    else:
+        # Fallback heuristic
+        for t in texts:
+            res = classify_sentiment(t)
             results.append({
-                "sentiment": predicted,
-                "score": scores[predicted],
-                "scores": scores,
-                "raw_label": raw_labels.get(predicted, predicted),
+                "sentiment": res["sentiment"],
+                "score": res["score"],
+                "raw_label": res["sentiment"],
             })
-        print(f"  Processed {min(i + batch_size, len(texts))}/{len(texts)}", end="\r")
 
-    print()
     return results
 
 
-if __name__ == "__main__":
-    test_cases = [
-        "Layanan administrasi sangat cepat dan ramah, terima kasih!",
-        "Wifi kampus sering mati, sangat mengganggu kegiatan belajar.",
-        "Jadwal ujian sudah diumumkan kemarin.",
-    ]
-    for text in test_cases:
-        res = classify_sentiment(text)
-        print(f"'{text[:50]}...' → {res['sentiment']} ({res['score']:.3f})")
+__all__ = [
+    "classify_sentiment", "classify_sentiment_batch",
+    "load_sentiment_model", "get_sentiment_pipeline",
+    "LABEL_MAP", "MODEL_NAME"
+]

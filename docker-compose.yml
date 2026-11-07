@@ -4,18 +4,21 @@ services:
     container_name: suaralens-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: suaralens
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-suaralens}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
-      - "5432:5432"
+      - "${DB_PORT_BINDING:-127.0.0.1:5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - suaralens-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d suaralens"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-suaralens}"]
       interval: 5s
       timeout: 5s
       retries: 5
+      start_period: 5s
 
   ml-service:
     build:
@@ -24,18 +27,26 @@ services:
     container_name: suaralens-ml
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${ML_PORT:-8000}:8000"
     environment:
-      PYTHONPATH: /app/notebooks:/app
+      PYTHONPATH: /app/ml-service:/app
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3.5:4b}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:8b}
+      OLLAMA_REASONING_EFFORT: ${OLLAMA_REASONING_EFFORT:-none}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./ml-service:/app/ml-service
-      - ./notebooks:/app/notebooks
       - hf_cache:/root/.cache/huggingface
+    networks:
+      - suaralens-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   backend:
     build:
@@ -47,26 +58,37 @@ services:
       db:
         condition: service_healthy
       ml-service:
-        condition: service_started
+        condition: service_healthy
     ports:
-      - "8090:8090"
+      - "${BACKEND_PORT:-8090}:8090"
     environment:
-      CI_ENVIRONMENT: development
-      app.baseURL: "http://localhost:8090/"
+      CI_ENVIRONMENT: ${CI_ENVIRONMENT:-development}
+      app.baseURL: "${APP_BASE_URL:-http://localhost:8090/}"
       DB_HOST: db
       DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASS: postgres
-      DB_NAME: suaralens
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASS: ${POSTGRES_PASSWORD:-postgres}
+      DB_NAME: ${POSTGRES_DB:-suaralens}
       database.default.hostname: db
-      database.default.database: suaralens
-      database.default.username: postgres
-      database.default.password: postgres
+      database.default.database: ${POSTGRES_DB:-suaralens}
+      database.default.username: ${POSTGRES_USER:-postgres}
+      database.default.password: ${POSTGRES_PASSWORD:-postgres}
       database.default.DBDriver: Postgre
       database.default.port: 5432
       ML_SERVICE_URL: http://ml-service:8000
+      WEEKLY_ANALYTICS_OUTPUT_DIR: /var/www/data/output/weekly_analytics
+      ANALYTICS_DATA_LAYER_DIR: /var/www/data/output/extracted_analytics
     volumes:
       - ./backend:/var/www/html
+      - ./data:/var/www/data
+    networks:
+      - suaralens-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8090/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   frontend:
     build:
@@ -75,14 +97,21 @@ services:
     container_name: suaralens-frontend
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
-      - "5173:5173"
+      - "${FRONTEND_PORT:-5173}:5173"
     environment:
       VITE_BACKEND_PROXY_TARGET: http://backend:8090
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    networks:
+      - suaralens-net
+
+networks:
+  suaralens-net:
+    driver: bridge
 
 volumes:
   postgres_data:

@@ -2,11 +2,11 @@ FROM python:3.10-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app/notebooks:/app
+    PYTHONPATH=/app/ml-service:/app
 
 WORKDIR /app
 
-# Install system utilities needed for building wheels and network fetching
+# Install system utilities needed for building wheels and healthcheck
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
@@ -26,10 +26,14 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 # Download small spaCy model for PII redaction (Presidio)
 RUN python -m spacy download en_core_web_sm
 
-# Copy modules & ml-service code
-COPY notebooks/ /app/notebooks/
+# Copy ml-service production code
 COPY ml-service/ /app/ml-service/
 
+# Expose port FastAPI
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--app-dir", "ml-service", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Healthcheck
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+CMD ["uvicorn", "main:app", "--app-dir", "ml-service", "--host", "0.0.0.0", "--port", "8000"]

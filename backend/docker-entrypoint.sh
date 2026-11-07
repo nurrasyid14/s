@@ -1,8 +1,9 @@
 #!/bin/bash
 set -e
 
-# Pastikan folder writable CI4 tersedia
-mkdir -p writable/cache writable/logs writable/session writable/uploads writable/debugbar
+# Pastikan folder writable CI4 dan data analytics tersedia
+mkdir -p writable/cache writable/logs writable/session writable/uploads writable/debugbar writable/locks
+mkdir -p /var/www/data/output/extracted_analytics /var/www/data/output/weekly_analytics
 chmod -R 777 writable
 
 DB_HOST="${DB_HOST:-db}"
