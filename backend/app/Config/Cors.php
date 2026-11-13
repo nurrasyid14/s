@@ -52,7 +52,8 @@ class Cors extends BaseConfig
          *   - ['https://\w+\.example\.com']
          */
         'allowedOriginsPatterns' => [
-            'https://suaralens-[a-z0-9-]+\.vercel\.app',
+            'https://.*\.vercel\.app',
+            'https://.*\.up\.railway\.app',
         ],
 
         /**
@@ -108,4 +109,13 @@ class Cors extends BaseConfig
          */
         'maxAge' => 7200,
     ];
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        if ($extraOrigin = env('CORS_ALLOWED_ORIGIN')) {
+            $this->default['allowedOrigins'][] = rtrim($extraOrigin, '/');
+        }
+    }
 }
