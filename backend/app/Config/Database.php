@@ -195,11 +195,11 @@ class Database extends Config
         parent::__construct();
 
         $this->default = array_replace($this->default, [
-            'hostname' => env('DB_HOST', env('database.default.hostname', 'localhost')),
-            'username' => env('DB_USER', env('database.default.username', 'postgres')),
-            'password' => env('DB_PASS', env('database.default.password', 'postgres')),
-            'database' => env('DB_NAME', env('database.default.database', 'suaralens')),
-            'port'     => (int) env('DB_PORT', env('database.default.port', 5432)),
+            'hostname' => env('DB_HOST', env('PGHOST', env('database.default.hostname', 'localhost'))),
+            'username' => env('DB_USER', env('PGUSER', env('database.default.username', 'postgres'))),
+            'password' => env('DB_PASS', env('PGPASSWORD', env('database.default.password', 'postgres'))),
+            'database' => env('DB_NAME', env('PGDATABASE', env('database.default.database', 'suaralens'))),
+            'port'     => (int) env('DB_PORT', env('PGPORT', env('database.default.port', 5432))),
         ]);
 
         // Ensure that we always set the database group to 'tests' if
