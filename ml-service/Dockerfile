@@ -2,7 +2,8 @@ FROM python:3.10-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app/ml-service:/app
+    PYTHONPATH=/app/ml-service:/app \
+    PORT=8000
 
 WORKDIR /app
 
@@ -29,11 +30,12 @@ RUN python -m spacy download en_core_web_sm
 # Copy ml-service production code
 COPY ml-service/ /app/ml-service/
 
-# Expose port FastAPI
+# Expose port FastAPI (dokumentasi port default)
 EXPOSE 8000
 
-# Healthcheck
-HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+# Healthcheck dinamis memeriksa endpoint /health pada port dinamis Railway (${PORT:-8000})
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
-CMD ["uvicorn", "main:app", "--app-dir", "ml-service", "--host", "0.0.0.0", "--port", "8000"]
+# Jalankan Uvicorn dengan exec pada host 0.0.0.0 dan port dinamis ${PORT:-8000}
+CMD ["sh", "-c", "exec uvicorn main:app --app-dir ml-service --host 0.0.0.0 --port ${PORT:-8000}"]
