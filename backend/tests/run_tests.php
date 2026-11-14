@@ -380,7 +380,119 @@ assertTest("Student Dashboard: Memuat daftar distribusi unit", count($studentDas
 echo "\n";
 
 // -----------------------------------------------------------------
-// 10. SUMMARY
+// 11. TEST COMPLAINT RE-ANALYSIS & ANALYSIS HISTORY
+// -----------------------------------------------------------------
+echo "[11] Testing Complaint Re-Analysis & Analysis History (Immutable Trail)...\n";
+$fastML = new \App\Services\MLService('http://127.0.0.1:59999', 1, 1);
+$complaintService = new \App\Services\ComplaintService(null, null, null, null, $fastML);
+
+// Ambil user aktual dari database
+$adminRow = $db->table('users')->where('role', 'admin')->get()->getRowArray();
+$userRow = $db->table('users')->where('role', 'user')->get()->getRowArray();
+$adminUser = ['id' => (int) ($adminRow['id'] ?? 15), 'email' => $adminRow['email'] ?? 'admin@pens.ac.id', 'role' => 'admin', 'name' => $adminRow['name'] ?? 'Admin PENS'];
+$regularUser = ['id' => (int) ($userRow['id'] ?? 17), 'email' => $userRow['email'] ?? 'budi@student.pens.ac.id', 'role' => 'user', 'name' => $userRow['name'] ?? 'Budi Mahasiswa'];
+$otherUser = ['id' => 999999, 'email' => 'other@student.pens.ac.id', 'role' => 'user', 'name' => 'Other Mahasiswa'];
+
+// 11.1 Create test complaint
+$testComplaintData = [
+    'type' => 'complaint',
+    'description' => 'AC di ruang lab 301 mati dan suhu sangat panas mengganggu praktikum.',
+    'category' => 'Sarana Prasarana dan Layanan Umum'
+];
+$createdComp = $complaintService->createComplaint($testComplaintData, $regularUser);
+$testCompId = (int) $createdComp['id'];
+$firstAnalysisId = (int) $createdComp['data']['analysis_id'];
+
+assertTest("Complaint Lifecycle: Berhasil membuat pengaduan uji", $testCompId > 0 && $firstAnalysisId > 0);
+assertTest("Complaint Analysis: Menyimpan unit_confidence dan unit_reason", 
+    array_key_exists('unit_confidence', $createdComp['data']) && array_key_exists('unit_reason', $createdComp['data']));
+
+// 11.2 Trigger Re-analysis
+$reanalyzeRes = $complaintService->reanalyzeComplaint($testCompId, $adminUser);
+$secondAnalysisId = (int) $reanalyzeRes['data']['analysis_id'];
+
+assertTest("Re-analysis: Menghasilkan ID analisis baru yang berbeda", $secondAnalysisId > 0 && $secondAnalysisId !== $firstAnalysisId);
+assertTest("Re-analysis: Menyertakan unit_confidence dan unit_reason", 
+    array_key_exists('unit_confidence', $reanalyzeRes['data']) && array_key_exists('unit_reason', $reanalyzeRes['data']));
+
+// 11.3 Retrieve Analysis History
+$historyRes = $complaintService->getAnalysisHistory($testCompId, $regularUser);
+assertTest("Analysis History: Total riwayat minimal 2 record", $historyRes['data']['total'] >= 2);
+assertTest("Analysis History: Record pertama adalah analisis terbaru (ID descending)", 
+    $historyRes['data']['history'][0]['analysis_id'] === $secondAnalysisId);
+assertTest("Analysis History: Record kedua adalah analisis pertama (tidak ditimpa)", 
+    $historyRes['data']['history'][1]['analysis_id'] === $firstAnalysisId);
+
+// 11.4 IDOR Protection Test on History
+$idorBlocked = false;
+try {
+    $complaintService->getAnalysisHistory($testCompId, $otherUser);
+} catch (InvalidArgumentException $e) {
+    $idorBlocked = true;
+}
+assertTest("Security IDOR: User lain dilarang mengakses riwayat analisis orang lain", $idorBlocked);
+
+// 11.5 Detail Complaint uses LATEST Analysis
+$detailComp = $complaintService->getComplaintDetail($testCompId, $regularUser);
+assertTest("Detail Complaint: Menggunakan analisis terbaru", $detailComp['id'] === $testCompId);
+assertTest("Detail Complaint: Memuat unit_confidence dan unit_reason", 
+    array_key_exists('unit_confidence', $detailComp) && array_key_exists('unit_reason', $detailComp));
+
+// Cleanup test fixtures
+$db->table('complaint_reviews')->where('complaint_analysis_id', $secondAnalysisId)->delete();
+$db->table('complaint_reviews')->where('complaint_analysis_id', $firstAnalysisId)->delete();
+$db->table('complaint_analysis')->where('complaint_id', $testCompId)->delete();
+$db->table('complaints')->where('id', $testCompId)->delete();
+
+echo "\n";
+
+// -----------------------------------------------------------------
+// 12. TEST COMPLAINT CONTROLLER ENDPOINTS
+// -----------------------------------------------------------------
+echo "[12] Testing ComplaintController HTTP Endpoints...\n";
+$controller = new \App\Controllers\ComplaintController($complaintService);
+$controller->initController(service('request'), service('response'), service('logger'));
+
+// 12.1 index()
+$indexResp = $controller->index();
+$indexData = json_decode($indexResp->getBody(), true);
+assertTest("Controller: index() mengembalikan status=true", !empty($indexData['status']));
+assertTest("Controller: index() memuat array items", isset($indexData['items']) && is_array($indexData['items']));
+assertTest("Controller: index() memuat total dan pagination", isset($indexData['total']) && isset($indexData['page']));
+
+// 12.2 Validasi ID null
+$showNull = $controller->show(null);
+assertTest("Controller: show(null) mengembalikan 400 Bad Request", $showNull->getStatusCode() === 400);
+
+$updateNull = $controller->updateStatus(null);
+assertTest("Controller: updateStatus(null) mengembalikan 400 Bad Request", $updateNull->getStatusCode() === 400);
+
+$analyzeNull = $controller->analyze(null);
+assertTest("Controller: analyze(null) mengembalikan 400 Bad Request", $analyzeNull->getStatusCode() === 400);
+
+$historyNull = $controller->analysisHistory(null);
+assertTest("Controller: analysisHistory(null) mengembalikan 400 Bad Request", $historyNull->getStatusCode() === 400);
+
+$replyNull = $controller->reply(null);
+assertTest("Controller: reply(null) mengembalikan 400 Bad Request", $replyNull->getStatusCode() === 400);
+
+$repliesNull = $controller->replies(null);
+assertTest("Controller: replies(null) mengembalikan 400 Bad Request", $repliesNull->getStatusCode() === 400);
+
+// 12.3 Proteksi Autentikasi
+$showUnauth = $controller->show(1);
+assertTest("Controller: show() tanpa token mengembalikan 401 Unauthorized", $showUnauth->getStatusCode() === 401);
+
+$myUnauth = $controller->my();
+assertTest("Controller: my() tanpa token mengembalikan 401 Unauthorized", $myUnauth->getStatusCode() === 401);
+
+$createUnauth = $controller->create();
+assertTest("Controller: create() tanpa token mengembalikan 401 Unauthorized", $createUnauth->getStatusCode() === 401);
+
+echo "\n";
+
+// -----------------------------------------------------------------
+// SUMMARY
 // -----------------------------------------------------------------
 echo "============================================================\n";
 echo "TEST RESULTS: Passed: {$passed}, Failed: {$failed}\n";

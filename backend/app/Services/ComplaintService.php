@@ -134,6 +134,8 @@ class ComplaintService
                 'complaint_id'        => (int) $complaintId,
                 'category'            => $analysis['category'] ?? null,
                 'category_confidence' => $isFallback ? null : ($analysis['category_confidence'] ?? null),
+                'unit_confidence' => $isFallback ? null : ($analysis['unit_confidence'] ?? null),
+                'unit_reason'     => $analysis['unit_reason'] ?? null,
                 'urgency_label'       => $analysis['urgency_label'] ?? null,
                 'urgency_score'       => $analysis['urgency_score'] ?? null,
                 'urgency_reason'      => $analysis['urgency_reason'] ?? null,
@@ -185,6 +187,8 @@ class ComplaintService
                 'status'              => 'received',
                 'category'            => $analysis['category'] ?? null,
                 'category_confidence' => $isFallback ? null : ($analysis['category_confidence'] ?? null),
+                'unit_confidence' => $isFallback ? null : ($analysis['unit_confidence'] ?? null),
+                'unit_reason'     => $analysis['unit_reason'] ?? null,
                 'urgency_label'       => $analysis['urgency_label'] ?? null,
                 'urgency_score'       => $analysis['urgency_score'] ?? null,
                 'urgency_reason'      => $analysis['urgency_reason'] ?? null,
@@ -212,6 +216,8 @@ class ComplaintService
                 'c.*',
                 'ca.category',
                 'ca.category_confidence',
+                'ca.unit_confidence',
+                'ca.unit_reason',
                 'ca.urgency_label',
                 'ca.urgency_score',
                 'ca.urgency_reason',
@@ -570,6 +576,150 @@ class ComplaintService
     }
 
     /**
+     * Jalankan analisis ulang ML Service dan simpan sebagai riwayat analisis baru.
+     * Record analisis lama tidak ditimpa (immutable audit trail).
+     */
+    public function reanalyzeComplaint(int $id, array $user): array
+    {
+        $complaint = $this->complaintModel->find($id);
+        if (!$complaint) {
+            throw new InvalidArgumentException('Pengaduan tidak ditemukan.');
+        }
+
+        // Jalankan inferensi ML Service
+        $mlRes = $this->mlService->analyzeComplaint(
+            (int) $complaint['id'],
+            (string) $complaint['description'],
+            (string) $complaint['type']
+        );
+
+        $isFallback = false;
+        $inferenceTime = $mlRes['inference_time_ms'];
+
+        if ($mlRes['success'] && !empty($mlRes['data'])) {
+            $analysis = $mlRes['data'];
+        } else {
+            // Heuristic Fallback saat ML Service tidak dapat dijangkau
+            $isFallback = true;
+            $analysis = $this->priorityService->generateFallbackAnalysis(
+                $complaint['description'],
+                $complaint['type'],
+                $complaint['assigned_unit']
+            );
+            $inferenceTime = max(10, $inferenceTime);
+            log_message('warning', 'ML Service gagal saat analisis ulang, beralih ke heuristic fallback: ' . ($mlRes['error'] ?? 'Unknown error'));
+        }
+
+        $analysisData = [
+            'complaint_id'        => (int) $complaint['id'],
+            'category'            => $analysis['category'] ?? null,
+            'category_confidence' => $isFallback ? null : ($analysis['category_confidence'] ?? null),
+            'unit_confidence'     => $isFallback ? null : ($analysis['unit_confidence'] ?? null),
+            'unit_reason'         => $analysis['unit_reason'] ?? null,
+            'urgency_label'       => $analysis['urgency_label'] ?? null,
+            'urgency_score'       => $analysis['urgency_score'] ?? null,
+            'urgency_reason'      => $analysis['urgency_reason'] ?? null,
+            'sentiment'           => $analysis['sentiment'] ?? null,
+            'sentiment_score'     => $isFallback ? null : ($analysis['sentiment_score'] ?? null),
+            'sentiment_scores'    => isset($analysis['sentiment_scores'])
+                ? (is_array($analysis['sentiment_scores']) ? json_encode($analysis['sentiment_scores']) : $analysis['sentiment_scores'])
+                : null,
+            'submission_type'     => $analysis['submission_type'] ?? null,
+            'requires_review'     => !empty($analysis['requires_review']),
+            'model_version'       => $analysis['model_version'] ?? ($isFallback ? 'heuristic-fallback-v1.2' : 'qwen3.5:4b + indonesian-roberta'),
+            'inference_time_ms'   => $inferenceTime,
+        ];
+
+        // Selalu simpan sebagai record baru di complaint_analysis (analisis lama tetap utuh)
+        $analysisId = $this->analysisModel->insert($analysisData);
+        if (!$analysisId) {
+            throw new RuntimeException('Gagal menyimpan riwayat analisis baru: ' . json_encode($this->analysisModel->errors()));
+        }
+
+        // Jika memerlukan peninjauan human-in-the-loop, buat tiket review baru
+        $reviewId = null;
+        if (!empty($analysis['requires_review'])) {
+            $reviewId = $this->reviewModel->insert([
+                'complaint_analysis_id' => $analysisId,
+                'review_status'         => 'pending',
+            ]);
+        }
+
+        return [
+            'status'  => true,
+            'message' => 'Pengaduan berhasil dianalisis ulang dan riwayat analisis baru berhasil disimpan.',
+            'data'    => [
+                'analysis_id'         => (int) $analysisId,
+                'review_id'           => $reviewId ? (int) $reviewId : null,
+                'complaint_id'        => (int) $complaint['id'],
+                'category'            => $analysis['category'] ?? null,
+                'category_confidence' => $analysis['category_confidence'] ?? null,
+                'unit_confidence'     => $analysis['unit_confidence'] ?? null,
+                'unit_reason'         => $analysis['unit_reason'] ?? null,
+                'urgency_label'       => $analysis['urgency_label'] ?? null,
+                'urgency_score'       => $analysis['urgency_score'] ?? null,
+                'urgency_reason'      => $analysis['urgency_reason'] ?? null,
+                'sentiment'           => $analysis['sentiment'] ?? null,
+                'sentiment_score'     => $analysis['sentiment_score'] ?? null,
+                'submission_type'     => $analysis['submission_type'] ?? null,
+                'requires_review'     => !empty($analysis['requires_review']),
+                'inference_time_ms'   => $mlRes['inference_time_ms'] ?? 0,
+            ],
+        ];
+    }
+
+    /**
+     * Ambil seluruh riwayat analisis dari pengaduan tertentu.
+     */
+    public function getAnalysisHistory(int $id, array $user): array
+    {
+        $complaint = $this->complaintModel->find($id);
+        if (!$complaint) {
+            throw new InvalidArgumentException('Pengaduan tidak ditemukan.');
+        }
+
+        if ($user['role'] === 'user' && (int) $complaint['user_id'] !== (int) $user['id']) {
+            throw new InvalidArgumentException('Pengaduan tidak ditemukan.');
+        }
+
+        $history = $this->analysisModel
+            ->where('complaint_id', $id)
+            ->orderBy('id', 'DESC')
+            ->findAll();
+
+        $items = array_map(static function ($item) {
+            return [
+                'analysis_id'         => (int) $item['id'],
+                'complaint_id'        => (int) $item['complaint_id'],
+                'category'            => $item['category'],
+                'category_confidence' => $item['category_confidence'] !== null ? (float) $item['category_confidence'] : null,
+                'unit_confidence'     => $item['unit_confidence'] !== null ? (float) $item['unit_confidence'] : null,
+                'unit_reason'         => $item['unit_reason'],
+                'urgency_label'       => $item['urgency_label'],
+                'urgency_score'       => $item['urgency_score'] !== null ? (float) $item['urgency_score'] : null,
+                'urgency_reason'      => $item['urgency_reason'],
+                'sentiment'           => $item['sentiment'],
+                'sentiment_score'     => $item['sentiment_score'] !== null ? (float) $item['sentiment_score'] : null,
+                'submission_type'     => $item['submission_type'],
+                'requires_review'     => (bool) ($item['requires_review'] ?? false),
+                'model_version'       => $item['model_version'],
+                'inference_time_ms'   => $item['inference_time_ms'] !== null ? (int) $item['inference_time_ms'] : null,
+                'created_at'          => $item['created_at'] ?? null,
+            ];
+        }, $history);
+
+        return [
+            'status'  => true,
+            'message' => 'Riwayat analisis berhasil diambil.',
+            'data'    => [
+                'complaint_id' => $id,
+                'total'        => count($items),
+                'history'      => $items,
+            ],
+        ];
+    }
+
+    /**
      * Pemeriksaan otoritas unit kerja untuk stakeholder.
      */
     private function assertUnitPermission(array $complaint, array $user): void
@@ -729,9 +879,11 @@ class ComplaintService
             'sender_role'    => $row['sender_role'] ?? 'Mahasiswa',
             'status'         => $statusKey,
             'urgency_score'  => isset($row['urgency_score']) ? round((float) $row['urgency_score'] * 10, 1) : 5.0,
-            'nlp_category'   => $row['category'] ?? $targetUnit,
-            'nlp_confidence' => isset($row['category_confidence']) ? round((float) $row['category_confidence'], 2) : null,
-            'sentiment'      => $row['sentiment'] ?? 'neutral',
+            'nlp_category'    => $row['category'] ?? $targetUnit,
+            'nlp_confidence'  => isset($row['category_confidence']) ? round((float) $row['category_confidence'], 2) : null,
+            'unit_confidence' => isset($row['unit_confidence']) ? round((float) $row['unit_confidence'], 2) : null,
+            'unit_reason'     => $row['unit_reason'] ?? null,
+            'sentiment'       => $row['sentiment'] ?? 'neutral',
             'sla_deadline'   => $this->slaService->calculateDeadline(new DateTimeImmutable($createdAt), $targetUnit)->format(DATE_ATOM),
             'attachments'    => $attachments,
             'verification'   => $verification,

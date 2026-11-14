@@ -1,11 +1,22 @@
-from typing import Optional, Dict
+
+from typing import Optional, Dict, Literal
 from pydantic import BaseModel, Field
 
 
 class ComplaintRequest(BaseModel):
-    complaint_id: int = Field(default=0, description="ID komplain (0 jika tiket baru belum di-insert)")
-    text: str = Field(..., min_length=1, description="Teks mentah keluhan/masukan/saran")
-    submission_type: Optional[str] = Field(default="complaint", description="complaint | feedback | suggestion")
+    complaint_id: int = Field(
+        default=0,
+        description="ID komplain (0 jika tiket baru belum di-insert)"
+    )
+    text: str = Field(
+        ...,
+        min_length=1,
+        description="Teks mentah keluhan/masukan/saran"
+    )
+    submission_type: Literal["complaint", "feedback", "suggestion"] = Field(
+        default="complaint",
+        description="complaint | feedback | suggestion"
+    )
 
 
 class AnalysisData(BaseModel):

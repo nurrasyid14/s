@@ -13,20 +13,22 @@ class ComplaintAnalysisModel extends Model
     protected $returnType       = 'array';
 
     protected $allowedFields = [
-        'complaint_id',
-        'category',
-        'category_confidence',
-        'urgency_label',
-        'urgency_score',
-        'urgency_reason',
-        'sentiment',
-        'sentiment_score',
-        'sentiment_scores',
-        'submission_type',
-        'requires_review',
-        'model_version',
-        'inference_time_ms',
-    ];
+    'complaint_id',
+    'category',
+    'category_confidence',
+    'unit_confidence',
+    'unit_reason',
+    'urgency_label',
+    'urgency_score',
+    'urgency_reason',
+    'sentiment',
+    'sentiment_score',
+    'sentiment_scores',
+    'submission_type',
+    'requires_review',
+    'model_version',
+    'inference_time_ms',
+];
 
     protected $useTimestamps = true;
 

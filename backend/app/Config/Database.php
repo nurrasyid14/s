@@ -202,11 +202,14 @@ class Database extends Config
             'port'     => (int) env('DB_PORT', env('PGPORT', env('database.default.port', 5432))),
         ]);
 
-        // Ensure that we always set the database group to 'tests' if
-        // we are currently running an automated test suite, so that
-        // we don't overwrite live data on accident.
-        if (ENVIRONMENT === 'testing') {
+        // Set default group to 'tests' if testing environment and sqlite3 is available
+        if (ENVIRONMENT === 'testing' && extension_loaded('sqlite3')) {
             $this->defaultGroup = 'tests';
+        }
+
+        // If sqlite3 is not available in testing environment, alias tests group to default postgres connection
+        if (!extension_loaded('sqlite3')) {
+            $this->tests = $this->default;
         }
     }
 }

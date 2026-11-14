@@ -5,13 +5,12 @@ namespace App\Controllers;
 use App\Libraries\ApiTokenService;
 use App\Models\ComplaintModel;
 use App\Models\ComplaintReplyModel;
-use App\Models\ComplaintAnalysisModel;
-use App\Models\ComplaintReviewModel;
 use App\Services\ComplaintService;
 use App\Services\MLService;
 use App\Services\EvidenceService;
 use CodeIgniter\RESTful\ResourceController;
 use InvalidArgumentException;
+use RuntimeException;
 use Throwable;
 
 class ComplaintController extends ResourceController
@@ -19,17 +18,17 @@ class ComplaintController extends ResourceController
     protected $format = 'json';
 
     private ComplaintService $complaintService;
-    private MLService $mlService;
-    private EvidenceService $evidenceService;
+    private ComplaintModel $complaintModel;
+    private ComplaintReplyModel $replyModel;
 
     public function __construct(
         ?ComplaintService $complaintService = null,
-        ?MLService $mlService = null,
-        ?EvidenceService $evidenceService = null
+        ?ComplaintModel $complaintModel = null,
+        ?ComplaintReplyModel $replyModel = null
     ) {
         $this->complaintService = $complaintService ?? new ComplaintService();
-        $this->mlService        = $mlService ?? new MLService();
-        $this->evidenceService  = $evidenceService ?? new EvidenceService();
+        $this->complaintModel   = $complaintModel ?? new ComplaintModel();
+        $this->replyModel       = $replyModel ?? new ComplaintReplyModel();
     }
 
     /**
@@ -109,7 +108,7 @@ class ComplaintController extends ResourceController
 
     /**
      * GET /api/complaints/{id}
-     * Mengambil detail satu pengaduan lengkap dengan jejak workflow.
+     * Mengambil detail satu pengaduan lengkap dengan jejak workflow dan analisis terbaru.
      */
     public function show($id = null)
     {
@@ -406,6 +405,16 @@ class ComplaintController extends ResourceController
             return $this->respond(['status' => false, 'message' => 'Autentikasi diperlukan.'], 401);
         }
 
+        $complaint = $this->complaintModel->find($id);
+        if (!$complaint) {
+            return $this->respond(['status' => false, 'message' => 'Pengaduan tidak ditemukan.'], 404);
+        }
+
+        // Proteksi otorisasi: pengguna biasa hanya boleh membalas aduan miliknya
+        if ($user['role'] === 'user' && (int) $complaint['user_id'] !== (int) $user['id']) {
+            return $this->respond(['status' => false, 'message' => 'Pengaduan tidak ditemukan.'], 404);
+        }
+
         $data = $this->getRequestData();
         $replyText = trim((string) ($data['reply'] ?? $data['message'] ?? ''));
 
@@ -413,14 +422,7 @@ class ComplaintController extends ResourceController
             return $this->respond(['status' => false, 'message' => 'Isi tanggapan tidak boleh kosong.'], 400);
         }
 
-        $complaintModel = new ComplaintModel();
-        $complaint = $complaintModel->find($id);
-        if (!$complaint) {
-            return $this->respond(['status' => false, 'message' => 'Pengaduan tidak ditemukan.'], 404);
-        }
-
-        $replyModel = new ComplaintReplyModel();
-        $replyId = $replyModel->insert([
+        $replyId = $this->replyModel->insert([
             'complaint_id' => (int) $id,
             'user_id'      => (int) $user['id'],
             'reply'        => $replyText,
@@ -430,7 +432,7 @@ class ComplaintController extends ResourceController
             return $this->respond([
                 'status'  => false,
                 'message' => 'Gagal menyimpan tanggapan.',
-                'errors'  => $replyModel->errors(),
+                'errors'  => $this->replyModel->errors(),
             ], 500);
         }
 
@@ -438,7 +440,7 @@ class ComplaintController extends ResourceController
             'status'  => true,
             'message' => 'Tanggapan berhasil ditambahkan.',
             'data'    => [
-                'id'           => $replyId,
+                'id'           => (int) $replyId,
                 'complaint_id' => (int) $id,
                 'user_id'      => (int) $user['id'],
                 'reply'        => $replyText,
@@ -456,13 +458,22 @@ class ComplaintController extends ResourceController
             return $this->respond(['status' => false, 'message' => 'ID pengaduan wajib diisi.'], 400);
         }
 
-        $complaintModel = new ComplaintModel();
-        if (!$complaintModel->find($id)) {
+        $user = $this->authenticatedUser();
+        if (!$user) {
+            return $this->respond(['status' => false, 'message' => 'Autentikasi diperlukan.'], 401);
+        }
+
+        $complaint = $this->complaintModel->find($id);
+        if (!$complaint) {
             return $this->respond(['status' => false, 'message' => 'Pengaduan tidak ditemukan.'], 404);
         }
 
-        $replyModel = new ComplaintReplyModel();
-        $replies = $replyModel
+        // Proteksi IDOR: pengguna biasa hanya boleh membaca riwayat percakapan aduan miliknya
+        if ($user['role'] === 'user' && (int) $complaint['user_id'] !== (int) $user['id']) {
+            return $this->respond(['status' => false, 'message' => 'Pengaduan tidak ditemukan.'], 404);
+        }
+
+        $replies = $this->replyModel
             ->select('complaint_replies.id, complaint_replies.reply, complaint_replies.created_at, users.name AS by')
             ->join('users', 'users.id = complaint_replies.user_id', 'left')
             ->where('complaint_replies.complaint_id', (int) $id)
@@ -478,87 +489,79 @@ class ComplaintController extends ResourceController
 
     /**
      * POST /api/complaints/{id}/analyze
-     * Memicu analisis ulang pengaduan via ML Service.
+     * Memicu analisis ulang pengaduan via ML Service dan menyimpannya sebagai rekaman riwayat baru.
+     * Analisis sebelumnya tidak ditimpa (immutable audit trail).
      */
     public function analyze($id = null)
     {
         set_time_limit(180);
 
         if ($id === null) {
-            return $this->respond(['status' => false, 'message' => 'ID pengaduan wajib diisi.'], 400);
-        }
-
-        $complaintModel = new ComplaintModel();
-        $complaint = $complaintModel->find($id);
-        if (!$complaint) {
-            return $this->respond(['status' => false, 'message' => 'Pengaduan tidak ditemukan.'], 404);
-        }
-
-        $mlRes = $this->mlService->analyzeComplaint((int) $complaint['id'], (string) $complaint['description'], (string) $complaint['type']);
-        if (!$mlRes['success'] || empty($mlRes['data'])) {
             return $this->respond([
                 'status'  => false,
-                'message' => 'ML Service tidak dapat menyelesaikan analisis: ' . ($mlRes['error'] ?? 'Unknown error'),
+                'message' => 'ID pengaduan wajib diisi.',
+            ], 400);
+        }
+
+        $user = $this->authenticatedUser();
+        if (!$user) {
+            return $this->respond(['status' => false, 'message' => 'Autentikasi diperlukan.'], 401);
+        }
+
+        if (!in_array($user['role'], ['admin', 'stakeholder'], true)) {
+            return $this->respond(['status' => false, 'message' => 'Otoritas analisis diperlukan.'], 403);
+        }
+
+        try {
+            $result = $this->complaintService->reanalyzeComplaint((int) $id, $user);
+            return $this->respond($result);
+        } catch (InvalidArgumentException $e) {
+            return $this->respond(['status' => false, 'message' => $e->getMessage()], 404);
+        } catch (RuntimeException $e) {
+            log_message('error', 'Gagal analisis ulang ML: ' . $e->getMessage());
+            return $this->respond([
+                'status'  => false,
+                'message' => $e->getMessage(),
             ], 502);
+        } catch (Throwable $e) {
+            log_message('error', 'Gagal memproses analisis ulang: ' . $e->getMessage());
+            return $this->respond([
+                'status'  => false,
+                'message' => 'Terjadi kesalahan sistem saat memproses analisis ulang.',
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/complaints/{id}/analysis-history
+     * Mengambil seluruh riwayat analisis ML dari satu pengaduan (terbaru hingga terlama).
+     */
+    public function analysisHistory($id = null)
+    {
+        if ($id === null) {
+            return $this->respond([
+                'status'  => false,
+                'message' => 'ID pengaduan wajib diisi.',
+            ], 400);
         }
 
-        $analysis = $mlRes['data'];
-        $analysisModel = new ComplaintAnalysisModel();
-        $existing = $analysisModel->where('complaint_id', $complaint['id'])->orderBy('id', 'DESC')->first();
-
-        $analysisData = [
-            'complaint_id'        => (int) $complaint['id'],
-            'category'            => $analysis['category'] ?? null,
-            'category_confidence' => $analysis['category_confidence'] ?? null,
-            'urgency_label'       => $analysis['urgency_label'] ?? null,
-            'urgency_score'       => $analysis['urgency_score'] ?? null,
-            'urgency_reason'      => $analysis['urgency_reason'] ?? null,
-            'sentiment'           => $analysis['sentiment'] ?? null,
-            'sentiment_score'     => $analysis['sentiment_score'] ?? null,
-            'sentiment_scores'    => isset($analysis['sentiment_scores']) ? json_encode($analysis['sentiment_scores']) : null,
-            'submission_type'     => $analysis['submission_type'] ?? null,
-            'requires_review'     => !empty($analysis['requires_review']),
-            'model_version'       => 'qwen3.5:4b + indonesian-roberta',
-            'inference_time_ms'   => $mlRes['inference_time_ms'],
-        ];
-
-        if ($existing) {
-            $analysisId = $existing['id'];
-            $analysisModel->update($analysisId, $analysisData);
-        } else {
-            $analysisId = $analysisModel->insert($analysisData);
+        $user = $this->authenticatedUser();
+        if (!$user) {
+            return $this->respond(['status' => false, 'message' => 'Autentikasi diperlukan.'], 401);
         }
 
-        $reviewModel = new ComplaintReviewModel();
-        $review = $reviewModel->where('complaint_analysis_id', $analysisId)->first();
-        $reviewId = $review['id'] ?? null;
-
-        if (!empty($analysis['requires_review']) && !$review) {
-            $reviewId = $reviewModel->insert([
-                'complaint_analysis_id' => $analysisId,
-                'review_status'         => 'pending',
-            ]);
+        try {
+            $result = $this->complaintService->getAnalysisHistory((int) $id, $user);
+            return $this->respond($result);
+        } catch (InvalidArgumentException $e) {
+            return $this->respond(['status' => false, 'message' => $e->getMessage()], 404);
+        } catch (Throwable $e) {
+            log_message('error', 'Gagal mengambil riwayat analisis: ' . $e->getMessage());
+            return $this->respond([
+                'status'  => false,
+                'message' => 'Gagal mengambil riwayat analisis pengaduan.',
+            ], 500);
         }
-
-        return $this->respond([
-            'status'  => true,
-            'message' => 'Pengaduan berhasil dianalisis ulang dan hasilnya diperbarui.',
-            'data'    => [
-                'analysis_id'         => (int) $analysisId,
-                'review_id'           => $reviewId ? (int) $reviewId : null,
-                'complaint_id'        => (int) $complaint['id'],
-                'category'            => $analysis['category'] ?? null,
-                'category_confidence' => $analysis['category_confidence'] ?? null,
-                'urgency_label'       => $analysis['urgency_label'] ?? null,
-                'urgency_score'       => $analysis['urgency_score'] ?? null,
-                'urgency_reason'      => $analysis['urgency_reason'] ?? null,
-                'sentiment'           => $analysis['sentiment'] ?? null,
-                'sentiment_score'     => $analysis['sentiment_score'] ?? null,
-                'submission_type'     => $analysis['submission_type'] ?? null,
-                'requires_review'     => !empty($analysis['requires_review']),
-                'inference_time_ms'   => $mlRes['inference_time_ms'],
-            ],
-        ]);
     }
 
     /**
@@ -568,12 +571,14 @@ class ComplaintController extends ResourceController
     {
         $latest = '(SELECT complaint_id, MAX(id) AS latest_id FROM complaint_analysis GROUP BY complaint_id) latest_analysis';
 
-        return \Config\Database::connect()->table('complaints c')
+        return \Config\Database::connect('default')->table('complaints c')
             ->select([
                 'c.*',
                 'ca.category',
                 'ca.category AS nlp_category',
                 'ca.category_confidence AS nlp_confidence',
+                'ca.unit_confidence',
+                'ca.unit_reason',
                 'ca.sentiment',
                 'ca.sentiment_scores',
                 'ca.submission_type',

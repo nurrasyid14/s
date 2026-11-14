@@ -32,6 +32,7 @@ $routes->group('api', function ($routes) {
         $routes->post('(:num)/reply', 'ComplaintController::reply/$1', ['filter' => 'authRole:stakeholder,admin']);
         $routes->get('(:num)/replies', 'ComplaintController::replies/$1', ['filter' => 'authRole:stakeholder,admin']);
         $routes->post('(:num)/analyze', 'ComplaintController::analyze/$1', ['filter' => 'authRole:stakeholder,admin']);
+        $routes->get('(:num)/analysis-history', 'ComplaintController::analysisHistory/$1', ['filter' => 'authRole:stakeholder,admin']);
     });
 
     $routes->group('admin/complaints', ['filter' => 'authRole:stakeholder,admin'], function ($routes) {
