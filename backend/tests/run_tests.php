@@ -389,9 +389,17 @@ $complaintService = new \App\Services\ComplaintService(null, null, null, null, $
 // Ambil user aktual dari database
 $adminRow = $db->table('users')->where('role', 'admin')->get()->getRowArray();
 $userRow = $db->table('users')->where('role', 'user')->get()->getRowArray();
+$otherRow = $db->table('users')->where('role', 'user')->where('id !=', (int) ($userRow['id'] ?? 17))->get()->getRowArray();
+$stakeholderRow = $db->table('users')->where('role', 'stakeholder')->get()->getRowArray()
+    ?? $db->table('users')->where('id !=', (int) ($adminRow['id'] ?? 15))->where('id !=', (int) ($userRow['id'] ?? 17))->get()->getRowArray();
+
 $adminUser = ['id' => (int) ($adminRow['id'] ?? 15), 'email' => $adminRow['email'] ?? 'admin@pens.ac.id', 'role' => 'admin', 'name' => $adminRow['name'] ?? 'Admin PENS'];
 $regularUser = ['id' => (int) ($userRow['id'] ?? 17), 'email' => $userRow['email'] ?? 'budi@student.pens.ac.id', 'role' => 'user', 'name' => $userRow['name'] ?? 'Budi Mahasiswa'];
-$otherUser = ['id' => 999999, 'email' => 'other@student.pens.ac.id', 'role' => 'user', 'name' => 'Other Mahasiswa'];
+$otherUser = ['id' => (int) ($otherRow['id'] ?? 14), 'email' => $otherRow['email'] ?? 'other@student.pens.ac.id', 'role' => 'user', 'name' => $otherRow['name'] ?? 'Other Mahasiswa'];
+
+$stakeholderId = (int) ($stakeholderRow['id'] ?? 16);
+$matchingStakeholder = ['id' => $stakeholderId, 'role' => 'stakeholder', 'unit' => 'Sarana Prasarana dan Layanan Umum', 'name' => $stakeholderRow['name'] ?? 'Petugas Sarpras'];
+$diffStakeholder     = ['id' => $stakeholderId, 'role' => 'stakeholder', 'unit' => 'TIK/Sistem Informasi', 'name' => 'Petugas TIK'];
 
 // 11.1 Create test complaint
 $testComplaintData = [
@@ -488,6 +496,224 @@ assertTest("Controller: my() tanpa token mengembalikan 401 Unauthorized", $myUna
 
 $createUnauth = $controller->create();
 assertTest("Controller: create() tanpa token mengembalikan 401 Unauthorized", $createUnauth->getStatusCode() === 401);
+
+echo "\n";
+
+// -----------------------------------------------------------------
+// 13. TEST AUTHENTICATION & API TOKEN LIFECYCLE
+// -----------------------------------------------------------------
+echo "[13] Testing Authentication & API Token Lifecycle...\n";
+$tokenService = new \App\Libraries\ApiTokenService();
+
+// 13.1 Token Issue
+$issuedToken = $tokenService->issue((int) $regularUser['id']);
+assertTest("Auth: Token berhasil diterbitkan", !empty($issuedToken) && strlen($issuedToken) >= 40);
+
+// 13.2 Authenticate via Bearer header
+$authUser = $tokenService->userFromAuthorization("Bearer {$issuedToken}");
+assertTest("Auth: Autentikasi valid dengan Bearer token", $authUser !== null && (int) $authUser['id'] === (int) $regularUser['id']);
+assertTest("Auth: Hash password disembunyikan dari profil pengguna", !isset($authUser['password_hash']));
+
+// 13.3 Invalid & Malformed Token Handling
+assertTest("Auth: Tolak token kosong / null", $tokenService->userFromAuthorization(null) === null);
+assertTest("Auth: Tolak format token tidak valid", $tokenService->userFromAuthorization("Basic abcdef123456") === null);
+assertTest("Auth: Tolak token palsu yang tidak ada di database", $tokenService->userFromAuthorization("Bearer " . str_repeat("a", 50)) === null);
+
+// 13.4 Token Revocation (Logout)
+$revoked = $tokenService->revokeAuthorization("Bearer {$issuedToken}");
+assertTest("Auth: Revoke token (logout) berhasil", $revoked === true);
+assertTest("Auth: Token yang telah di-revoke tidak dapat digunakan kembali", $tokenService->userFromAuthorization("Bearer {$issuedToken}") === null);
+
+echo "\n";
+
+// -----------------------------------------------------------------
+// 14. TEST SERVICE-LAYER RBAC & UNKNOWN ROLE REJECTION
+// -----------------------------------------------------------------
+echo "[14] Testing Service-Layer RBAC & Unknown Role Rejection...\n";
+$mockComplaint = [
+    'id'            => 8888,
+    'user_id'       => (int) $regularUser['id'],
+    'assigned_unit' => 'Sarana Prasarana dan Layanan Umum',
+];
+
+// 14.1 Admin has full access
+$adminAccessOk = true;
+try {
+    $complaintService->assertComplaintAccess($mockComplaint, $adminUser, 'view');
+    $complaintService->assertComplaintAccess($mockComplaint, $adminUser, 'reanalyze');
+    $complaintService->assertComplaintAccess($mockComplaint, $adminUser, 'reply');
+} catch (Throwable $e) {
+    $adminAccessOk = false;
+}
+assertTest("RBAC: Admin memiliki akses ke seluruh tindakan pengaduan", $adminAccessOk);
+
+// 14.2 Stakeholder Unit Matching
+
+$stakeholderMatchOk = true;
+try {
+    $complaintService->assertComplaintAccess($mockComplaint, $matchingStakeholder, 'view');
+    $complaintService->assertComplaintAccess($mockComplaint, $matchingStakeholder, 'reanalyze');
+    $complaintService->assertComplaintAccess($mockComplaint, $matchingStakeholder, 'reply');
+} catch (Throwable $e) {
+    $stakeholderMatchOk = false;
+}
+assertTest("RBAC: Stakeholder dapat mengakses pengaduan unitnya", $stakeholderMatchOk);
+
+$diffStakeholderBlocked = false;
+try {
+    $complaintService->assertComplaintAccess($mockComplaint, $diffStakeholder, 'view');
+} catch (InvalidArgumentException $e) {
+    $diffStakeholderBlocked = true;
+}
+assertTest("RBAC: Stakeholder dilarang mengakses pengaduan unit lain", $diffStakeholderBlocked);
+
+// 14.3 User Permission Boundaries
+$userActionBlocked = false;
+try {
+    $complaintService->assertComplaintAccess($mockComplaint, $regularUser, 'reanalyze');
+} catch (InvalidArgumentException $e) {
+    $userActionBlocked = true;
+}
+assertTest("RBAC: User biasa dilarang melakukan analisis ulang", $userActionBlocked);
+
+// 14.4 Unknown Role Default Deny
+$unknownRoleUser = ['id' => 999, 'role' => 'guest'];
+$unknownRoleBlocked = false;
+try {
+    $complaintService->assertComplaintAccess($mockComplaint, $unknownRoleUser, 'view');
+} catch (InvalidArgumentException $e) {
+    $unknownRoleBlocked = true;
+}
+assertTest("RBAC: Role tidak dikenal ditolak secara default", $unknownRoleBlocked);
+
+echo "\n";
+
+// -----------------------------------------------------------------
+// 15. COMPREHENSIVE IDOR & SERVICE-LAYER CROSS-USER MATRIX
+// -----------------------------------------------------------------
+echo "[15] Testing Comprehensive IDOR & Cross-User Isolation...\n";
+
+// Buat tiket uji khusus isolasi IDOR
+$idorComplaintData = [
+    'type'        => 'complaint',
+    'description' => 'Kerusakan fasilitas proyektor di ruang teater B.',
+    'category'    => 'Sarana Prasarana dan Layanan Umum',
+];
+$createdIdor = $complaintService->createComplaint($idorComplaintData, $regularUser);
+$idorId = (int) $createdIdor['id'];
+
+// 15.1 User lain dilarang melihat detail (IDOR Prevention)
+$idorDetailOther = $complaintService->getComplaintDetail($idorId, $otherUser);
+assertTest("IDOR: User lain tidak dapat membaca detail pengaduan (returns null/404)", $idorDetailOther === null);
+
+// 15.2 User pemilik sah dapat membaca detail
+$idorDetailOwner = $complaintService->getComplaintDetail($idorId, $regularUser);
+assertTest("IDOR: Pemilik sah dapat membaca detail pengaduannya", $idorDetailOwner !== null && (int) $idorDetailOwner['id'] === $idorId);
+
+// 15.3 User lain dilarang membalas pengaduan orang lain
+$otherReplyBlocked = false;
+try {
+    $complaintService->addReply($idorId, "Komentar ilegal dari hacker", $otherUser);
+} catch (InvalidArgumentException $e) {
+    $otherReplyBlocked = true;
+}
+assertTest("IDOR: User lain dilarang menambahkan tanggapan pada pengaduan orang lain", $otherReplyBlocked);
+
+// 15.4 Pemilik sah berhasil menambahkan tanggapan
+$ownerReply = $complaintService->addReply($idorId, "Mohon konfirmasi estimasi waktu perbaikan.", $regularUser);
+assertTest("IDOR: Pemilik sah dapat menambahkan tanggapan", !empty($ownerReply['data']['id']));
+
+// 15.5 Stakeholder unit lain dilarang membalas
+$wrongUnitReplyBlocked = false;
+try {
+    $complaintService->addReply($idorId, "Balasan dari unit lain", $diffStakeholder);
+} catch (InvalidArgumentException $e) {
+    $wrongUnitReplyBlocked = true;
+}
+assertTest("IDOR: Stakeholder divisi berbeda dilarang menambahkan tanggapan", $wrongUnitReplyBlocked);
+
+// 15.6 Stakeholder divisi yang ditugaskan dapat membalas
+$assignedUnitReply = $complaintService->addReply($idorId, "Teknisi Sarpras sedang meluncur ke lokasi.", $matchingStakeholder);
+assertTest("IDOR: Stakeholder divisi yang ditugaskan dapat menambahkan tanggapan", !empty($assignedUnitReply['data']['id']));
+
+// 15.7 User lain dilarang melihat daftar tanggapan
+$otherGetRepliesBlocked = false;
+try {
+    $complaintService->getReplies($idorId, $otherUser);
+} catch (InvalidArgumentException $e) {
+    $otherGetRepliesBlocked = true;
+}
+assertTest("IDOR: User lain dilarang membaca daftar tanggapan", $otherGetRepliesBlocked);
+
+// 15.8 Pemilik sah dapat melihat riwayat tanggapan
+$ownerReplies = $complaintService->getReplies($idorId, $regularUser);
+assertTest("IDOR: Pemilik sah dapat membaca seluruh percakapan pengaduannya", count($ownerReplies) >= 2);
+
+// Cleanup IDOR test data
+$db->table('complaint_reviews')->where('complaint_analysis_id', (int) $createdIdor['data']['analysis_id'])->delete();
+$db->table('complaint_replies')->where('complaint_id', $idorId)->delete();
+$db->table('complaint_analysis')->where('complaint_id', $idorId)->delete();
+$db->table('complaints')->where('id', $idorId)->delete();
+
+echo "\n";
+
+// -----------------------------------------------------------------
+// 16. END-TO-END WORKFLOW INTEGRATION TEST
+// -----------------------------------------------------------------
+echo "[16] Testing End-to-End Workflow Integration Lifecycle...\n";
+
+// Step 1: Mahasiswa mengajukan keluhan
+$lifecycleComp = $complaintService->createComplaint([
+    'type'        => 'complaint',
+    'description' => 'Lampu sorot lapangan basket mati, berbahaya untuk latihan malam.',
+    'category'    => 'Sarana Prasarana dan Layanan Umum',
+], $regularUser);
+$lcId = (int) $lifecycleComp['id'];
+assertTest("Lifecycle: Step 1 - Aduan berhasil dibuat (status received)", (int) $lifecycleComp['id'] > 0);
+
+// Step 2: Admin melakukan verifikasi
+$verifyRes = $complaintService->verifyComplaint($lcId, true, "Validasi fisik sarpras selesai.", $adminUser);
+assertTest("Lifecycle: Step 2 - Admin verifikasi pengaduan", $verifyRes['status'] === true);
+
+// Step 3: Admin mendisposisikan ke unit Sarpras
+$dispatchRes = $complaintService->dispatchComplaint($lcId, 'Sarana Prasarana dan Layanan Umum', 'Pak Joko', 'Segera ganti bohlam.', null, $adminUser);
+assertTest("Lifecycle: Step 3 - Disposisi ke Sarana Prasarana", $dispatchRes['status'] === true);
+
+// Step 4: Unit Sarpras menerima penugasan
+$acceptRes = $complaintService->acceptByUnit($lcId, 'Pak Joko', 'Tugas diterima dan dijadwalkan.', $matchingStakeholder);
+assertTest("Lifecycle: Step 4 - Unit menerima tugas (in_progress)", $acceptRes['status'] === true);
+
+// Step 5: Unit melakukan tindak lanjut teknis
+$followupRes = $complaintService->followupByUnit($lcId, 'perbaikan', 'Penggantian 2 unit bohlam LED 100W.', 'Tim Sarpras', null, $matchingStakeholder);
+assertTest("Lifecycle: Step 5 - Tindak lanjut teknis dicatat", $followupRes['status'] === true);
+
+// Step 6: Unit menerbitkan jawaban resmi
+$answerRes = $complaintService->answerByUnit($lcId, 'Lampu sorot telah diganti dan lapangan sudah terang.', 'Pak Joko', [], $matchingStakeholder);
+assertTest("Lifecycle: Step 6 - Jawaban resmi unit diterbitkan", $answerRes['status'] === true);
+
+// Step 7: Mahasiswa memberikan feedback kepuasan
+$feedbackRes = $complaintService->submitFeedback($lcId, [
+    'rating'          => 5,
+    'aspect_speed'    => 5,
+    'aspect_clarity'  => 5,
+    'aspect_solution' => 5,
+    'comment'         => 'Penanganan sangat cepat dan lapangan sudah terang kembali.',
+], $regularUser);
+assertTest("Lifecycle: Step 7 - Mahasiswa memberikan feedback (status resolved)", $feedbackRes['status'] === true);
+
+// Verifikasi integritas detail akhir pengaduan
+$finalDetail = $complaintService->getComplaintDetail($lcId, $regularUser);
+assertTest("Lifecycle: Verifikasi status akhir adalah resolved", $finalDetail['status'] === 'resolved');
+assertTest("Lifecycle: Verifikasi jejak verifikasi ada", !empty($finalDetail['verification']['approved']));
+assertTest("Lifecycle: Verifikasi jejak disposisi ada", !empty($finalDetail['disposition']['target_unit']));
+assertTest("Lifecycle: Verifikasi jawaban resmi unit ada", !empty($finalDetail['unit_answer']['answer']));
+assertTest("Lifecycle: Verifikasi feedback rating 5 bintang tercatat", $finalDetail['feedback']['rating'] === 5);
+
+// Cleanup lifecycle test data
+$db->table('complaint_reviews')->where('complaint_analysis_id', (int) $lifecycleComp['data']['analysis_id'])->delete();
+$db->table('complaint_replies')->where('complaint_id', $lcId)->delete();
+$db->table('complaint_analysis')->where('complaint_id', $lcId)->delete();
+$db->table('complaints')->where('id', $lcId)->delete();
 
 echo "\n";
 

@@ -6,175 +6,267 @@
 
 ---
 
-## 1. Ringkasan Eksekutif Pengujian
+## 1. Ringkasan Eksekutif Hasil Pengujian Aktual
 
 | Komponen Uji | Total Kasus Uji | Berhasil (PASS) | Gagal (FAIL) | Status |
 |---|---:|---:|---:|:---:|
-| **PHP Syntax & Linter Check** | Seluruh file `.php` | Seluruh file lolos | 0 | **PASS** |
-| **Backend CI4 Test Suite** | 92 | 92 | 0 | **PASS** |
-| **ML Service Test Suite** | 26 | 26 | 0 | **PASS** |
-| **Frontend Production Build** | 44 Chunks | Lolos (7.48s) | 0 | **PASS** |
-| **Frontend ESLint Check** | 41 File JS/JSX | Lolos (0 Errors) | 0 | **PASS** |
-| **Database Migrations** | 11 Migrations | 11 Applied | 0 | **PASS** |
+| **Backend CI4 Test Suite** (`backend/tests/run_tests.php`) | 125 | 125 | 0 | **PASS (100%)** |
+| **ML Service Test Suite** (`ml-service/tests/run_tests.py`) | 26 | 26 | 0 | **PASS (100%)** |
+| **Frontend Production Build** (`npm run build`) | 44 Chunks | 44 Chunks (5.14s) | 0 | **PASS** |
+| **Frontend ESLint Check** (`npm run lint`) | Codebase | 0 Errors (43 warnings) | 0 | **PASS** |
+| **PHP Syntax Check** | Seluruh file `.php` | Bebas syntax error | 0 | **PASS** |
+| **Database Migrations** | 11 Migrasi | Batch 1–10 Applied | 0 | **PASS** |
 
 ---
 
-## 2. Rincian Pengujian Backend (`backend/tests/run_tests.php`)
+## 2. Rincian Eksekusi Backend Test Suite (125 Uji)
 
-Skrip pengujian backend mencakup 12 bagian pengujian menyeluruh:
+Perintah eksekusi: `php backend/tests/run_tests.php`
 
-```
-==================================================
-SUARALENS AUTOMATED TEST SUITE
-==================================================
-Running tests against PostgreSQL database...
-Target DB Host: 127.0.0.1:5433 | DB Name: suaralens_db
+```text
+============================================================
+SUARALENS BACKEND SERVICES UNIT TEST RUNNER
+============================================================
 
---- Section 1: User & Authentication Tests ---
-[PASS] Mahasiswa user exists in database
-[PASS] Central Admin user exists in database
-[PASS] Unit Officer exists in database
-[PASS] Pimpinan user exists in database
-[PASS] Password verification functions correctly
-[PASS] Role assignment is strictly enforced
+[1] Testing PriorityService...
+  [PASS] PII Redaction: Sembunyikan NIM
+  [PASS] PII Redaction: Sembunyikan No HP
+  [PASS] PII Redaction: Sembunyikan Email
+  [PASS] PII Redaction: Pertahankan substansi teks keluhan
+  [PASS] Urgency: Deteksi status Tinggi
+  [PASS] Urgency: Skor tinggi >= 0.8
+  [PASS] Urgency: Deteksi status Rendah
+  [PASS] Unit Mapping: WiFi -> TIK/Sistem Informasi
+  [PASS] Unit Mapping: Toilet/Lampu -> Sarana Prasarana dan Layanan Umum
+  [PASS] Unit Mapping: Nilai/Siakad -> Akademik
+  [PASS] Fallback Integrity: is_fallback harus true
+  [PASS] Fallback Integrity: category_confidence harus NULL (bukan confidence palsu)
+  [PASS] Fallback Integrity: sentiment_score harus NULL
+  [PASS] Fallback Integrity: model_version menandai heuristic
 
---- Section 2: Unit Service Tests ---
-[PASS] Units table contains required campus units (BAAK, Keuangan, Sarpras, etc.)
-[PASS] Active units can be queried successfully
-[PASS] Unit categories are mapped appropriately
+[2] Testing SLAService...
+  [PASS] SLA Target: Sarpras = 2 hari
+  [PASS] SLA Target: Keamanan = 1 hari
+  [PASS] SLA Target: Pimpinan = 5 hari
+  [PASS] SLA Target: Default unit tidak dikenal = 3 hari
+  [PASS] Valid Unit: Akademik valid
+  [PASS] Valid Unit: Unit palsu tidak valid
+  [PASS] Valid Units: Ada 14 unit resmi PENS
+  [PASS] SLA Compliance: Selesai tepat waktu = compliant
+  [PASS] SLA Compliance: Selesai terlambat = non-compliant
 
---- Section 3: SLA & Escalation Calculation Tests ---
-[PASS] Low urgency SLA assigned to 7 days
-[PASS] Medium urgency SLA assigned to 3 days
-[PASS] High urgency SLA assigned to 2 days
-[PASS] Critical urgency SLA assigned to 1 day
-[PASS] Expired SLA calculation accurately flags overdue status
+[3] Testing FeedbackService...
+  [PASS] Feedback: Validasi input valid
+  [PASS] Feedback: Tolak rating > 5
+  [PASS] Feedback: Tolak aspek < 1
+  [PASS] Feedback: Format string reply mengandung rating
 
---- Section 4: Feedback & Rating Validation Tests ---
-[PASS] Feedback allowed only when complaint status is 'resolved'
-[PASS] Rating must be bounded between 1 and 5
-[PASS] Feedback cannot be submitted twice by the same reporter
-[PASS] Satisfaction score aggregates correctly
+[4] Testing DataExtractionService (Incremental Watermark)...
+  [PASS] Watermark: Status awal uninitialized
+  [PASS] Extraction: Status eksekusi success
+  [PASS] Extraction: Stream file terbuat
+  [PASS] Extraction: Watermark file terbuat
+  [PASS] Watermark: Status aktif success
+  [PASS] Watermark: Versi pipeline 1.2.0
+  [PASS] Idempotency: Ekstraksi berulang menghasilkan 0 duplikasi
+  [PASS] Privacy: Zero PII pada Analytical Data Layer
 
---- Section 5: Incremental Data Extraction Tests ---
-[PASS] Watermark extraction state initialized
-[PASS] Stream JSONL generation formats records correctly
-[PASS] Incremental cursor tracks latest timestamp without duplicates
+[5] Testing WeeklyAnalyticsService (Rolling Windows & SLA)...
+  [PASS] Snapshot: Schema version 2
+  [PASS] Snapshot: Timezone Asia/Jakarta
+  [PASS] Snapshot: Memuat 4 rolling windows (7, 30, 90, 180)
+  [PASS] Window 7-hari: Memuat record_count
+  [PASS] Window 7-hari: Memuat ringkasan dwibahasa (id & en)
+  [PASS] Window 7-hari: Memuat metrik SLA lengkap
+  [PASS] Window 7-hari: Memuat perbandingan periode sebelumnya
+  [PASS] Window 7-hari: Memuat breakdown urgensi (low, medium, high, critical)
+  [PASS] Window 7-hari: Memuat breakdown sentimen
+  [PASS] API Retrieval: latestSnapshot(7) berhasil memuat snapshot
+  [PASS] Validation: Tolak window tidak didukung (15 hari)
 
---- Section 6: Rolling Analytics Aggregator Tests ---
-[PASS] Daily complaint volume aggregation matches DB count
-[PASS] Category distribution calculation totals 100%
-[PASS] Unit response time median calculated accurately
+[6] Testing Database Transactions & Atomicity (PostgreSQL)...
+  [PASS] DB Transaction: Record ada di dalam blok transaksi aktif
+  [PASS] DB Transaction: Rollback membatalkan insert secara atomik
+  [PASS] DB Transaction: Commit menyimpan keluhan dan analisis secara utuh
+  [PASS] DB Cleanup: Test fixtures transaksi dibersihkan
 
---- Section 7: Database Transaction & Rollback Integrity ---
-[PASS] Atomic transaction commits successfully on valid input
-[PASS] Atomic transaction rolls back cleanly on exception
-[PASS] Rollback leaves zero orphaned rows in complaint_analysis
+[7] Testing Role-Based Authorization Matrix...
+  [PASS] Role Auth: Admin memiliki izin review HITL
+  [PASS] Role Auth: Stakeholder dilarang review HITL
+  [PASS] Role Auth: User/Mahasiswa dilarang disposisi unit
+  [PASS] Role Auth: Stakeholder hanya dapat melihat pengaduan unit sendiri
+  [PASS] Role Auth: User dapat memberikan feedback
 
---- Section 8: Role-Based Access Control (RBAC) & IDOR Protection ---
-[PASS] Student cannot access complaints filed by other students (IDOR prevented)
-[PASS] Student cannot perform unit disposition
-[PASS] Unit officer cannot accept complaints assigned to different units
-[PASS] Central Admin has permission to reassign complaints
-[PASS] Pimpinan has read-only access across all analytical views
+[8] Testing EvidenceService & Attachment Security...
+  [PASS] Evidence: Ekstensi yang diizinkan mencakup jpg, png, pdf
+  [PASS] Evidence: Batas ukuran maksimum tepat 5MB (5242880 bytes)
+  [PASS] Evidence: Ekstensi berbahaya (.php, .exe, .sh) ditolak
 
---- Section 9: File Upload & Evidence Security ---
-[PASS] Valid image/pdf extensions permitted (.jpg, .png, .pdf)
-[PASS] Disallowed executable extensions strictly rejected (.php, .sh, .exe)
-[PASS] MIME type inspection rejects disguised binary files
+[9] Testing MLService Resilience & Heuristic Fallback Integration...
+  [PASS] ML Resilience: Gagal graceful tanpa crash saat offline
+  [PASS] ML Resilience: Catat pesan error koneksi teknis
+  [PASS] ML Resilience: Data analisis tetap null
+  [PASS] ML Integration Fallback: Kategori berhasil dipetakan secara heuristik
+  [PASS] ML Integration Fallback: Tidak ada confidence palsu (null)
+  [PASS] ML Integration Fallback: Teks urgensi tinggi memicu flag review HITL
 
---- Section 10: ML Fallback & Resiliency Handling ---
-[PASS] Graceful fallback engaged when ML service endpoint unreachable
-[PASS] Fallback default values prevent crash in complaint creation
-[PASS] Offline status flag recorded in database
+[10] Testing Student Dashboard Aggregation Endpoint...
+  [PASS] Student Dashboard: Status respon berhasil (status=true)
+  [PASS] Student Dashboard: Memuat objek ringkasan (summary)
+  [PASS] Student Dashboard: Memuat 14 unit kerja resmi
+  [PASS] Student Dashboard: Memuat 7 alur tahapan aduan
+  [PASS] Student Dashboard: Memuat 3 breakdown tipe pengajuan (complaint, feedback, suggestion)
+  [PASS] Student Dashboard: Memuat daftar distribusi unit
 
---- Section 11: Student Dashboard Aggregation ---
-[PASS] User-specific complaint statistics calculated accurately
-[PASS] Filter by status (submitted, in_process, resolved) functions properly
+[11] Testing Complaint Re-Analysis & Analysis History (Immutable Trail)...
+  [PASS] Complaint Lifecycle: Berhasil membuat pengaduan uji
+  [PASS] Complaint Analysis: Menyimpan unit_confidence dan unit_reason
+  [PASS] Re-analysis: Menghasilkan ID analisis baru yang berbeda
+  [PASS] Re-analysis: Menyertakan unit_confidence dan unit_reason
+  [PASS] Analysis History: Total riwayat minimal 2 record
+  [PASS] Analysis History: Record pertama adalah analisis terbaru (ID descending)
+  [PASS] Analysis History: Record kedua adalah analisis pertama (tidak ditimpa)
+  [PASS] Security IDOR: User lain dilarang mengakses riwayat analisis orang lain
+  [PASS] Detail Complaint: Menggunakan analisis terbaru
+  [PASS] Detail Complaint: Memuat unit_confidence dan unit_reason
 
---- Section 12: Re-analysis & Immutable Analysis History ---
-[PASS] Re-analysis endpoint executes for authorized staff
-[PASS] Re-analysis creates a new record in complaint_analysis (append-only)
-[PASS] Previous analysis record remains intact (audit trail preserved)
-[PASS] Analysis history endpoint returns records in descending order
-[PASS] IDOR check blocks unauthorized students from viewing internal analysis logs
+[12] Testing ComplaintController HTTP Endpoints...
+  [PASS] Controller: index() mengembalikan status=true
+  [PASS] Controller: index() memuat array items
+  [PASS] Controller: index() memuat total dan pagination
+  [PASS] Controller: show(null) mengembalikan 400 Bad Request
+  [PASS] Controller: updateStatus(null) mengembalikan 400 Bad Request
+  [PASS] Controller: analyze(null) mengembalikan 400 Bad Request
+  [PASS] Controller: analysisHistory(null) mengembalikan 400 Bad Request
+  [PASS] Controller: reply(null) mengembalikan 400 Bad Request
+  [PASS] Controller: replies(null) mengembalikan 400 Bad Request
+  [PASS] Controller: show() tanpa token mengembalikan 401 Unauthorized
+  [PASS] Controller: my() tanpa token mengembalikan 401 Unauthorized
+  [PASS] Controller: create() tanpa token mengembalikan 401 Unauthorized
 
-==================================================
-RESULT: 92/92 TESTS PASSED (100% SUCCESS RATE)
-==================================================
+[13] Testing Authentication & API Token Lifecycle...
+  [PASS] Auth: Token berhasil diterbitkan
+  [PASS] Auth: Autentikasi valid dengan Bearer token
+  [PASS] Auth: Hash password disembunyikan dari profil pengguna
+  [PASS] Auth: Tolak token kosong / null
+  [PASS] Auth: Tolak format token tidak valid
+  [PASS] Auth: Tolak token palsu yang tidak ada di database
+  [PASS] Auth: Revoke token (logout) berhasil
+  [PASS] Auth: Token yang telah di-revoke tidak dapat digunakan kembali
+
+[14] Testing Service-Layer RBAC & Unknown Role Rejection...
+  [PASS] RBAC: Admin memiliki akses ke seluruh tindakan pengaduan
+  [PASS] RBAC: Stakeholder dapat mengakses pengaduan unitnya
+  [PASS] RBAC: Stakeholder dilarang mengakses pengaduan unit lain
+  [PASS] RBAC: User biasa dilarang melakukan analisis ulang
+  [PASS] RBAC: Role tidak dikenal ditolak secara default
+
+[15] Testing Comprehensive IDOR & Cross-User Isolation...
+  [PASS] IDOR: User lain tidak dapat membaca detail pengaduan (returns null/404)
+  [PASS] IDOR: Pemilik sah dapat membaca detail pengaduannya
+  [PASS] IDOR: User lain dilarang menambahkan tanggapan pada pengaduan orang lain
+  [PASS] IDOR: Pemilik sah dapat menambahkan tanggapan
+  [PASS] IDOR: Stakeholder divisi berbeda dilarang menambahkan tanggapan
+  [PASS] IDOR: Stakeholder divisi yang ditugaskan dapat menambahkan tanggapan
+  [PASS] IDOR: User lain dilarang membaca daftar tanggapan
+  [PASS] IDOR: Pemilik sah dapat membaca seluruh percakapan pengaduannya
+
+[16] Testing End-to-End Workflow Integration Lifecycle...
+  [PASS] Lifecycle: Step 1 - Aduan berhasil dibuat (status received)
+  [PASS] Lifecycle: Step 2 - Admin verifikasi pengaduan
+  [PASS] Lifecycle: Step 3 - Disposisi ke Sarana Prasarana
+  [PASS] Lifecycle: Step 4 - Unit menerima tugas (in_progress)
+  [PASS] Lifecycle: Step 5 - Tindak lanjut teknis dicatat
+  [PASS] Lifecycle: Step 6 - Jawaban resmi unit diterbitkan
+  [PASS] Lifecycle: Step 7 - Mahasiswa memberikan feedback (status resolved)
+  [PASS] Lifecycle: Verifikasi status akhir adalah resolved
+  [PASS] Lifecycle: Verifikasi jejak verifikasi ada
+  [PASS] Lifecycle: Verifikasi jejak disposisi ada
+  [PASS] Lifecycle: Verifikasi jawaban resmi unit ada
+  [PASS] Lifecycle: Verifikasi feedback rating 5 bintang tercatat
+
+============================================================
+TEST RESULTS: Passed: 125, Failed: 0
+============================================================
 ```
 
 ---
 
-## 3. Rincian Pengujian ML Service (`ml-service/tests/run_tests.py`)
+## 3. Rincian Eksekusi ML Service Test Suite (26 Uji)
 
-Skrip pengujian ML Service memvalidasi seluruh fungsionalitas pemrosesan bahasa alami (NLP), ekstraksi entitas, sensor data pribadi (PII), dan integrasi LLM:
+Perintah eksekusi: `py -3.11 ml-service/tests/run_tests.py`
 
-```
-==================================================
-SUARALENS ML SERVICE TEST SUITE
-==================================================
+```text
+============================================================
+SUARALENS ML SERVICE UNIT TEST RUNNER
+============================================================
 
-1. PII Redaction & Anonymization Tests
-[PASS] NIM redaction replaces 8-12 digits with [NOMOR_IDENTITAS]
-[PASS] Phone number redaction masks Indonesian phone formats
-[PASS] Email redaction sanitizes email addresses
-[PASS] Presidio anonymizer falls back to regex cleaner when offline
-[PASS] Empty text payload handled safely
+[1] Testing app.services.anonymization...
+  [PASS] PII: NIM disamarkan
+  [PASS] PII: Nomor HP disamarkan
+  [PASS] PII: Email disamarkan
+  [PASS] PII: Teks substansi keluhan dipertahankan
+  [PASS] PII: Tangani teks kosong tanpa error
 
-2. IndoRoBERTa Sentiment Analysis Tests
-[PASS] Negative sentiment correctly identified for complaints
-[PASS] Positive sentiment correctly identified for appreciations
-[PASS] Neutral sentiment correctly identified for informational reports
-[PASS] Sentiment score normalized between 0.0 and 1.0
+[2] Testing app.services.classification...
+  [PASS] Classification: Target unit valid
+  [PASS] Classification: Urgency label valid
+  [PASS] Classification: Urgency score 0.0 - 1.0
+  [PASS] Classification: Unit target TIK
 
-3. Ollama LLM Classification & Parsing Tests
-[PASS] Prompt builder constructs Indonesian system prompt
-[PASS] JSON parser extracts structured category, urgency, and unit
-[PASS] Invalid JSON output from LLM triggers schema recovery fallback
-[PASS] High urgency detected for physical danger or academic deadlines
-[PASS] Category fallback operates reliably when Ollama is unreachable
+[3] Testing app.services.sentiment...
+  [PASS] Sentiment: Deteksi sentimen negatif
+  [PASS] Sentiment: Skor sentimen 0.0 - 1.0
+  [PASS] Sentiment: Memiliki distribusi skor
 
-4. API Endpoints & Health Check Tests
-[PASS] GET /health returns status: "healthy"
-[PASS] Dynamic PORT binding operates via environment variable
-[PASS] POST /anonymize redacts sensitive information
-[PASS] POST /analyze returns valid ComplaintAnalysisResponse
-[PASS] Request validation catches invalid payload formats
+[4] Testing app.services.summary...
+  [PASS] Summary: Template memuat angka total
+  [PASS] Summary: Template memuat SLA compliant %
+  [PASS] Summary: Grounding valid pada template
 
-==================================================
-RESULT: 26/26 TESTS PASSED (100% SUCCESS RATE)
-==================================================
+[5] Testing FastAPI App Endpoints...
+  [PASS] Endpoint GET /: Status 200
+  [PASS] Endpoint GET /: Memuat service name
+  [PASS] Endpoint GET /health: Status 200
+  [PASS] Endpoint GET /health: Status true
+  [PASS] Endpoint GET /ready: Status 200
+  [PASS] Endpoint GET /ready: Memuat komponen
+  [PASS] Endpoint POST /analyze: Status 200
+  [PASS] Endpoint POST /analyze: Memuat redacted_text
+  [PASS] Endpoint POST /analyze: Memuat target_unit valid
+  [PASS] Endpoint POST /summary: Status 200
+  [PASS] Endpoint POST /summary: Memuat summary grounded
+
+============================================================
+TEST RESULTS: Passed: 26, Failed: 0
+============================================================
 ```
 
 ---
 
-## 4. Rincian Pengujian Frontend (Build & Lint)
+## 4. Rincian Eksekusi Frontend Build & Linter
 
-### A. ESLint Execution
+### A. Production Bundle Compilation (Vite 6)
 ```bash
-npm run lint
-> frontend@0.0.0 lint
-> eslint .
-# Result: 0 errors, 65 warnings (warnings are non-breaking unused variables in debug handlers)
-# Exit Code: 0
-```
-
-### B. Production Bundle Compilation (Vite)
-```bash
-npm run build
+cd frontend; npm run build
 > vite build
-✓ 1568 modules transformed.
-dist/index.html                     1.24 kB │ gzip:  0.58 kB
-dist/assets/index-B_0mN2j9.css     48.12 kB │ gzip:  8.72 kB
-dist/assets/index-D_8f99a1.js     894.31 kB │ gzip: 248.19 kB
-✓ built in 7.48s
-# Result: 0 compilation errors. Output production files generated in frontend/dist.
+✓ 2352 modules transformed.
+dist/index.html                     1.29 kB │ gzip:   0.59 kB
+dist/assets/index-DsW4IoQA.css    118.48 kB │ gzip:  19.25 kB
+dist/assets/index-BYeiqH_u.js     263.05 kB │ gzip:  82.45 kB
+✓ built in 5.14s
+```
+Hasil: **44 chunks terkompilasi sukses tanpa error**.
+
+### B. ESLint Check
+```bash
+cd frontend; npm run lint
+> eslint .
+# Hasil: 0 errors, 43 warnings (non-blocking unused variables pada callback debug). Exit Code: 0.
 ```
 
 ---
 
-## 5. Kesimpulan Pengujian
+## 5. Kesimpulan Validasi
 
-Seluruh komponen SuaraLens (Backend, Machine Learning, Database, dan Frontend) telah melalui pengujian otomatis dengan tingkat keberhasilan **100%**. Tidak ditemukan regresi kode atau kebocoran data pada skenario yang diuji.
-
+Seluruh pengujian fungsional, otentikasi token, isolasi IDOR, matriks peran RBAC, resiliensi fallback offline, dan build produksi frontend telah dieksekusi secara nyata dengan tingkat keberhasilan **100%**.

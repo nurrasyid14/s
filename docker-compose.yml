@@ -32,7 +32,7 @@ services:
       PYTHONPATH: /app/ml-service:/app
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:8b}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3.5:4b}
       OLLAMA_REASONING_EFFORT: ${OLLAMA_REASONING_EFFORT:-none}
       HF_HOME: /root/.cache/huggingface
     extra_hosts:
@@ -76,7 +76,7 @@ services:
       database.default.password: ${POSTGRES_PASSWORD:-postgres}
       database.default.DBDriver: Postgre
       database.default.port: 5432
-      ML_SERVICE_URL: http://ml-service:8000
+      ML_SERVICE_URL: ${ML_SERVICE_URL:-http://ml-service:8000}
       WEEKLY_ANALYTICS_OUTPUT_DIR: /var/www/data/output/weekly_analytics
       ANALYTICS_DATA_LAYER_DIR: /var/www/data/output/extracted_analytics
     volumes:

@@ -237,8 +237,10 @@ class ComplaintService
             return null;
         }
 
-        // Otorisasi: Pengguna biasa hanya boleh melihat aduan miliknya
-        if ($authenticatedUser['role'] === 'user' && (int) $row['user_id'] !== (int) $authenticatedUser['id']) {
+        // Otorisasi: Validasi kepemilikan dan hak akses (Mencegah IDOR)
+        try {
+            $this->assertComplaintAccess($row, $authenticatedUser, 'view');
+        } catch (InvalidArgumentException $e) {
             return null; // Disembunyikan sebagai 404
         }
 
@@ -586,6 +588,9 @@ class ComplaintService
             throw new InvalidArgumentException('Pengaduan tidak ditemukan.');
         }
 
+        // Validasi otoritas (Admin & Stakeholder unit terkait)
+        $this->assertComplaintAccess($complaint, $user, 'reanalyze');
+
         // Jalankan inferensi ML Service
         $mlRes = $this->mlService->analyzeComplaint(
             (int) $complaint['id'],
@@ -678,9 +683,8 @@ class ComplaintService
             throw new InvalidArgumentException('Pengaduan tidak ditemukan.');
         }
 
-        if ($user['role'] === 'user' && (int) $complaint['user_id'] !== (int) $user['id']) {
-            throw new InvalidArgumentException('Pengaduan tidak ditemukan.');
-        }
+        // Validasi hak akses (Mencegah IDOR)
+        $this->assertComplaintAccess($complaint, $user, 'analysis_history');
 
         $history = $this->analysisModel
             ->where('complaint_id', $id)
@@ -717,6 +721,113 @@ class ComplaintService
                 'history'      => $items,
             ],
         ];
+    }
+
+    /**
+     * Memvalidasi hak akses pengguna terhadap tiket pengaduan (Mencegah IDOR).
+     *
+     * Aturan:
+     * - Admin: Memiliki akses penuh terhadap seluruh pengaduan.
+     * - Stakeholder: Hanya berwenang pada pengaduan yang ditugaskan ke unitnya.
+     * - User/Mahasiswa: Hanya berwenang pada pengaduan miliknya sendiri.
+     * - Role lain / tidak dikenal: Ditolak secara default.
+     *
+     * @throws InvalidArgumentException jika akses tidak sah atau pengaduan tidak ditemukan.
+     */
+    public function assertComplaintAccess(array $complaint, array $user, string $action = 'view'): void
+    {
+        $role = $user['role'] ?? '';
+
+        if ($role === 'admin') {
+            return;
+        }
+
+        if ($role === 'stakeholder') {
+            $userUnit = trim((string) ($user['unit'] ?? ''));
+            $assignedUnit = trim((string) ($complaint['assigned_unit'] ?? ''));
+
+            if ($userUnit === '' || strcasecmp($userUnit, $assignedUnit) !== 0) {
+                throw new InvalidArgumentException('Akses ditolak: Anda hanya berwenang mengakses pengaduan yang ditugaskan ke divisi Anda.');
+            }
+
+            if (in_array($action, ['verify', 'feedback'], true)) {
+                throw new InvalidArgumentException('Akses ditolak: Anda tidak memiliki wewenang untuk tindakan ini.');
+            }
+            return;
+        }
+
+        if ($role === 'user') {
+            if ((int) ($complaint['user_id'] ?? 0) !== (int) ($user['id'] ?? -1)) {
+                throw new InvalidArgumentException('Pengaduan tidak ditemukan.');
+            }
+
+            if (in_array($action, ['reanalyze', 'verify', 'dispatch', 'accept', 'followup', 'answer'], true)) {
+                throw new InvalidArgumentException('Akses ditolak: Anda tidak memiliki wewenang untuk tindakan ini.');
+            }
+            return;
+        }
+
+        throw new InvalidArgumentException('Akses ditolak: Role pengguna tidak dikenal atau tidak memiliki hak akses.');
+    }
+
+    /**
+     * Tambahkan tanggapan/balasan pada pengaduan dengan validasi kepemilikan di service layer.
+     */
+    public function addReply(int $complaintId, string $replyText, array $user): array
+    {
+        $complaint = $this->complaintModel->find($complaintId);
+        if (!$complaint) {
+            throw new InvalidArgumentException('Pengaduan tidak ditemukan.');
+        }
+
+        $this->assertComplaintAccess($complaint, $user, 'reply');
+
+        $cleanReply = trim($replyText);
+        if ($cleanReply === '') {
+            throw new InvalidArgumentException('Isi tanggapan tidak boleh kosong.');
+        }
+
+        $replyId = $this->replyModel->insert([
+            'complaint_id' => $complaintId,
+            'user_id'      => (int) $user['id'],
+            'reply'        => $cleanReply,
+        ]);
+
+        if (!$replyId) {
+            throw new RuntimeException('Gagal menyimpan tanggapan: ' . json_encode($this->replyModel->errors()));
+        }
+
+        return [
+            'status'  => true,
+            'message' => 'Tanggapan berhasil ditambahkan.',
+            'data'    => [
+                'id'           => (int) $replyId,
+                'complaint_id' => $complaintId,
+                'user_id'      => (int) $user['id'],
+                'reply'        => $cleanReply,
+                'created_at'   => date('c'),
+            ],
+        ];
+    }
+
+    /**
+     * Ambil seluruh tanggapan dari satu tiket pengaduan dengan validasi otorisasi di service layer.
+     */
+    public function getReplies(int $complaintId, array $user): array
+    {
+        $complaint = $this->complaintModel->find($complaintId);
+        if (!$complaint) {
+            throw new InvalidArgumentException('Pengaduan tidak ditemukan.');
+        }
+
+        $this->assertComplaintAccess($complaint, $user, 'replies');
+
+        return $this->replyModel
+            ->select('complaint_replies.id, complaint_replies.reply, complaint_replies.created_at, users.name AS by')
+            ->join('users', 'users.id = complaint_replies.user_id', 'left')
+            ->where('complaint_replies.complaint_id', $complaintId)
+            ->orderBy('complaint_replies.created_at', 'ASC')
+            ->findAll();
     }
 
     /**

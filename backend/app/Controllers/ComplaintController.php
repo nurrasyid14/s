@@ -405,16 +405,6 @@ class ComplaintController extends ResourceController
             return $this->respond(['status' => false, 'message' => 'Autentikasi diperlukan.'], 401);
         }
 
-        $complaint = $this->complaintModel->find($id);
-        if (!$complaint) {
-            return $this->respond(['status' => false, 'message' => 'Pengaduan tidak ditemukan.'], 404);
-        }
-
-        // Proteksi otorisasi: pengguna biasa hanya boleh membalas aduan miliknya
-        if ($user['role'] === 'user' && (int) $complaint['user_id'] !== (int) $user['id']) {
-            return $this->respond(['status' => false, 'message' => 'Pengaduan tidak ditemukan.'], 404);
-        }
-
         $data = $this->getRequestData();
         $replyText = trim((string) ($data['reply'] ?? $data['message'] ?? ''));
 
@@ -422,30 +412,17 @@ class ComplaintController extends ResourceController
             return $this->respond(['status' => false, 'message' => 'Isi tanggapan tidak boleh kosong.'], 400);
         }
 
-        $replyId = $this->replyModel->insert([
-            'complaint_id' => (int) $id,
-            'user_id'      => (int) $user['id'],
-            'reply'        => $replyText,
-        ]);
-
-        if (!$replyId) {
-            return $this->respond([
-                'status'  => false,
-                'message' => 'Gagal menyimpan tanggapan.',
-                'errors'  => $this->replyModel->errors(),
-            ], 500);
+        try {
+            $result = $this->complaintService->addReply((int) $id, $replyText, $user);
+            return $this->respondCreated($result);
+        } catch (InvalidArgumentException $e) {
+            $msg = $e->getMessage();
+            $statusCode = str_contains($msg, 'tidak ditemukan') ? 404 : 403;
+            return $this->respond(['status' => false, 'message' => $msg], $statusCode);
+        } catch (Throwable $e) {
+            log_message('error', 'Gagal menyimpan tanggapan: ' . $e->getMessage());
+            return $this->respond(['status' => false, 'message' => 'Gagal menyimpan tanggapan.'], 500);
         }
-
-        return $this->respondCreated([
-            'status'  => true,
-            'message' => 'Tanggapan berhasil ditambahkan.',
-            'data'    => [
-                'id'           => (int) $replyId,
-                'complaint_id' => (int) $id,
-                'user_id'      => (int) $user['id'],
-                'reply'        => $replyText,
-            ],
-        ]);
     }
 
     /**
@@ -463,28 +440,21 @@ class ComplaintController extends ResourceController
             return $this->respond(['status' => false, 'message' => 'Autentikasi diperlukan.'], 401);
         }
 
-        $complaint = $this->complaintModel->find($id);
-        if (!$complaint) {
-            return $this->respond(['status' => false, 'message' => 'Pengaduan tidak ditemukan.'], 404);
+        try {
+            $replies = $this->complaintService->getReplies((int) $id, $user);
+            return $this->respond([
+                'status' => true,
+                'count'  => count($replies),
+                'data'   => $replies,
+            ]);
+        } catch (InvalidArgumentException $e) {
+            $msg = $e->getMessage();
+            $statusCode = str_contains($msg, 'tidak ditemukan') ? 404 : 403;
+            return $this->respond(['status' => false, 'message' => $msg], $statusCode);
+        } catch (Throwable $e) {
+            log_message('error', 'Gagal mengambil daftar balasan: ' . $e->getMessage());
+            return $this->respond(['status' => false, 'message' => 'Gagal mengambil balasan pengaduan.'], 500);
         }
-
-        // Proteksi IDOR: pengguna biasa hanya boleh membaca riwayat percakapan aduan miliknya
-        if ($user['role'] === 'user' && (int) $complaint['user_id'] !== (int) $user['id']) {
-            return $this->respond(['status' => false, 'message' => 'Pengaduan tidak ditemukan.'], 404);
-        }
-
-        $replies = $this->replyModel
-            ->select('complaint_replies.id, complaint_replies.reply, complaint_replies.created_at, users.name AS by')
-            ->join('users', 'users.id = complaint_replies.user_id', 'left')
-            ->where('complaint_replies.complaint_id', (int) $id)
-            ->orderBy('complaint_replies.created_at', 'ASC')
-            ->findAll();
-
-        return $this->respond([
-            'status' => true,
-            'count'  => count($replies),
-            'data'   => $replies,
-        ]);
     }
 
     /**
