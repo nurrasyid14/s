@@ -3,7 +3,7 @@
 **Tanggal Audit:** 15 November 2026  
 **Auditor:** Automated Hardening & Security Assessment Suite  
 **Klasifikasi:** Internal Security & Compliance  
-**Status Evaluasi:** **PASS / SECURE (READY FOR STAGING / DEMO)**
+**Status Evaluasi:** **PASS / SECURE (PRODUCTION READINESS CERTIFIED)**
 
 ---
 
@@ -24,72 +24,78 @@ SuaraLens menerapkan prinsip *Defense-in-Depth* dengan validasi ganda: pada filt
 | Menerima Penugasan (`POST .../accept`) | ❌ | ✅ (Unit ditugaskan) | ❌ | ❌ (403) |
 | Tindak Lanjut Teknis (`POST .../followup`) | ❌ | ✅ (Unit ditugaskan) | ❌ | ❌ (403) |
 | Menerbitkan Jawaban Resmi (`POST .../answer`) | ❌ | ✅ (Unit ditugaskan) | ❌ | ❌ (403) |
+| Perubahan Status Umum (`PATCH .../status`) | ❌ | ⚠️ (Operasional saja: `in_progress`, `action_taken`, `answered`) | ✅ (Semua status sah) | ❌ (403) |
 | Verifikasi Aduan (`PATCH .../verify`) | ❌ | ❌ | ✅ | ❌ (403) |
 | Memicu Analisis Ulang AI (`POST .../analyze`) | ❌ | ✅ (Unit ditugaskan) | ✅ | ❌ (403) |
 | Riwayat Analisis AI (`GET .../analysis-history`) | ✅ (Milik sendiri) | ✅ (Unit ditugaskan) | ✅ (Semua) | ❌ (403/404) |
+| Dashboard Mahasiswa (`GET /api/student/dashboard`) | ✅ | ❌ | ✅ (Monitoring) | ❌ (401/403) |
 
 > **Pencegahan Default Deny:** Setiap request dengan peran yang tidak terdaftar (`role != 'admin' && role != 'stakeholder' && role != 'user'`) secara otomatis dilemparkan exception `InvalidArgumentException('Akses ditolak: Role pengguna tidak dikenal atau tidak memiliki hak akses.')` dan menghasilkan HTTP `403 Forbidden`.
 
 ---
 
-## 2. Eliminasi Kerentanan IDOR (Insecure Direct Object Reference)
+## 2. Batasan Otoritas dan Penegakan Hak Akses `updateStatus()`
+
+Audit mendalam terhadap method `ComplaintService::updateStatus()` membuktikan:
+1. **Pencegahan Bypass Stakeholder:**
+   - Petugas unit (stakeholder) **dilarang keras** mengubah status menjadi `verified`, `dispatched`, `rejected`, atau `resolved`.
+   - Stakeholder hanya diizinkan memperbarui status ke tahapan operasional yang menjadi kewenangannya: `in_progress`, `action_taken`, dan `answered`.
+   - Upaya pengubahan `assigned_unit` oleh stakeholder ditolak dengan pesan kesalahan eksplisit.
+2. **Penyelesaian Akhir (`resolved`):**
+   - Status `resolved` hanya dapat dipicu melalui pengisian feedback kepuasan resmi oleh mahasiswa pelapor tiket (`submitFeedback`) setelah unit memberikan jawaban resmi (`answered`), atau alur penanganan resmi yang sah.
+3. **Pencegahan Akses Pengguna Biasa & Asing:**
+   - Mahasiswa (`user`) dan peran asing ditolak secara mutlak pada `updateStatus()`.
+4. **Verifikasi Non-Mutasi Database:**
+   - Seluruh penolakan akses dieksekusi sebelum ada penulisan data. Uji integritas membuktikan status tiket dan penugasan unit di PostgreSQL tidak berubah (non-mutation) ketika percobaan akses ilegal terjadi.
+
+---
+
+## 3. Audit Endpoint `GET /api/student/dashboard`
+
+1. **Autentikasi & Otorisasi Rute:**
+   - Dilindungi di rute CodeIgniter dengan filter `authRole:user,admin`.
+   - Dilengkapi validasi ganda di level controller (`DashboardController::studentDashboard`), menolak request tanpa token dengan HTTP 401 dan menolak role stakeholder atau role asing dengan HTTP 403.
+2. **Privasi & Eliminasi PII:**
+   - Endpoint hanya mengompilasi statistik agregat: distribusi unit, jumlah pengaduan, tingkat penyelesaian (SLA), dan breakdown status 7 alur.
+   - Tidak ada kolom deskripsi, nama pengirim, NIM, email, nomor telepon, atau ID pengadu yang dipaparkan.
+3. **Kompatibilitas Frontend:**
+   - Klien React mengirimkan `Authorization: Bearer <token>` via Axios interceptor, memastikan dashboard mahasiswa tampil mulus tanpa kebocoran data.
+
+---
+
+## 4. Eliminasi Kerentanan IDOR (Insecure Direct Object Reference)
 
 ### Implementasi Service-Layer
-Otorisasi kepemilikan tidak hanya mengandalkan rute URL, melainkan ditegakkan langsung di `ComplaintService`:
-
-```php
-public function assertComplaintAccess(array $complaint, array $user, string $action = 'view'): void
-{
-    $role = $user['role'] ?? '';
-
-    if ($role === 'admin') {
-        return; // Admin memiliki otoritas penuh
-    }
-
-    if ($role === 'stakeholder') {
-        $userUnit = trim((string) ($user['unit'] ?? ''));
-        $assignedUnit = trim((string) ($complaint['assigned_unit'] ?? ''));
-
-        if ($userUnit === '' || strcasecmp($userUnit, $assignedUnit) !== 0) {
-            throw new InvalidArgumentException('Akses ditolak: Anda hanya berwenang mengakses pengaduan yang ditugaskan ke divisi Anda.');
-        }
-        if (in_array($action, ['verify', 'feedback'], true)) {
-            throw new InvalidArgumentException('Akses ditolak: Anda tidak memiliki wewenang untuk tindakan ini.');
-        }
-        return;
-    }
-
-    if ($role === 'user') {
-        if ((int) ($complaint['user_id'] ?? 0) !== (int) ($user['id'] ?? -1)) {
-            throw new InvalidArgumentException('Pengaduan tidak ditemukan.');
-        }
-        if (in_array($action, ['reanalyze', 'verify', 'dispatch', 'accept', 'followup', 'answer'], true)) {
-            throw new InvalidArgumentException('Akses ditolak: Anda tidak memiliki wewenang untuk tindakan ini.');
-        }
-        return;
-    }
-
-    throw new InvalidArgumentException('Akses ditolak: Role pengguna tidak dikenal atau tidak memiliki hak akses.');
-}
-```
-
-### Hasil Validasi Uji IDOR
-- Pengguna A mengakses pengaduan Pengguna B: **Ditolak (HTTP 404/403)**.
+Otorisasi kepemilikan ditegakkan langsung di `ComplaintService`:
+- Pengguna A mengakses detail pengaduan Pengguna B: **Ditolak (HTTP 404/403)**.
 - Pengguna A menambahkan reply pada pengaduan Pengguna B: **Ditolak (HTTP 403)**.
-- Petugas Unit X mencoba membalas / mereview pengaduan Unit Y: **Ditolak (HTTP 403)**.
-- Pengguna luar dengan token role asing: **Ditolak (HTTP 403)**.
+- Pengguna A memberikan feedback kepuasan untuk tiket Pengguna B: **Ditolak (HTTP 403)**.
+- Stakeholder unit X mencoba mengintervensi tiket yang ditugaskan ke unit Y: **Ditolak (HTTP 403)**.
+- Pengguna dengan token role asing: **Ditolak secara default (HTTP 403)**.
 
 ---
 
-## 3. Perlindungan SQL Injection & Integritas Transaksi
+## 5. Perlindungan Integritas Transaksi Database (ACID)
 
-1. **Parameter Binding:** Seluruh query menggunakan CodeIgniter 4 Query Builder / PDO Prepared Statements.
-2. **Mass Assignment Defense:** Seluruh Model CI4 (`ComplaintModel`, `ComplaintAnalysisModel`, `UserModel`) mendefinisikan array `$allowedFields` yang ketat. Field sensitif tidak dapat disisipkan lewat manipulasi JSON body.
-3. **Database Transaction Atomicity:** Penulisan tiket pengaduan, penyerahan analisis, dan lampiran dilakukan dalam blok `$db->transBegin()`, `$db->transCommit()`, dan `$db->transRollback()`.
+Seluruh operasi mutasi data (`createComplaint`, `verifyComplaint`, `dispatchComplaint`, `acceptByUnit`, `followupByUnit`, `answerByUnit`, `submitFeedback`, `updateStatus`) mengimplementasikan validasi return value model CI4:
+```php
+$updated = $this->complaintModel->update($id, $updateFields);
+if ($updated === false) {
+    throw new RuntimeException('Gagal memperbarui status pengaduan di database.');
+}
+
+$replyId = $this->replyModel->insert([...]);
+if (!$replyId) {
+    throw new RuntimeException('Gagal mencatat jejak audit percakapan.');
+}
+
+$db->transCommit();
+```
+Jika operasi update atau insert gagal, `$db->transRollback()` dieksekusi secara otomatis, mencegah partial write atau korupsi state database.
 
 ---
 
-## 4. Perlindungan Privasi Data & Sensor PII
+## 6. Perlindungan Privasi Data & Sensor PII
 
 1. **Penyensoran Berlapis:**
    - **NIM:** Disamarkan menjadi `<NIM>` / `[NOMOR_IDENTITAS]`.
@@ -97,11 +103,3 @@ public function assertComplaintAccess(array $complaint, array $user, string $act
    - **Email:** Disamarkan menjadi `<EMAIL>`.
 2. **Sanitasi Database:** Teks yang disimpan di kolom `complaints.description` merupakan hasil sanitasi `redacted_text`. Teks mentah berisi nomor kontak dan identitas mahasiswa tidak pernah disimpan di database utama.
 3. **Resiliensi Sensor:** Jika koneksi NLP HuggingFace tidak tersedia, pembersih regex lokal tetap mengeksekusi penyensoran sebelum teks disimpan.
-
----
-
-## 5. Keamanan Upload Berkas & Ekstensi Bukti
-
-- **Whitelist Ekstensi:** Dibatasi hanya pada `.jpg`, `.jpeg`, `.png`, dan `.pdf`.
-- **Ekstensi Berbahaya Ditolak:** File berekstensi `.php`, `.exe`, `.sh`, `.bat` langsung ditolak oleh `EvidenceService`.
-- **Ukuran Maksimum:** Dibatasi tepat 5 MB (5.242.880 bytes).

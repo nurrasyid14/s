@@ -117,6 +117,24 @@ class DashboardController extends ResourceController
      */
     public function studentDashboard()
     {
+        $user = (new \App\Libraries\ApiTokenService())->userFromAuthorization(
+            $this->request->getHeaderLine('Authorization')
+        );
+
+        if (!$user) {
+            return $this->respond([
+                'status'  => false,
+                'message' => 'Autentikasi diperlukan atau token sudah tidak berlaku.',
+            ], 401);
+        }
+
+        if (!in_array($user['role'], ['user', 'admin'], true)) {
+            return $this->respond([
+                'status'  => false,
+                'message' => 'Role Anda tidak diizinkan mengakses fitur ini.',
+            ], 403);
+        }
+
         $db = \Config\Database::connect('default');
 
         $standardUnits = [

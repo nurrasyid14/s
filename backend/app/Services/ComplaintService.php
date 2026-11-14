@@ -275,14 +275,20 @@ class ComplaintService
         $db->transBegin();
 
         try {
-            $this->complaintModel->update($id, ['status' => $newStatus]);
+            $updated = $this->complaintModel->update($id, ['status' => $newStatus]);
+            if ($updated === false) {
+                throw new RuntimeException('Gagal memperbarui status verifikasi di database.');
+            }
 
             $replyMsg = ($verified ? '[Verifikasi Disetujui] ' : '[Verifikasi Ditolak] ') . ($note !== '' ? $note : 'Verifikasi oleh Admin Sentral PENS.');
-            $this->replyModel->insert([
+            $replyId = $this->replyModel->insert([
                 'complaint_id' => $id,
                 'user_id'      => (int) $user['id'],
                 'reply'        => $replyMsg,
             ]);
+            if (!$replyId) {
+                throw new RuntimeException('Gagal mencatat jejak verifikasi.');
+            }
 
             $db->transCommit();
         } catch (Throwable $e) {
@@ -329,17 +335,23 @@ class ComplaintService
         $db->transBegin();
 
         try {
-            $this->complaintModel->update($id, [
+            $updated = $this->complaintModel->update($id, [
                 'status'        => 'dispatched',
                 'assigned_unit' => $targetUnit,
             ]);
+            if ($updated === false) {
+                throw new RuntimeException('Gagal memperbarui status disposisi di database.');
+            }
 
             $replyMsg = "[Disposisi ke {$targetUnit}] " . ($pic !== '' ? "PIC: {$pic}. " : '') . ($note !== '' ? $note : 'Disposisi penanganan oleh Admin Sentral.');
-            $this->replyModel->insert([
+            $replyId = $this->replyModel->insert([
                 'complaint_id' => $id,
                 'user_id'      => (int) $user['id'],
                 'reply'        => $replyMsg,
             ]);
+            if (!$replyId) {
+                throw new RuntimeException('Gagal mencatat jejak disposisi.');
+            }
 
             $db->transCommit();
         } catch (Throwable $e) {
@@ -383,14 +395,20 @@ class ComplaintService
         $db->transBegin();
 
         try {
-            $this->complaintModel->update($id, ['status' => 'in_progress']);
+            $updated = $this->complaintModel->update($id, ['status' => 'in_progress']);
+            if ($updated === false) {
+                throw new RuntimeException('Gagal memperbarui status penerimaan tugas unit.');
+            }
 
             $replyMsg = '[Penerimaan Tugas Unit] ' . ($picName !== '' ? "PIC: {$picName}. " : '') . ($note !== '' ? $note : 'Disposisi diterima oleh unit. Penanganan sedang berlangsung.');
-            $this->replyModel->insert([
+            $replyId = $this->replyModel->insert([
                 'complaint_id' => $id,
                 'user_id'      => (int) $user['id'],
                 'reply'        => $replyMsg,
             ]);
+            if (!$replyId) {
+                throw new RuntimeException('Gagal mencatat jejak penerimaan tugas unit.');
+            }
 
             $db->transCommit();
         } catch (Throwable $e) {
@@ -421,15 +439,21 @@ class ComplaintService
         $db->transBegin();
 
         try {
-            $this->complaintModel->update($id, ['status' => 'action_taken']);
+            $updated = $this->complaintModel->update($id, ['status' => 'action_taken']);
+            if ($updated === false) {
+                throw new RuntimeException('Gagal memperbarui status tindak lanjut.');
+            }
 
             $by = $performedBy !== '' ? $performedBy : ($user['name'] ?? 'Tim Teknis Unit');
             $replyMsg = "[Tindak Lanjut Teknis - {$actionType}] Oleh: {$by}. {$note}";
-            $this->replyModel->insert([
+            $replyId = $this->replyModel->insert([
                 'complaint_id' => $id,
                 'user_id'      => (int) $user['id'],
                 'reply'        => $replyMsg,
             ]);
+            if (!$replyId) {
+                throw new RuntimeException('Gagal mencatat jejak tindak lanjut.');
+            }
 
             $db->transCommit();
         } catch (Throwable $e) {
@@ -460,15 +484,21 @@ class ComplaintService
         $db->transBegin();
 
         try {
-            $this->complaintModel->update($id, ['status' => 'answered']);
+            $updated = $this->complaintModel->update($id, ['status' => 'answered']);
+            if ($updated === false) {
+                throw new RuntimeException('Gagal memperbarui status jawaban resmi.');
+            }
 
             $by = $answeredBy !== '' ? $answeredBy : ($user['name'] ?? 'Kepala / Staf Unit');
             $replyMsg = "[Jawaban Resmi Unit] Oleh: {$by}. {$answer}";
-            $this->replyModel->insert([
+            $replyId = $this->replyModel->insert([
                 'complaint_id' => $id,
                 'user_id'      => (int) $user['id'],
                 'reply'        => $replyMsg,
             ]);
+            if (!$replyId) {
+                throw new RuntimeException('Gagal mencatat jejak jawaban resmi.');
+            }
 
             $db->transCommit();
         } catch (Throwable $e) {
@@ -519,13 +549,19 @@ class ComplaintService
         $db->transBegin();
 
         try {
-            $this->complaintModel->update($id, ['status' => 'resolved']);
+            $updated = $this->complaintModel->update($id, ['status' => 'resolved']);
+            if ($updated === false) {
+                throw new RuntimeException('Gagal menyelesaikan status pengaduan.');
+            }
 
-            $this->replyModel->insert([
+            $replyId = $this->replyModel->insert([
                 'complaint_id' => $id,
                 'user_id'      => (int) $user['id'],
                 'reply'        => $replyText,
             ]);
+            if (!$replyId) {
+                throw new RuntimeException('Gagal mencatat jejak feedback kepuasan.');
+            }
 
             $db->transCommit();
         } catch (Throwable $e) {
@@ -566,9 +602,12 @@ class ComplaintService
             throw new InvalidArgumentException("Status '{$rawStatus}' tidak valid.");
         }
 
-        // Stakeholder dilarang mengubah status sentral secara sepihak
-        if ($user['role'] === 'stakeholder' && in_array($normalizedStatus, ['verified', 'dispatched', 'rejected'], true)) {
-            throw new InvalidArgumentException("Akses ditolak: Stakeholder tidak berwenang mengubah status ke '{$normalizedStatus}'.");
+        // Stakeholder hanya dapat melakukan perubahan status operasional yang menjadi kewenangan unitnya
+        if ($user['role'] === 'stakeholder') {
+            $allowedOperationalStatuses = ['in_progress', 'action_taken', 'answered'];
+            if (!in_array($normalizedStatus, $allowedOperationalStatuses, true)) {
+                throw new InvalidArgumentException("Akses ditolak: Stakeholder hanya dapat mengubah status ke operasional (" . implode(', ', $allowedOperationalStatuses) . ") dan dilarang mengubah status ke '{$normalizedStatus}'.");
+            }
         }
 
         $updateFields = ['status' => $normalizedStatus];
@@ -586,14 +625,20 @@ class ComplaintService
         $db->transBegin();
 
         try {
-            $this->complaintModel->update($id, $updateFields);
+            $updated = $this->complaintModel->update($id, $updateFields);
+            if ($updated === false) {
+                throw new RuntimeException('Gagal memperbarui status pengaduan di database.');
+            }
 
             if ($note !== null && $note !== '') {
-                $this->replyModel->insert([
+                $replyId = $this->replyModel->insert([
                     'complaint_id' => $id,
                     'user_id'      => (int) $user['id'],
                     'reply'        => "[Perubahan Status ke {$normalizedStatus}] " . $note,
                 ]);
+                if (!$replyId) {
+                    throw new RuntimeException('Gagal mencatat riwayat perubahan status.');
+                }
             }
 
             $db->transCommit();

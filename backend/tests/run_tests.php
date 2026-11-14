@@ -362,31 +362,11 @@ assertTest("ML Integration Fallback: Teks urgensi tinggi memicu flag review HITL
 echo "\n";
 
 // -----------------------------------------------------------------
-// 10. TEST STUDENT DASHBOARD REAL-TIME AGGREGATION
+// 10. TEST STUDENT DASHBOARD REAL-TIME AGGREGATION & ACCESS CONTROL
 // -----------------------------------------------------------------
-echo "[10] Testing Student Dashboard Aggregation Endpoint...\n";
-$dashboardCtrl = new \App\Controllers\DashboardController();
-$dashboardCtrl->initController(service('request'), service('response'), service('logger'));
-$studentDashResponse = $dashboardCtrl->studentDashboard();
-$studentDashJson = json_decode($studentDashResponse->getBody(), true);
+echo "[10] Testing Student Dashboard Aggregation & Security Protection...\n";
 
-assertTest("Student Dashboard: Status respon berhasil (status=true)", !empty($studentDashJson['status']));
-assertTest("Student Dashboard: Memuat objek ringkasan (summary)", isset($studentDashJson['summary']['total']));
-assertTest("Student Dashboard: Memuat 14 unit kerja resmi", count($studentDashJson['units']) === 14);
-assertTest("Student Dashboard: Memuat 7 alur tahapan aduan", count($studentDashJson['globalStages']) === 7);
-assertTest("Student Dashboard: Memuat 3 breakdown tipe pengajuan (complaint, feedback, suggestion)", count($studentDashJson['typesBreakdown']) === 3);
-assertTest("Student Dashboard: Memuat daftar distribusi unit", count($studentDashJson['distribution']) === 14);
-
-echo "\n";
-
-// -----------------------------------------------------------------
-// 11. TEST COMPLAINT RE-ANALYSIS & ANALYSIS HISTORY
-// -----------------------------------------------------------------
-echo "[11] Testing Complaint Re-Analysis & Analysis History (Immutable Trail)...\n";
-$fastML = new \App\Services\MLService('http://127.0.0.1:59999', 1, 1);
-$complaintService = new \App\Services\ComplaintService(null, null, null, null, $fastML);
-
-// Ambil user aktual dari database
+// Ambil user aktual dari database untuk pengujian autentikasi & RBAC
 $adminRow = $db->table('users')->where('role', 'admin')->get()->getRowArray();
 $userRow = $db->table('users')->where('role', 'user')->get()->getRowArray();
 $otherRow = $db->table('users')->where('role', 'user')->where('id !=', (int) ($userRow['id'] ?? 17))->get()->getRowArray();
@@ -400,6 +380,63 @@ $otherUser = ['id' => (int) ($otherRow['id'] ?? 14), 'email' => $otherRow['email
 $stakeholderId = (int) ($stakeholderRow['id'] ?? 16);
 $matchingStakeholder = ['id' => $stakeholderId, 'role' => 'stakeholder', 'unit' => 'Sarana Prasarana dan Layanan Umum', 'name' => $stakeholderRow['name'] ?? 'Petugas Sarpras'];
 $diffStakeholder     = ['id' => $stakeholderId, 'role' => 'stakeholder', 'unit' => 'TIK/Sistem Informasi', 'name' => 'Petugas TIK'];
+
+// Siapkan token autentikasi
+$dashTokenService = new \App\Libraries\ApiTokenService();
+$dashAdminToken = $dashTokenService->issue($adminUser['id']);
+$dashUserToken  = $dashTokenService->issue($regularUser['id']);
+$dashStkToken   = $dashTokenService->issue($stakeholderId);
+
+// 10.1 Request tanpa autentikasi ditolak (HTTP 401)
+$reqUnauth = service('request');
+$reqUnauth->setHeader('Authorization', '');
+$dashboardCtrlUnauth = new \App\Controllers\DashboardController();
+$dashboardCtrlUnauth->initController($reqUnauth, service('response'), service('logger'));
+$unauthResp = $dashboardCtrlUnauth->studentDashboard();
+assertTest("Student Dashboard: Request tanpa autentikasi ditolak (HTTP 401)", $unauthResp->getStatusCode() === 401);
+
+// 10.2 Request dengan role stakeholder ditolak (HTTP 403)
+$reqStk = service('request');
+$reqStk->setHeader('Authorization', 'Bearer ' . $dashStkToken);
+$dashboardCtrlStk = new \App\Controllers\DashboardController();
+$dashboardCtrlStk->initController($reqStk, service('response'), service('logger'));
+$stkResp = $dashboardCtrlStk->studentDashboard();
+assertTest("Student Dashboard: Role stakeholder ditolak mengakses dashboard mahasiswa (HTTP 403)", $stkResp->getStatusCode() === 403);
+
+// 10.3 Request dengan role mahasiswa (user) berhasil (HTTP 200)
+$reqUser = service('request');
+$reqUser->setHeader('Authorization', 'Bearer ' . $dashUserToken);
+$dashboardCtrlUser = new \App\Controllers\DashboardController();
+$dashboardCtrlUser->initController($reqUser, service('response'), service('logger'));
+$studentDashResponse = $dashboardCtrlUser->studentDashboard();
+$studentDashJson = json_decode($studentDashResponse->getBody(), true);
+
+assertTest("Student Dashboard: Mahasiswa berhasil mengakses dashboard (HTTP 200)", $studentDashResponse->getStatusCode() === 200 && !empty($studentDashJson['status']));
+assertTest("Student Dashboard: Memuat objek ringkasan (summary)", isset($studentDashJson['summary']['total']));
+assertTest("Student Dashboard: Memuat 14 unit kerja resmi", count($studentDashJson['units']) === 14);
+assertTest("Student Dashboard: Memuat 7 alur tahapan aduan", count($studentDashJson['globalStages']) === 7);
+assertTest("Student Dashboard: Memuat 3 breakdown tipe pengajuan (complaint, feedback, suggestion)", count($studentDashJson['typesBreakdown']) === 3);
+assertTest("Student Dashboard: Memuat daftar distribusi unit", count($studentDashJson['distribution']) === 14);
+
+// 10.4 Request dengan role admin berhasil (HTTP 200)
+$reqAdmin = service('request');
+$reqAdmin->setHeader('Authorization', 'Bearer ' . $dashAdminToken);
+$dashboardCtrlAdmin = new \App\Controllers\DashboardController();
+$dashboardCtrlAdmin->initController($reqAdmin, service('response'), service('logger'));
+$adminDashResponse = $dashboardCtrlAdmin->studentDashboard();
+assertTest("Student Dashboard: Admin berwenang memantau dashboard mahasiswa (HTTP 200)", $adminDashResponse->getStatusCode() === 200);
+
+// Cleanup token uji dashboard
+$db->table('api_tokens')->whereIn('user_id', [$adminUser['id'], $regularUser['id'], $stakeholderId])->delete();
+
+echo "\n";
+
+// -----------------------------------------------------------------
+// 11. TEST COMPLAINT RE-ANALYSIS & ANALYSIS HISTORY
+// -----------------------------------------------------------------
+echo "[11] Testing Complaint Re-Analysis & Analysis History (Immutable Trail)...\n";
+$fastML = new \App\Services\MLService('http://127.0.0.1:59999', 1, 1);
+$complaintService = new \App\Services\ComplaintService(null, null, null, null, $fastML);
 
 // 11.1 Create test complaint
 $testComplaintData = [
@@ -653,10 +690,108 @@ $rowAfterUserDispatch = $db->table('complaints')->where('id', $rbacCompId)->get(
 assertTest("RBAC Mutate: User ditolak saat melakukan disposisi aduan", $userDispatchBlocked);
 assertTest("RBAC Integrity: Unit penugasan tidak berubah saat disposisi user ditolak", $rowAfterUserDispatch['assigned_unit'] === $rowAfterAdminVerify['assigned_unit']);
 
+// Test dispatchComplaint() - Role tidak dikenal ditolak & unit tidak berubah
+$unknownDispatchBlocked = false;
+try {
+    $complaintService->dispatchComplaint($rbacCompId, 'Sarana Prasarana dan Layanan Umum', 'PIC', 'Disposisi role asing', null, $unknownRoleUser);
+} catch (InvalidArgumentException $e) {
+    $unknownDispatchBlocked = true;
+}
+$rowAfterUnknownDispatch = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Role tidak dikenal ditolak saat melakukan disposisi aduan", $unknownDispatchBlocked);
+assertTest("RBAC Integrity: Unit penugasan tidak berubah saat disposisi role tidak dikenal ditolak", $rowAfterUnknownDispatch['assigned_unit'] === $rowAfterAdminVerify['assigned_unit']);
+
 // Test dispatchComplaint() - Admin berhasil & unit terdisposisi
 $adminDispatchRes = $complaintService->dispatchComplaint($rbacCompId, 'Sarana Prasarana dan Layanan Umum', 'Pak Budi', 'Disposisi resmi admin', null, $adminUser);
 $rowAfterAdminDispatch = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
 assertTest("RBAC Mutate: Admin berhasil melakukan disposisi pengaduan", $adminDispatchRes['status'] === true && $rowAfterAdminDispatch['status'] === 'dispatched');
+
+// 14.6 Security Audit: updateStatus() Stakeholder & User Boundaries
+// Status tiket saat ini: 'dispatched', unit: 'Sarana Prasarana dan Layanan Umum'
+
+// Stakeholder dilarang mengubah status menjadi 'resolved'
+$stkResolveBlocked = false;
+try {
+    $complaintService->updateStatus($rbacCompId, 'resolved', 'Stakeholder menyelesaikan tiket secara sepihak', null, $matchingStakeholder);
+} catch (InvalidArgumentException $e) {
+    $stkResolveBlocked = true;
+}
+$rowAfterStkResolve = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Stakeholder dilarang mengubah status menjadi resolved", $stkResolveBlocked);
+assertTest("RBAC Integrity: Status database tidak berubah setelah percobaan stakeholder set resolved", $rowAfterStkResolve['status'] === 'dispatched');
+
+// Stakeholder dilarang mengubah status sentral ('verified', 'dispatched', 'rejected')
+foreach (['verified', 'dispatched', 'rejected'] as $centralSt) {
+    $stkCentralBlocked = false;
+    try {
+        $complaintService->updateStatus($rbacCompId, $centralSt, "Stakeholder coba set {$centralSt}", null, $matchingStakeholder);
+    } catch (InvalidArgumentException $e) {
+        $stkCentralBlocked = true;
+    }
+    $rowCheck = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+    assertTest("RBAC Mutate: Stakeholder dilarang mengubah status menjadi {$centralSt}", $stkCentralBlocked);
+    assertTest("RBAC Integrity: Status database tidak berubah ke {$centralSt}", $rowCheck['status'] === 'dispatched');
+}
+
+// Stakeholder dilarang mengubah unit penugasan (assigned_unit)
+$stkUnitBlocked = false;
+try {
+    $complaintService->updateStatus($rbacCompId, 'in_progress', 'Ubah unit penugasan', 'TIK/Sistem Informasi', $matchingStakeholder);
+} catch (InvalidArgumentException $e) {
+    $stkUnitBlocked = true;
+}
+$rowAfterStkUnit = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Stakeholder dilarang mengubah unit penugasan", $stkUnitBlocked);
+assertTest("RBAC Integrity: Unit penugasan tidak berubah setelah penolakan ganti unit", $rowAfterStkUnit['assigned_unit'] === 'Sarana Prasarana dan Layanan Umum');
+
+// User dilarang mengubah status pengaduan via updateStatus()
+$userUpdateBlocked = false;
+try {
+    $complaintService->updateStatus($rbacCompId, 'in_progress', 'User coba ubah status', null, $regularUser);
+} catch (InvalidArgumentException $e) {
+    $userUpdateBlocked = true;
+}
+$rowAfterUserUpdate = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: User dilarang mengubah status via updateStatus()", $userUpdateBlocked);
+assertTest("RBAC Integrity: Status database tidak berubah saat update status user ditolak", $rowAfterUserUpdate['status'] === 'dispatched');
+
+// Role tidak dikenal dilarang mengubah status via updateStatus()
+$unknownUpdateBlocked = false;
+try {
+    $complaintService->updateStatus($rbacCompId, 'in_progress', 'Unknown coba update', null, $unknownRoleUser);
+} catch (InvalidArgumentException $e) {
+    $unknownUpdateBlocked = true;
+}
+$rowAfterUnknownUpdate = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Role tidak dikenal dilarang mengubah status via updateStatus()", $unknownUpdateBlocked);
+assertTest("RBAC Integrity: Status database tidak berubah saat update status role asing ditolak", $rowAfterUnknownUpdate['status'] === 'dispatched');
+
+// Stakeholder berhasil mengubah ke status operasional (in_progress)
+$stkProgressRes = $complaintService->updateStatus($rbacCompId, 'in_progress', 'Unit Sarpras mulai proses pengerjaan', null, $matchingStakeholder);
+$rowAfterStkProgress = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Stakeholder berhasil mengubah status ke operasional (in_progress)", $stkProgressRes['status'] === true && $rowAfterStkProgress['status'] === 'in_progress');
+
+// Stakeholder dilarang memberikan feedback kepuasan (submitFeedback)
+$stkFeedbackBlocked = false;
+try {
+    $complaintService->submitFeedback($rbacCompId, ['rating' => 5, 'aspect_speed' => 5, 'aspect_clarity' => 5, 'aspect_solution' => 5, 'comment' => 'Feedback stakeholder palsu'], $matchingStakeholder);
+} catch (InvalidArgumentException $e) {
+    $stkFeedbackBlocked = true;
+}
+$rowAfterStkFb = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Stakeholder dilarang memberikan feedback kepuasan", $stkFeedbackBlocked);
+assertTest("RBAC Integrity: Status database tidak berubah menjadi resolved oleh stakeholder", $rowAfterStkFb['status'] === 'in_progress');
+
+// User lain dilarang memberikan feedback kepuasan untuk tiket milik orang lain
+$otherFeedbackBlocked = false;
+try {
+    $complaintService->submitFeedback($rbacCompId, ['rating' => 5, 'aspect_speed' => 5, 'aspect_clarity' => 5, 'aspect_solution' => 5, 'comment' => 'Feedback orang asing'], $otherUser);
+} catch (InvalidArgumentException $e) {
+    $otherFeedbackBlocked = true;
+}
+$rowAfterOtherFb = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: User lain dilarang memberikan feedback untuk tiket orang lain", $otherFeedbackBlocked);
+assertTest("RBAC Integrity: Status database tidak berubah oleh feedback user lain", $rowAfterOtherFb['status'] === 'in_progress');
 
 // Cleanup RBAC test fixtures
 $db->table('complaint_reviews')->where('complaint_analysis_id', (int) $rbacTestComp['data']['analysis_id'])->delete();
