@@ -92,7 +92,7 @@ export default function UnitReportModal({ unitData, complaints = [], onClose }) 
               <div className="text-[10px] font-mono uppercase text-gray-500">Skor CSAT Pelapor</div>
               <div className="text-xl font-bold font-mono text-orange-600 mt-0.5 flex items-center justify-center gap-1">
                 <Star size={16} className="fill-orange-500 text-orange-500" />
-                {unitData.avgRating || 4.8}/5
+                {unitData.avgRating ?? 0}/5
               </div>
             </div>
           </div>
