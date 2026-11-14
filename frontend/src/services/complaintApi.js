@@ -423,6 +423,29 @@ export async function submitStakeholderFeedback(id, { rating, aspect_speed = 5, 
 // -------------------------------------------------------------
 // Modul Dashboard Spesifik per Unit
 // -------------------------------------------------------------
+/**
+ * Agregat Dashboard Administrator dari seluruh aduan (GET /admin/dashboard).
+ * Mode mock: seluruh nilai 0.
+ */
+export async function getAdminDashboardStats() {
+  if (USE_MOCK) {
+    return {
+      total: 0,
+      byType: { complaint: 0, feedback: 0, suggestion: 0 },
+      stages: { received: 0, verified: 0, dispatched: 0, in_progress: 0, action_taken: 0, answered: 0, resolved: 0 },
+      verificationQueue: 0,
+      dispositionQueue: 0,
+      activeDispatched: 0,
+      resolved: 0,
+      avgResolutionDays: 0,
+      unitRanking: [],
+      monthly: [],
+    }
+  }
+  const res = await api.get('/admin/dashboard')
+  return res.data
+}
+
 export async function getUnitDashboardStats(unitName) {
   if (USE_MOCK) {
     await delay(350)
@@ -438,10 +461,10 @@ export async function getUnitDashboardStats(unitName) {
     const withFeedback = unitList.filter(c => c.feedback?.rating)
     const avgRating = withFeedback.length
       ? Math.round((withFeedback.reduce((acc, curr) => acc + curr.feedback.rating, 0) / withFeedback.length) * 10) / 10
-      : 4.8
+      : 0
 
-    // SLA compliance estimate
-    const slaRate = Math.min(100, Math.round((resolved + answered) / (Math.max(1, total)) * 100))
+    // SLA compliance: 0 jika belum ada tiket (sama dengan backend)
+    const slaRate = total > 0 ? Math.min(100, Math.round((resolved + answered) / total * 100)) : 0
 
     return {
       unitName,
@@ -454,8 +477,8 @@ export async function getUnitDashboardStats(unitName) {
       activePending: dispatched + inProgress + actionTaken,
       avgRating,
       feedbackCount: withFeedback.length,
-      slaComplianceRate: Math.max(78, slaRate),
-      avgResolutionDays: 2.1,
+      slaComplianceRate: slaRate,
+      avgResolutionDays: 0,
       items: unitList,
     }
   }

@@ -91,7 +91,8 @@ class DashboardController extends ResourceController
             };
         }
 
-        $slaRate = $total > 0 ? min(100, round((($resolved + $answered) / $total) * 100)) : 95;
+        // Semua metrik dihitung dari data nyata; tanpa data hasilnya 0.
+        $slaRate = $total > 0 ? min(100, round((($resolved + $answered) / $total) * 100)) : 0;
 
         return $this->respond([
             'unitName'          => $unitName,
@@ -102,10 +103,10 @@ class DashboardController extends ResourceController
             'answered'          => $answered,
             'resolved'          => $resolved,
             'activePending'     => $dispatched + $inProgress + $actionTaken,
-            'avgRating'         => 4.8,
+            'avgRating'         => 0.0,
             'feedbackCount'     => 0,
-            'slaComplianceRate' => max(78, (int) $slaRate),
-            'avgResolutionDays' => 2.0,
+            'slaComplianceRate' => (int) $slaRate,
+            'avgResolutionDays' => $this->averageResolutionDays($items),
             'items'             => $items,
         ]);
     }
@@ -135,6 +136,19 @@ class DashboardController extends ResourceController
             'Pimpinan/Manajemen'                => ['code' => 'PIMP', 'targetDays' => 5, 'top' => ['Kebijakan Kampus', 'Fasilitas Terpadu', 'Aspirasi Terbuka', 'Tata Kelola']],
         ];
 
+        $emptyStages = [
+            'received'     => 0,
+            'verified'     => 0,
+            'dispatched'   => 0,
+            'in_progress'  => 0,
+            'action_taken' => 0,
+            'answered'     => 0,
+            'resolved'     => 0,
+        ];
+        // Tahap dipecah per jenis (aduan/masukan/saran) agar filter jenis di dashboard akurat
+        $emptyTypeStages = ['complaint' => $emptyStages, 'feedback' => $emptyStages, 'suggestion' => $emptyStages];
+        $globalTypeStages = $emptyTypeStages;
+
         $unitMap = [];
         foreach ($standardUnits as $name => $meta) {
             $unitMap[$name] = [
@@ -142,22 +156,19 @@ class DashboardController extends ResourceController
                 'code'              => $meta['code'],
                 'total'             => 0,
                 'types'             => ['complaint' => 0, 'feedback' => 0, 'suggestion' => 0],
-                'stages'            => [
-                    'received'     => 0,
-                    'verified'     => 0,
-                    'dispatched'   => 0,
-                    'in_progress'  => 0,
-                    'action_taken' => 0,
-                    'answered'     => 0,
-                    'resolved'     => 0,
-                ],
-                'avgResolutionDays' => (float) $meta['targetDays'],
+                'typeStages'        => $emptyTypeStages,
+                'stages'            => $emptyStages,
+                'avgResolutionDays' => 0.0,
                 'slaTargetDays'     => $meta['targetDays'],
-                'slaComplianceRate' => 95.0,
-                'rating'            => 4.8,
-                'topCategories'     => $meta['top'],
+                'slaComplianceRate' => 0.0,
+                'rating'            => 0.0,
+                'topCategories'     => [],
             ];
         }
+
+        // Akumulator per unit: durasi penyelesaian (detik) dan jumlah kategori
+        $resolutionSecs = [];
+        $categoryCounts = [];
 
         $latest = '(SELECT complaint_id, MAX(id) AS latest_id FROM complaint_analysis GROUP BY complaint_id) latest_analysis';
         $complaints = $db->table('complaints c')
@@ -199,7 +210,32 @@ class DashboardController extends ResourceController
             $unitMap[$targetName]['total']++;
             $unitMap[$targetName]['types'][$type]++;
             $unitMap[$targetName]['stages'][$st]++;
+            $unitMap[$targetName]['typeStages'][$type][$st]++;
+            $globalTypeStages[$type][$st]++;
+
+            $category = trim((string) ($c['category'] ?? ''));
+            if ($category !== '') {
+                $categoryCounts[$targetName][$category] = ($categoryCounts[$targetName][$category] ?? 0) + 1;
+            }
+
+            if ($st === 'resolved' && !empty($c['created_at']) && !empty($c['updated_at'])) {
+                $secs = strtotime($c['updated_at']) - strtotime($c['created_at']);
+                if ($secs > 0) {
+                    $resolutionSecs[$targetName][] = $secs;
+                }
+            }
         }
+
+        foreach ($unitMap as $uName => &$uData) {
+            if (!empty($resolutionSecs[$uName])) {
+                $uData['avgResolutionDays'] = round(array_sum($resolutionSecs[$uName]) / count($resolutionSecs[$uName]) / 86400, 1);
+            }
+            if (!empty($categoryCounts[$uName])) {
+                arsort($categoryCounts[$uName]);
+                $uData['topCategories'] = array_slice(array_keys($categoryCounts[$uName]), 0, 4);
+            }
+        }
+        unset($uData);
 
         $campusTotal = 0;
         $campusResolved = 0;
@@ -234,14 +270,17 @@ class DashboardController extends ResourceController
 
             $slaRate = $u['total'] > 0
                 ? min(100.0, round((($u['stages']['resolved'] + $u['stages']['answered']) / $u['total']) * 100, 1))
-                : 95.0;
-            $u['slaComplianceRate'] = max(80.0, $slaRate);
+                : 0.0;
+            $u['slaComplianceRate'] = $slaRate;
 
-            $statusHealth = 'optimal';
-            if ($u['slaComplianceRate'] < 90) {
-                $statusHealth = 'attention';
-            } elseif ($u['slaComplianceRate'] >= 95) {
-                $statusHealth = 'excellent';
+            $statusHealth = 'no_data';
+            if ($u['total'] > 0) {
+                $statusHealth = 'optimal';
+                if ($u['slaComplianceRate'] < 90) {
+                    $statusHealth = 'attention';
+                } elseif ($u['slaComplianceRate'] >= 95) {
+                    $statusHealth = 'excellent';
+                }
             }
 
             $u['activeCount'] = $activeCount;
@@ -266,10 +305,15 @@ class DashboardController extends ResourceController
             ];
         }, $unitList);
 
-        $countUnits = max(1, count($unitList));
-        $avgSla = round(array_sum(array_column($unitList, 'slaComplianceRate')) / $countUnits, 1);
-        $avgRes = round(array_sum(array_column($unitList, 'avgResolutionDays')) / $countUnits, 1);
-        $avgSat = round(array_sum(array_column($unitList, 'rating')) / $countUnits, 1);
+        // Rata-rata hanya dari unit yang sudah punya data; jika belum ada, 0.
+        $unitsWithData = array_values(array_filter($unitList, fn ($u) => $u['total'] > 0));
+        $countWithData = count($unitsWithData);
+        $avgOf = fn (string $key) => $countWithData > 0
+            ? round(array_sum(array_column($unitsWithData, $key)) / $countWithData, 1)
+            : 0.0;
+        $avgSla = $avgOf('slaComplianceRate');
+        $avgRes = $avgOf('avgResolutionDays');
+        $avgSat = $avgOf('rating');
 
         $safeTotal = max(1, $campusTotal);
         $typesBreakdown = [
@@ -353,10 +397,125 @@ class DashboardController extends ResourceController
             ],
             'typesBreakdown'        => $typesBreakdown,
             'globalStages'          => $globalStages,
+            'globalTypeStages'      => $globalTypeStages,
             'stagesList'            => $stagesList,
             'streamlinedStagesList' => $streamlinedStagesList,
             'units'                 => $unitList,
             'distribution'          => $distribution,
         ]);
+    }
+
+    /**
+     * GET /api/admin/dashboard
+     * Agregat untuk Dashboard Administrator, dihitung dari SELURUH aduan (bukan hanya halaman list).
+     */
+    public function adminDashboard()
+    {
+        $db = \Config\Database::connect('default');
+        $rows = $db->table('complaints c')
+            ->select(['c.type', 'c.status', 'c.assigned_unit', 'c.created_at', 'c.updated_at'])
+            ->get()->getResultArray();
+
+        $stageOf = static fn (string $raw): string => match (strtolower(trim($raw))) {
+            'submitted', 'new', ''   => 'received',
+            'process'                => 'in_progress',
+            'done'                   => 'resolved',
+            'escalate', 'disposition'=> 'dispatched',
+            default                  => strtolower(trim($raw)),
+        };
+
+        $stages = ['received' => 0, 'verified' => 0, 'dispatched' => 0, 'in_progress' => 0, 'action_taken' => 0, 'answered' => 0, 'resolved' => 0];
+        $types = ['complaint' => 0, 'feedback' => 0, 'suggestion' => 0];
+        $units = [];
+        $resolutionSecs = [];
+
+        // 8 bulan terakhir (termasuk bulan ini) untuk grafik tren; label bulan diformat frontend (sesuai bahasa)
+        $monthly = [];
+        $now = new \DateTimeImmutable('first day of this month');
+        for ($i = 7; $i >= 0; $i--) {
+            $d = $now->modify("-{$i} months");
+            $monthly[$d->format('Y-m')] = [
+                'month'      => $d->format('Y-m'),
+                'completed'  => 0,
+                'inProgress' => 0,
+            ];
+        }
+
+        foreach ($rows as $row) {
+            $st = $stageOf((string) ($row['status'] ?? ''));
+            if (!isset($stages[$st])) {
+                $st = 'received';
+            }
+            $stages[$st]++;
+
+            $type = strtolower((string) ($row['type'] ?? 'complaint'));
+            if (!isset($types[$type])) {
+                $type = 'complaint';
+            }
+            $types[$type]++;
+
+            $unit = trim((string) ($row['assigned_unit'] ?? ''));
+            if ($unit !== '') {
+                $units[$unit] = ($units[$unit] ?? 0) + 1;
+            }
+
+            if ($st === 'resolved' && !empty($row['created_at']) && !empty($row['updated_at'])) {
+                $diff = strtotime($row['updated_at']) - strtotime($row['created_at']);
+                if ($diff > 0) {
+                    $resolutionSecs[] = $diff;
+                }
+            }
+
+            if (!empty($row['created_at'])) {
+                $key = date('Y-m', strtotime($row['created_at']));
+                if (isset($monthly[$key])) {
+                    if ($st === 'resolved') {
+                        $monthly[$key]['completed']++;
+                    } elseif (!in_array($st, ['received', 'verified'], true)) {
+                        $monthly[$key]['inProgress']++;
+                    }
+                }
+            }
+        }
+
+        arsort($units);
+        $unitRanking = [];
+        foreach ($units as $name => $count) {
+            $unitRanking[] = ['name' => $name, 'count' => $count];
+        }
+
+        return $this->respond([
+            'status'            => true,
+            'total'             => count($rows),
+            'byType'            => $types,
+            'stages'            => $stages,
+            'verificationQueue' => $stages['received'],
+            'dispositionQueue'  => $stages['verified'],
+            'activeDispatched'  => $stages['dispatched'] + $stages['in_progress'] + $stages['action_taken'] + $stages['answered'],
+            'resolved'          => $stages['resolved'],
+            'avgResolutionDays' => $resolutionSecs ? round(array_sum($resolutionSecs) / count($resolutionSecs) / 86400, 1) : 0.0,
+            'unitRanking'       => $unitRanking,
+            'monthly'           => array_values($monthly),
+        ]);
+    }
+
+    /**
+     * Rata-rata hari penyelesaian aduan berstatus resolved (selisih updated_at - created_at).
+     * Mengembalikan 0 jika belum ada aduan yang selesai.
+     */
+    private function averageResolutionDays(array $items): float
+    {
+        $secs = [];
+        foreach ($items as $item) {
+            if (($item['status'] ?? '') !== 'resolved' || empty($item['created_at']) || empty($item['updated_at'])) {
+                continue;
+            }
+            $diff = strtotime($item['updated_at']) - strtotime($item['created_at']);
+            if ($diff > 0) {
+                $secs[] = $diff;
+            }
+        }
+
+        return $secs ? round(array_sum($secs) / count($secs) / 86400, 1) : 0.0;
     }
 }
