@@ -33,6 +33,7 @@ $routes->group('api', function ($routes) {
         $routes->get('(:num)/replies', 'ComplaintController::replies/$1', ['filter' => 'authRole:user,stakeholder,admin']);
         $routes->post('(:num)/analyze', 'ComplaintController::analyze/$1', ['filter' => 'authRole:stakeholder,admin']);
         $routes->get('(:num)/analysis-history', 'ComplaintController::analysisHistory/$1', ['filter' => 'authRole:user,stakeholder,admin']);
+        $routes->get('(:num)/attachments/(:segment)', 'ComplaintController::attachment/$1/$2', ['filter' => 'authRole:user,stakeholder,admin']);
     });
 
     $routes->group('admin/complaints', ['filter' => 'authRole:admin'], function ($routes) {

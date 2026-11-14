@@ -539,6 +539,42 @@ class ComplaintController extends ResourceController
     }
 
     /**
+     * GET /api/complaints/{id}/attachments/{filename}
+     * Mengunduh/melihat file lampiran dengan proteksi otorisasi dan anti-traversal.
+     */
+    public function attachment($id = null, $filename = null)
+    {
+        if ($id === null || empty($filename)) {
+            return $this->respond(['status' => false, 'message' => 'ID pengaduan dan nama file wajib diisi.'], 400);
+        }
+
+        $user = $this->authenticatedUser();
+        if (!$user) {
+            return $this->respond(['status' => false, 'message' => 'Autentikasi diperlukan.'], 401);
+        }
+
+        try {
+            $att = $this->complaintService->getComplaintAttachment((int) $id, (string) $filename, $user);
+            $fileData = file_get_contents($att['physical_path']);
+            if ($fileData === false) {
+                return $this->respond(['status' => false, 'message' => 'Gagal membaca file fisik.'], 500);
+            }
+
+            return $this->response
+                ->setHeader('Content-Type', $att['file_type'])
+                ->setHeader('Content-Length', (string) $att['file_size'])
+                ->setHeader('Content-Disposition', 'inline; filename="' . addslashes($att['original_name']) . '"')
+                ->setHeader('X-Content-Type-Options', 'nosniff')
+                ->setBody($fileData);
+        } catch (InvalidArgumentException $e) {
+            return $this->respond(['status' => false, 'message' => $e->getMessage()], 403);
+        } catch (Throwable $e) {
+            log_message('error', 'Gagal memuat lampiran: ' . $e->getMessage());
+            return $this->respond(['status' => false, 'message' => 'File lampiran tidak dapat diakses.'], 404);
+        }
+    }
+
+    /**
      * Query dasar join complaints + latest analysis + users.
      */
     private function complaintQuery()

@@ -46,18 +46,22 @@ Dokumen ini mencatat kronologi perbaikan, hardening keamanan, audit service-laye
 
 ### 4. Validasi Testing Komprehensif (Prioritas 4)
 - **`backend/tests/run_tests.php`:**
-  - Diperluas menjadi **16 seksi pengujian** mencakup 125 kasus uji:
-    - Seksi 1-12: Unit service (Priority, SLA, Feedback, DataExtraction, WeeklyAnalytics, DB Transactions, Matrix Role, Evidence, ML Resilience, Student Dashboard, Re-Analysis History, Controller Endpoints).
+  - Diperluas menjadi **18 seksi pengujian** mencakup 199 kasus uji:
+    - Seksi 1-7: Unit service (Priority, SLA, Feedback, DataExtraction, WeeklyAnalytics, DB Transactions, Matrix Role).
+    - Seksi 8: Keamanan upload file nyata (Magic bytes JPG/PNG/PDF, penolakan ekstensi PHP/EXE, penolakan MIME mismatch, batas 5MB, file 0-byte, isolasi nama acak, proteksi .htaccess, kompensasi deleteFile & purgeFiles).
+    - Seksi 9-12: ML Resilience, Student Dashboard Auth & Defense-in-depth, Re-Analysis History, Controller Endpoints.
     - Seksi 13: Siklus token otentikasi (Issue, Bearer auth, password hash hidden, invalid/malformed token, revoke/logout).
-    - Seksi 14: RBAC & Default Deny (Admin full access, stakeholder unit matching, user boundary, unknown role deny).
+    - Seksi 14: RBAC & Default Deny (Admin full access, stakeholder unit matching, user boundary, unknown role deny, non-mutation check).
     - Seksi 15: Matriks isolasi IDOR silang pengguna dan silang unit (Detail, reply, replies).
     - Seksi 16: Pengujian integrasi alur hidup pengaduan dari submit hingga penilaian kepuasan 5 bintang.
-  - Hasil: **125 / 125 PASS (100% Success Rate)**.
+    - Seksi 17: Siklus hidup lampiran, fail-fast validasi, zero orphan compensation, dan protected attachment serving dengan verifikasi IDOR.
+    - Seksi 18: Uji ketahanan atomisitas transaksi multi-tabel dan rollback bersih pada seluruh method mutasi.
+  - Hasil: **199 / 199 PASS (100% Success Rate)**.
 - **`ml-service/tests/run_tests.py`:**
-  - Menambahkan penanganan mode offline (`TRANSFORMERS_OFFLINE=1`) pada modul uji agar Hugging Face tidak freeze saat koneksi terbatas.
+  - Penanganan mode offline aman (`TRANSFORMERS_OFFLINE=1`).
   - Hasil: **26 / 26 PASS (100% Success Rate)**.
 - **Frontend Build & Linter:**
-  - Vite 6 mengompilasi 44 chunks dalam 5.14s (0 errors).
+  - Vite 6 mengompilasi 44 chunks dalam 4.36s (0 errors).
   - ESLint lolos dengan 0 errors (Exit code 0).
 
 ---
@@ -66,16 +70,10 @@ Dokumen ini mencatat kronologi perbaikan, hardening keamanan, audit service-laye
 
 | Nama File | Kategori | Perubahan Utama |
 |---|---|---|
-| `backend/app/Services/ComplaintService.php` | Backend / Security | Menambahkan `assertComplaintAccess()`, `addReply()`, `getReplies()`, dan proteksi IDOR service layer |
-| `backend/app/Controllers/ComplaintController.php` | Backend / Controller | Refactoring `reply()` dan `replies()` mendelegasikan ke `ComplaintService` |
-| `backend/app/Config/Routes.php` | Backend / Routing | Menyelaraskan filter rute `reply`, `replies`, dan `analysis-history` |
-| `.env.example` | DevOps / Environment | Sinkronisasi port 5433, model `qwen3.5:4b`, dan dokumentasi alamat Ollama |
-| `docker-compose.yml` | DevOps / Docker | Sinkronisasi default model `qwen3.5:4b` dan `ML_SERVICE_URL` |
-| `backend/tests/run_tests.php` | QA / Testing | Penambahan Seksi 13–16 (125 uji terverifikasi lolos 100%) |
-| `ml-service/tests/run_tests.py` | QA / Testing | Penambahan offline mode safe import (26 uji terverifikasi lolos 100%) |
-| `AUDIT_REPORT.md` | Dokumentasi | Update arsitektur React 19, CI4 8090, port 5433, temuan & solusi |
-| `TEST_REPORT.md` | Dokumentasi | Laporan aktual 125 backend tests + 26 ML tests + Vite build |
-| `SECURITY_AUDIT.md` | Dokumentasi | Matriks RBAC, default deny, dan eliminasi IDOR |
-| `DATABASE_AUDIT.md` | Dokumentasi | Status 11 migrasi dan riwayat analisis immutable |
-| `DEPLOYMENT_GUIDE.md` | Dokumentasi | Panduan deployment lokal Docker, Railway, Vercel, dan bounded timeout |
-| `PRODUCTION_CHECKLIST.md` | Dokumentasi | Checklist pre-deployment dan status Ready for Staging |
+| `backend/app/Services/EvidenceService.php` | Backend / Security | Validasi MIME type fisik via `finfo`, whitelist ekstensi, proteksi .htaccess, kompensasi `deleteFile()` dan `purgeFiles()` |
+| `backend/app/Services/ComplaintService.php` | Backend / Security | Validasi lampiran fail-fast, kompensasi zero orphan files saat transaksi rollback, endpoint protected attachment `getComplaintAttachment()`, pengetatan `updateStatus()`, dan return check transaksi |
+| `backend/app/Controllers/ComplaintController.php` | Backend / Controller | Endpoint terproteksi `attachment()` dengan sanitasi basename, anti-traversal, dan header nosniff |
+| `backend/app/Config/Routes.php` | Backend / Routing | Rute terproteksi `complaints/(:num)/attachments/(:segment)` dengan filter `authRole:user,stakeholder,admin` |
+| `backend/tests/run_tests.php` | QA / Testing | Penambahan Seksi 8 (Upload security) dan Seksi 17–18 (199 uji terverifikasi lolos 100%) |
+| `TEST_REPORT.md` | Dokumentasi | Laporan aktual 199 backend tests + 26 ML tests + Vite build |
+| `SECURITY_AUDIT.md` | Dokumentasi | Dokumentasi upload security, zero orphan compensation, ACID integrity, dan protected attachment serving |

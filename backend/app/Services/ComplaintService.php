@@ -84,12 +84,44 @@ class ComplaintService
         // Ticket ID generator yang unik
         $ticketId = 'SL-' . date('YmdHis') . strtoupper(substr(bin2hex(random_bytes(3)), 0, 4));
 
-        // Transaksi database multi-tabel (Atomik)
+        // 2. Ekstraksi dan Validasi Seluruh Lampiran Fisik Terlebih Dahulu (Fail-Fast)
+        $validAttachmentFiles = [];
+        if (!empty($files['attachments'])) {
+            $rawList = is_array($files['attachments']) ? $files['attachments'] : [$files['attachments']];
+            foreach ($rawList as $f) {
+                if ($f instanceof \CodeIgniter\HTTP\Files\UploadedFile && $f->getError() !== UPLOAD_ERR_NO_FILE) {
+                    $val = $this->evidenceService->validateFile($f);
+                    if (!$val['valid']) {
+                        throw new InvalidArgumentException('Validasi lampiran gagal: ' . $val['error']);
+                    }
+                    $validAttachmentFiles[] = $f;
+                }
+            }
+        }
+
+        // 3. Simpan File Fisik ke Storage Aman (dengan pelacakan untuk kompensasi)
+        $storedAttachments = [];
+        $storedPathsToPurge = [];
+        if (!empty($validAttachmentFiles)) {
+            try {
+                foreach ($validAttachmentFiles as $f) {
+                    $stored = $this->evidenceService->storeAttachment($f, 'complaints');
+                    $storedAttachments[] = $stored;
+                    $storedPathsToPurge[] = $stored['physical_path'] ?? (WRITEPATH . $stored['file_path']);
+                }
+            } catch (Throwable $fileErr) {
+                // Kompensasi: Bersihkan file yang sudah terlanjur disimpan jika salah satu gagal
+                $this->evidenceService->purgeFiles($storedPathsToPurge);
+                throw new RuntimeException('Gagal memproses penyimpanan lampiran: ' . $fileErr->getMessage(), 0, $fileErr);
+            }
+        }
+
+        // 4. Transaksi database multi-tabel (Atomik)
         $db = \Config\Database::connect();
         $db->transBegin();
 
         try {
-            // 2. Simpan tiket pengaduan
+            // Simpan tiket pengaduan
             $complaintId = $this->complaintModel->insert([
                 'ticket_id'     => $ticketId,
                 'user_id'       => (int) $authenticatedUser['id'],
@@ -104,32 +136,26 @@ class ComplaintService
                 throw new RuntimeException('Gagal menyimpan data pengaduan: ' . json_encode($this->complaintModel->errors()));
             }
 
-            // Simpan lampiran fisik jika ada
-            if (!empty($files['attachments'])) {
-                $rawList = is_array($files['attachments']) ? $files['attachments'] : [$files['attachments']];
-                foreach ($rawList as $f) {
-                    if ($f instanceof \CodeIgniter\HTTP\Files\UploadedFile && $f->isValid() && !$f->hasMoved()) {
-                        try {
-                            $stored = $this->evidenceService->storeAttachment($f, 'complaints');
-                            $this->replyModel->insert([
-                                'complaint_id' => $complaintId,
-                                'user_id'      => (int) $authenticatedUser['id'],
-                                'reply'        => sprintf(
-                                    '[Lampiran Bukti] Nama: %s | Path: %s | Size: %d | Type: %s',
-                                    $stored['original_name'],
-                                    $stored['file_path'],
-                                    $stored['file_size'],
-                                    $stored['file_type']
-                                ),
-                            ]);
-                        } catch (Throwable $attErr) {
-                            log_message('warning', 'Gagal menyimpan lampiran pengaduan: ' . $attErr->getMessage());
-                        }
-                    }
+            // Simpan referensi lampiran ke tabel riwayat dalam transaksi yang sama
+            foreach ($storedAttachments as $stored) {
+                $replyId = $this->replyModel->insert([
+                    'complaint_id' => $complaintId,
+                    'user_id'      => (int) $authenticatedUser['id'],
+                    'reply'        => sprintf(
+                        '[Lampiran Bukti] Nama: %s | Path: %s | Size: %d | Type: %s',
+                        $stored['original_name'],
+                        $stored['file_path'],
+                        $stored['file_size'],
+                        $stored['file_type']
+                    ),
+                ]);
+
+                if (!$replyId) {
+                    throw new RuntimeException('Gagal mencatat referensi lampiran di database.');
                 }
             }
 
-            // 3. Simpan hasil analisis AI / Heuristik
+            // Simpan hasil analisis AI / Heuristik
             $analysisData = [
                 'complaint_id'        => (int) $complaintId,
                 'category'            => $analysis['category'] ?? null,
@@ -155,7 +181,7 @@ class ComplaintService
                 throw new RuntimeException('Gagal menyimpan hasil analisis pengaduan: ' . json_encode($this->analysisModel->errors()));
             }
 
-            // 4. Buat antrean peninjauan Human-in-the-Loop jika disyaratkan
+            // Buat antrean peninjauan Human-in-the-Loop jika disyaratkan
             $reviewId = null;
             if (!empty($analysis['requires_review'])) {
                 $reviewId = $this->reviewModel->insert([
@@ -170,7 +196,9 @@ class ComplaintService
             $db->transCommit();
         } catch (Throwable $e) {
             $db->transRollback();
-            log_message('error', 'Transaksi createComplaint gagal: ' . $e->getMessage());
+            // Kompensasi: Hapus file fisik yang terlanjur disimpan agar tidak menjadi file orphan di server
+            $this->evidenceService->purgeFiles($storedPathsToPurge);
+            log_message('error', 'Transaksi createComplaint gagal dan file lampiran dibersihkan: ' . $e->getMessage());
             throw $e;
         }
 
@@ -908,6 +936,68 @@ class ComplaintService
     }
 
     /**
+     * Mengambil file lampiran pengaduan secara terproteksi berdasarkan otorisasi RBAC & IDOR.
+     */
+    public function getComplaintAttachment(int $id, string $filename, array $user): array
+    {
+        $complaint = $this->complaintModel->find($id);
+        if (!$complaint) {
+            throw new InvalidArgumentException('Pengaduan tidak ditemukan.');
+        }
+
+        // Tegakkan validasi akses: pemilik aduan, unit penugasan, atau admin
+        $this->assertComplaintAccess($complaint, $user, 'view');
+
+        // Sanitasi filename untuk mencegah path traversal
+        $safeFilename = basename($filename);
+        if ($safeFilename === '' || $safeFilename !== $filename || str_contains($filename, '..')) {
+            throw new InvalidArgumentException('Nama file lampiran tidak valid.');
+        }
+
+        // Verifikasi bahwa file ini benar-benar terdaftar di database pengaduan ini
+        $replies = $this->replyModel
+            ->where('complaint_id', $id)
+            ->like('reply', '[Lampiran Bukti]')
+            ->findAll();
+
+        $found = false;
+        $attachmentMeta = null;
+        foreach ($replies as $r) {
+            $text = (string) ($r['reply'] ?? '');
+            if (str_contains($text, $safeFilename)) {
+                $found = true;
+                preg_match('/Nama:\s*([^|]+)\s*\|\s*Path:\s*([^|]+)\s*\|\s*Size:\s*([0-9]+)\s*\|\s*Type:\s*(.*)$/s', $text, $m);
+                $attachmentMeta = [
+                    'original_name' => !empty($m[1]) ? trim($m[1]) : $safeFilename,
+                    'file_path'     => !empty($m[2]) ? trim($m[2]) : '',
+                    'file_size'     => !empty($m[3]) ? (int) $m[3] : 0,
+                    'file_type'     => !empty($m[4]) ? trim($m[4]) : 'application/octet-stream',
+                ];
+                break;
+            }
+        }
+
+        if (!$found || !$attachmentMeta) {
+            throw new InvalidArgumentException('File lampiran tidak terdaftar pada pengaduan ini.');
+        }
+
+        $physicalPath = WRITEPATH . ltrim($attachmentMeta['file_path'], '/\\');
+        $realPhysical = realpath($physicalPath);
+        $realRoot     = realpath(WRITEPATH);
+
+        if (!$realPhysical || !$realRoot || !str_starts_with($realPhysical, $realRoot) || !is_file($realPhysical)) {
+            throw new RuntimeException('File lampiran fisik tidak ditemukan di server.');
+        }
+
+        return [
+            'physical_path' => $realPhysical,
+            'original_name' => $attachmentMeta['original_name'],
+            'file_type'     => $attachmentMeta['file_type'],
+            'file_size'     => filesize($realPhysical) ?: $attachmentMeta['file_size'],
+        ];
+    }
+
+    /**
      * Pemeriksaan otoritas unit kerja untuk stakeholder.
      */
     private function assertUnitPermission(array $complaint, array $user): void
@@ -969,9 +1059,11 @@ class ComplaintService
 
             if (str_starts_with($text, '[Lampiran Bukti]')) {
                 preg_match('/Nama:\s*([^|]+)\s*\|\s*Path:\s*([^|]+)\s*\|\s*Size:\s*([0-9]+)\s*\|\s*Type:\s*(.*)$/s', $text, $m);
+                $relPath = !empty($m[2]) ? trim($m[2]) : '';
+                $safeFilename = basename($relPath);
                 $attachments[] = [
                     'name' => !empty($m[1]) ? trim($m[1]) : 'Lampiran',
-                    'url'  => !empty($m[2]) ? base_url(trim($m[2])) : '#',
+                    'url'  => $safeFilename !== '' ? base_url('api/complaints/' . $id . '/attachments/' . $safeFilename) : '#',
                     'size' => !empty($m[3]) ? (int) $m[3] : 0,
                     'type' => !empty($m[4]) ? trim($m[4]) : 'application/octet-stream',
                 ];

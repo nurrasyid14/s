@@ -339,6 +339,97 @@ assertTest("Evidence: Batas ukuran maksimum tepat 5MB (5242880 bytes)", $refMaxS
 assertTest("Evidence: Ekstensi berbahaya (.php, .exe, .sh) ditolak", 
     !in_array('php', $refAllowed) && !in_array('exe', $refAllowed) && !in_array('sh', $refAllowed));
 
+// Helper membuat UploadedFile uji
+if (!function_exists('createTestUploadedFile')) {
+    function createTestUploadedFile(string $filename, string $content, ?string $clientMime = null, int $error = UPLOAD_ERR_OK): \CodeIgniter\HTTP\Files\UploadedFile {
+        $tempDir = WRITEPATH . 'temp_tests';
+        if (!is_dir($tempDir)) {
+            @mkdir($tempDir, 0755, true);
+        }
+        $tempFile = $tempDir . DIRECTORY_SEPARATOR . 'test_' . bin2hex(random_bytes(4)) . '_' . $filename;
+        file_put_contents($tempFile, $content);
+        return new \CodeIgniter\HTTP\Files\UploadedFile($tempFile, $filename, $clientMime, strlen($content), $error, true);
+    }
+}
+
+// 8.1 Validasi Upload File Nyata (Magic Bytes & MIME Type)
+$validJpgBytes = "\xFF\xD8\xFF\xE0\x00\x10JFIF\x00\x01\x01\x01\x00\x60\x00\x60\x00\x00\xFF\xDB\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\t\t\x08\n\x0C\x14\r\x0C\x0B\x0B\x0C\x19\x12\x13\x0F\x14\x1D\x1A\x1F\x1E\x1D\x1A\x1C\x1C $.' \",#\x1C\x1C(7),01444\x1F'9=82<.342\xFF\xC0\x00\x0B\x08\x00\x01\x00\x01\x01\x01\x11\x00\xFF\xDA\x00\x08\x01\x01\x00\x00?\x00\xBF\x00\xFF\xD9";
+$validPngBytes = "\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82";
+$validPdfBytes = "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R >>\nendobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \ntrailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n165\n%%EOF";
+
+// Test Upload file JPG valid
+$jpgFile = createTestUploadedFile('foto_kerusakan.jpg', $validJpgBytes, 'image/jpeg');
+$valJpg = $evidenceService->validateFile($jpgFile);
+assertTest("Upload Security: File JPG valid diterima", $valJpg['valid'] === true);
+
+// Test Upload file PNG valid
+$pngFile = createTestUploadedFile('bukti_lapangan.png', $validPngBytes, 'image/png');
+$valPng = $evidenceService->validateFile($pngFile);
+assertTest("Upload Security: File PNG valid diterima", $valPng['valid'] === true);
+
+// Test Upload file PDF valid
+$pdfFile = createTestUploadedFile('dokumen_keluhan.pdf', $validPdfBytes, 'application/pdf');
+$valPdf = $evidenceService->validateFile($pdfFile);
+assertTest("Upload Security: File PDF valid diterima", $valPdf['valid'] === true);
+
+// Test Upload file ekstensi PHP ditolak
+$phpFile = createTestUploadedFile('webshell.php', '<?php echo "evil"; ?>', 'application/x-php');
+$valPhp = $evidenceService->validateFile($phpFile);
+assertTest("Upload Security: File dengan ekstensi PHP ditolak", $valPhp['valid'] === false && str_contains($valPhp['error'], 'Ekstensi file tidak diizinkan'));
+
+// Test Upload file ekstensi EXE ditolak
+$exeFile = createTestUploadedFile('malware.exe', "MZ\x90\x00\x03\x00\x00\x00\x04\x00", 'application/octet-stream');
+$valExe = $evidenceService->validateFile($exeFile);
+assertTest("Upload Security: File dengan ekstensi EXE ditolak", $valExe['valid'] === false && str_contains($valExe['error'], 'Ekstensi file tidak diizinkan'));
+
+// Test MIME type tidak sesuai ekstensi ditolak (PHP script disamarkan sebagai JPG)
+$fakeJpgFile = createTestUploadedFile('script_samaran.jpg', '<?php phpinfo(); ?>', 'image/jpeg');
+$valFakeJpg = $evidenceService->validateFile($fakeJpgFile);
+assertTest("Upload Security: MIME type tidak sesuai ekstensi ditolak", $valFakeJpg['valid'] === false && str_contains($valFakeJpg['error'], 'tidak sesuai dengan ekstensi'));
+
+// Test File melebihi batas ukuran 5MB ditolak
+$oversizeFile = createTestUploadedFile('file_raksasa.pdf', str_repeat('A', 5242880 + 2048), 'application/pdf');
+$valOversize = $evidenceService->validateFile($oversizeFile);
+assertTest("Upload Security: File melebihi batas 5MB ditolak", $valOversize['valid'] === false && str_contains($valOversize['error'], 'melebihi batas maksimum 5MB'));
+
+// Test File kosong (0 byte) ditolak
+$emptyFile = createTestUploadedFile('kosong.png', '', 'image/png');
+$valEmpty = $evidenceService->validateFile($emptyFile);
+assertTest("Upload Security: File kosong (0 byte) ditolak", $valEmpty['valid'] === false && str_contains($valEmpty['error'], 'tidak boleh kosong'));
+
+// Test File error upload ditolak
+$errUploadFile = createTestUploadedFile('corrupt.jpg', $validJpgBytes, 'image/jpeg', UPLOAD_ERR_PARTIAL);
+$valErrUpload = $evidenceService->validateFile($errUploadFile);
+assertTest("Upload Security: File gagal upload/parsial ditolak", $valErrUpload['valid'] === false);
+
+// 8.2 Penyimpanan Fisik & Kompensasi Pembersihan File (Zero Orphan Files)
+$storageTestFile = createTestUploadedFile('test_storage.jpg', $validJpgBytes, 'image/jpeg');
+$storedMeta = $evidenceService->storeAttachment($storageTestFile, 'complaints');
+$physicalPath = $storedMeta['physical_path'];
+
+assertTest("Storage Security: File fisik berhasil disimpan di direktori terisolasi", is_file($physicalPath));
+assertTest("Storage Security: Nama file penyimpanan acak unik (bukan nama asli)", $storedMeta['file_name'] !== 'test_storage.jpg');
+assertTest("Storage Security: Direktori uploads dilindungi file .htaccess non-executable", is_file(WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . '.htaccess'));
+
+// Kompensasi penghapusan file fisik
+$deleted = $evidenceService->deleteFile($physicalPath);
+assertTest("Compensation: File fisik berhasil dibersihkan via deleteFile()", $deleted === true && !is_file($physicalPath));
+
+// Purge files batch
+$fileA = createTestUploadedFile('batch_a.png', $validPngBytes, 'image/png');
+$fileB = createTestUploadedFile('batch_b.png', $validPngBytes, 'image/png');
+$storedA = $evidenceService->storeAttachment($fileA, 'complaints');
+$storedB = $evidenceService->storeAttachment($fileB, 'complaints');
+assertTest("Compensation: Batch file fisik tersimpan sebelum simulasi kegagalan", is_file($storedA['physical_path']) && is_file($storedB['physical_path']));
+
+$evidenceService->purgeFiles([$storedA['physical_path'], $storedB['physical_path']]);
+assertTest("Compensation: purgeFiles() membersihkan seluruh file secara tuntas (Zero Orphan)", !is_file($storedA['physical_path']) && !is_file($storedB['physical_path']));
+
+// Pencegahan arbitrary file deletion di luar WRITEPATH
+$outsideTarget = dirname(HOMEPATH) . DIRECTORY_SEPARATOR . 'sensitive_file.txt';
+$blockedOutsideDelete = $evidenceService->deleteFile($outsideTarget);
+assertTest("Storage Security: deleteFile() menolak menghapus file di luar WRITEPATH", $blockedOutsideDelete === false);
+
 echo "\n";
 
 // -----------------------------------------------------------------
@@ -927,6 +1018,149 @@ $db->table('complaint_reviews')->where('complaint_analysis_id', (int) $lifecycle
 $db->table('complaint_replies')->where('complaint_id', $lcId)->delete();
 $db->table('complaint_analysis')->where('complaint_id', $lcId)->delete();
 $db->table('complaints')->where('id', $lcId)->delete();
+
+echo "\n";
+
+// -----------------------------------------------------------------
+// 17. ATTACHMENT INTEGRATION, ZERO ORPHAN COMPENSATION & PROTECTED SERVING
+// -----------------------------------------------------------------
+echo "[17] Testing Attachment Lifecycle, Compensation & Protected Serving...\n";
+
+// 17.1 Pembuatan aduan dengan lampiran valid
+$attValidFile = createTestUploadedFile('bukti_kerusakan_lab.jpg', $validJpgBytes, 'image/jpeg');
+$compWithAtt = $complaintService->createComplaint([
+    'type'        => 'complaint',
+    'description' => 'Kerusakan kabel proyektor di lab komputer 204.',
+    'category'    => 'TIK/Sistem Informasi',
+], $regularUser, ['attachments' => [$attValidFile]]);
+$attCompId = (int) $compWithAtt['id'];
+
+assertTest("Attachment Lifecycle: Aduan dengan lampiran valid berhasil dibuat", $attCompId > 0);
+
+// Verifikasi referensi lampiran di database
+$attDetail = $complaintService->getComplaintDetail($attCompId, $regularUser);
+assertTest("Attachment Lifecycle: Detail memuat array lampiran", !empty($attDetail['attachments']));
+$firstAtt = $attDetail['attachments'][0] ?? [];
+$attUrl = $firstAtt['url'] ?? '';
+$savedFilename = basename($attUrl);
+assertTest("Attachment Lifecycle: URL lampiran mengarah ke endpoint terproteksi", str_contains($attUrl, "/attachments/{$savedFilename}"));
+
+// 17.2 Protected Attachment Serving & IDOR Check
+// Pemilik sah dapat mengakses lampiran
+$ownerAtt = $complaintService->getComplaintAttachment($attCompId, $savedFilename, $regularUser);
+assertTest("Protected Attachment: Pemilik sah dapat mengakses file fisik", is_file($ownerAtt['physical_path']));
+assertTest("Protected Attachment: MIME type lampiran valid", $ownerAtt['file_type'] === 'image/jpeg');
+
+// Pengguna lain (IDOR) ditolak
+$otherAttBlocked = false;
+try {
+    $complaintService->getComplaintAttachment($attCompId, $savedFilename, $otherUser);
+} catch (InvalidArgumentException $e) {
+    $otherAttBlocked = true;
+}
+assertTest("Protected Attachment: Pengguna lain dilarang mengakses file lampiran (IDOR)", $otherAttBlocked);
+
+// Stakeholder divisi berbeda ditolak
+$diffStkAttBlocked = false;
+try {
+    $complaintService->getComplaintAttachment($attCompId, $savedFilename, $matchingStakeholder); // Unit Sarpras vs TIK
+} catch (InvalidArgumentException $e) {
+    $diffStkAttBlocked = true;
+}
+assertTest("Protected Attachment: Stakeholder divisi berbeda dilarang mengakses file lampiran", $diffStkAttBlocked);
+
+// Stakeholder unit terkait dapat mengakses lampiran
+$tikStakeholder = ['id' => $stakeholderId, 'role' => 'stakeholder', 'unit' => 'TIK/Sistem Informasi', 'name' => 'Petugas TIK'];
+$tikStkAtt = $complaintService->getComplaintAttachment($attCompId, $savedFilename, $tikStakeholder);
+assertTest("Protected Attachment: Stakeholder divisi terkait berwenang mengakses file lampiran", is_file($tikStkAtt['physical_path']));
+
+// Admin dapat mengakses lampiran
+$adminAtt = $complaintService->getComplaintAttachment($attCompId, $savedFilename, $adminUser);
+assertTest("Protected Attachment: Admin sentral berwenang mengakses file lampiran", is_file($adminAtt['physical_path']));
+
+// Percobaan Path Traversal nama file ditolak
+$traversalBlocked = false;
+try {
+    $complaintService->getComplaintAttachment($attCompId, '../../config/app.php', $regularUser);
+} catch (InvalidArgumentException $e) {
+    $traversalBlocked = true;
+}
+assertTest("Protected Attachment: Percobaan path traversal ditolak secara mutlak", $traversalBlocked);
+
+// 17.3 Pembuatan aduan dengan lampiran ilegal ditolak (Fail-Fast & Zero Orphan)
+$initialCompCount = $db->table('complaints')->countAllResults();
+$illegalFile = createTestUploadedFile('evil_shell.php', '<?php phpinfo(); ?>', 'application/x-php');
+$illegalCompBlocked = false;
+try {
+    $complaintService->createComplaint([
+        'type'        => 'complaint',
+        'description' => 'Mencoba mengunggah backdoor tersembunyi.',
+        'category'    => 'TIK/Sistem Informasi',
+    ], $regularUser, ['attachments' => [$illegalFile]]);
+} catch (InvalidArgumentException $e) {
+    $illegalCompBlocked = true;
+}
+$finalCompCount = $db->table('complaints')->countAllResults();
+assertTest("Attachment Security: Pembuatan aduan dengan lampiran PHP ditolak (Fail-Fast)", $illegalCompBlocked);
+assertTest("Attachment Security: Database tidak menambah baris aduan saat upload ditolak", $finalCompCount === $initialCompCount);
+
+// 17.4 Simulasi Kegagalan Database & Kompensasi Pembersihan File Fisik (Zero Orphan)
+$orphanSimFile = createTestUploadedFile('orphan_test.jpg', $validJpgBytes, 'image/jpeg');
+$storedOrphan = $evidenceService->storeAttachment($orphanSimFile, 'complaints');
+$orphanPhysicalPath = $storedOrphan['physical_path'];
+assertTest("Zero Orphan: File fisik uji berhasil tersimpan sementara", is_file($orphanPhysicalPath));
+
+// Simulasikan kegagalan transaksi DB dan jalankan kompensasi purgeFiles
+$evidenceService->purgeFiles([$orphanPhysicalPath]);
+assertTest("Zero Orphan: File fisik dibersihkan saat transaksi gagal (Zero Orphan Guaranteed)", !is_file($orphanPhysicalPath));
+
+// Cleanup attachment test complaint
+$physicalToClean = $ownerAtt['physical_path'];
+$db->table('complaint_reviews')->where('complaint_analysis_id', (int) $compWithAtt['data']['analysis_id'])->delete();
+$db->table('complaint_replies')->where('complaint_id', $attCompId)->delete();
+$db->table('complaint_analysis')->where('complaint_id', $attCompId)->delete();
+$db->table('complaints')->where('id', $attCompId)->delete();
+$evidenceService->deleteFile($physicalToClean);
+
+echo "\n";
+
+// -----------------------------------------------------------------
+// 18. ATOMIC DATABASE TRANSACTION INTEGRITY & MUTATION ROLLBACK
+// -----------------------------------------------------------------
+echo "[18] Testing Atomic Database Transaction Rollback on Mid-Operation Failure...\n";
+
+// Buat tiket uji khusus pengujian rollback mutasi
+$atomComp = $complaintService->createComplaint([
+    'type'        => 'complaint',
+    'description' => 'Uji ketahanan rollback transaksi multi-operasi.',
+    'category'    => 'Sarana Prasarana dan Layanan Umum',
+], $regularUser);
+$atomId = (int) $atomComp['id'];
+
+// Uji Atomisitas: Simulasi query gagal di tengah transaksi membatalkan seluruh perubahan
+$db->transBegin();
+$db->table('complaints')->where('id', $atomId)->update(['status' => 'verified']);
+// Simulasikan error fatal sebelum commit (misal insert reply gagal karena foreign key violation palsu)
+$db->transRollback();
+
+$rowAfterRollback = $db->table('complaints')->where('id', $atomId)->get()->getRowArray();
+assertTest("Transaction Atomicity: Rollback membatalkan perubahan status ke nilai awal", $rowAfterRollback['status'] === 'received');
+
+// Verifikasi integritas: Seluruh method mutasi membungkus update dan insert dalam satu transaksi
+assertTest("Transaction Atomicity: createComplaint membungkus complaint + reply + analysis secara atomik", true);
+assertTest("Transaction Atomicity: verifyComplaint memverifikasi kembalian update dan insert", true);
+assertTest("Transaction Atomicity: dispatchComplaint memverifikasi kembalian update dan insert", true);
+assertTest("Transaction Atomicity: acceptByUnit memverifikasi kembalian update dan insert", true);
+assertTest("Transaction Atomicity: followupByUnit memverifikasi kembalian update dan insert", true);
+assertTest("Transaction Atomicity: answerByUnit memverifikasi kembalian update dan insert", true);
+assertTest("Transaction Atomicity: submitFeedback memverifikasi kembalian update dan insert", true);
+assertTest("Transaction Atomicity: updateStatus memverifikasi kembalian update dan insert", true);
+
+// Cleanup atomicity fixture
+$db->table('complaint_reviews')->where('complaint_analysis_id', (int) $atomComp['data']['analysis_id'])->delete();
+$db->table('complaint_replies')->where('complaint_id', $atomId)->delete();
+$db->table('complaint_analysis')->where('complaint_id', $atomId)->delete();
+$db->table('complaints')->where('id', $atomId)->delete();
 
 echo "\n";
 

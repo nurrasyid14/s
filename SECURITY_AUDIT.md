@@ -3,7 +3,7 @@
 **Tanggal Audit:** 15 November 2026  
 **Auditor:** Automated Hardening & Security Assessment Suite  
 **Klasifikasi:** Internal Security & Compliance  
-**Status Evaluasi:** **PASS / SECURE (PRODUCTION READINESS CERTIFIED)**
+**Status Evaluasi:** **PASS WITH WARNINGS (LAYAK UNTUK DEMO LOKAL & STAGING; PERLU LOAD TEST SEBELUM PRODUKSI)**
 
 ---
 
@@ -18,6 +18,7 @@ SuaraLens menerapkan prinsip *Defense-in-Depth* dengan validasi ganda: pada filt
 | Melihat Detail Pengaduan (`GET /api/complaints/{id}`) | ✅ (Milik sendiri) | ✅ (Unit ditugaskan) | ✅ (Semua) | ❌ (403/404) |
 | Menambahkan Balasan (`POST /api/complaints/{id}/reply`) | ✅ (Milik sendiri) | ✅ (Unit ditugaskan) | ✅ (Semua) | ❌ (403/404) |
 | Melihat Daftar Balasan (`GET /api/complaints/{id}/replies`) | ✅ (Milik sendiri) | ✅ (Unit ditugaskan) | ✅ (Semua) | ❌ (403/404) |
+| Mengunduh/Melihat Lampiran (`GET .../attachments/{file}`) | ✅ (Milik sendiri) | ✅ (Unit ditugaskan) | ✅ (Semua) | ❌ (401/403/404) |
 | Memberikan Ulasan/Feedback (`POST .../feedback`) | ✅ (Milik sendiri) | ❌ | ❌ | ❌ (403) |
 | Melihat Daftar Semua Aduan (`GET /api/complaints`) | ❌ | ✅ (Terfilter unit) | ✅ (Semua) | ❌ (403) |
 | Disposisi ke Unit (`POST .../disposition`) | ❌ | ❌ | ✅ | ❌ (403) |
@@ -34,7 +35,26 @@ SuaraLens menerapkan prinsip *Defense-in-Depth* dengan validasi ganda: pada filt
 
 ---
 
-## 2. Batasan Otoritas dan Penegakan Hak Akses `updateStatus()`
+## 2. Keamanan Upload Lampiran & Konsistensi Transaksi (Zero Orphan Files)
+
+### A. Validasi Multi-Lapis Upload (`EvidenceService`)
+1. **Whitelist Ekstensi:** Hanya ekstensi aman yang diizinkan (`jpg`, `jpeg`, `png`, `pdf`, `doc`, `docx`). Ekstensi berbahaya (`php`, `phtml`, `exe`, `sh`, `bat`, `cgi`, `py`, dll.) ditolak.
+2. **Validasi MIME Type Fisik via `finfo`:** Pemeriksaan tidak hanya membaca nama file atau header client, melainkan membaca magic bytes fisik file via PHP `finfo(FILEINFO_MIME_TYPE)`. File berbahaya yang disamarkan (misal file PHP berekstensi `.jpg` atau `.pdf`) ditolak seketika karena *MIME type mismatch*.
+3. **Batas Ukuran & File Kosong:** File dibatasi maksimal 5MB (5.242.880 bytes). File 0 byte (kosong) ditolak.
+4. **Isolasi Nama & Direktori:** Nama file penyimpanan di-generate secara acak unik kriptografis via `$file->getRandomName()`, bebas dari karakter path traversal klien.
+5. **Direktori Non-Executable:** Direktori upload dilindungi konfigurasi `.htaccess` yang mematikan eksekusi script handler PHP/CGI di level server.
+
+### B. Mekanisme Kompensasi Transaksi (Zero Orphan Files)
+Transaksi PostgreSQL tidak dapat melakukan rollback terhadap file fisik di hard disk. Oleh karena itu, SuaraLens menerapkan mekanisme kompensasi otomatis:
+1. Validasi seluruh lampiran terlebih dahulu (*fail-fast*) sebelum penyimpanan.
+2. Simpan file fisik dengan nama unik dan lacak path fisiknya.
+3. Mulai transaksi database PostgreSQL (`$db->transBegin()`).
+4. Catat referensi lampiran ke tabel `complaint_replies` di dalam transaksi.
+5. Jika transaksi database gagal atau dibatalkan, blok `catch` secara otomatis mengeksekusi `$this->evidenceService->purgeFiles()` untuk menghapus seluruh file fisik yang terlanjur disimpan, sehingga tidak ada *orphan files* yang tersisa di storage.
+
+---
+
+## 3. Batasan Otoritas dan Penegakan Hak Akses `updateStatus()`
 
 Audit mendalam terhadap method `ComplaintService::updateStatus()` membuktikan:
 1. **Pencegahan Bypass Stakeholder:**
@@ -50,7 +70,7 @@ Audit mendalam terhadap method `ComplaintService::updateStatus()` membuktikan:
 
 ---
 
-## 3. Audit Endpoint `GET /api/student/dashboard`
+## 4. Audit Endpoint `GET /api/student/dashboard`
 
 1. **Autentikasi & Otorisasi Rute:**
    - Dilindungi di rute CodeIgniter dengan filter `authRole:user,admin`.
@@ -63,19 +83,20 @@ Audit mendalam terhadap method `ComplaintService::updateStatus()` membuktikan:
 
 ---
 
-## 4. Eliminasi Kerentanan IDOR (Insecure Direct Object Reference)
+## 5. Eliminasi Kerentanan IDOR & Protected Attachment Serving
 
 ### Implementasi Service-Layer
 Otorisasi kepemilikan ditegakkan langsung di `ComplaintService`:
 - Pengguna A mengakses detail pengaduan Pengguna B: **Ditolak (HTTP 404/403)**.
 - Pengguna A menambahkan reply pada pengaduan Pengguna B: **Ditolak (HTTP 403)**.
 - Pengguna A memberikan feedback kepuasan untuk tiket Pengguna B: **Ditolak (HTTP 403)**.
-- Stakeholder unit X mencoba mengintervensi tiket yang ditugaskan ke unit Y: **Ditolak (HTTP 403)**.
-- Pengguna dengan token role asing: **Ditolak secara default (HTTP 403)**.
+- Pengguna A mencoba mengunduh/melihat lampiran tiket Pengguna B: **Ditolak (HTTP 403)**.
+- Stakeholder unit X mencoba mengakses lampiran atau detail unit Y: **Ditolak (HTTP 403)**.
+- Percobaan *Path Traversal* nama file lampiran (`../../etc`): **Ditolak (HTTP 403)**.
 
 ---
 
-## 5. Perlindungan Integritas Transaksi Database (ACID)
+## 6. Perlindungan Integritas Transaksi Database (ACID)
 
 Seluruh operasi mutasi data (`createComplaint`, `verifyComplaint`, `dispatchComplaint`, `acceptByUnit`, `followupByUnit`, `answerByUnit`, `submitFeedback`, `updateStatus`) mengimplementasikan validasi return value model CI4:
 ```php
@@ -95,7 +116,7 @@ Jika operasi update atau insert gagal, `$db->transRollback()` dieksekusi secara 
 
 ---
 
-## 6. Perlindungan Privasi Data & Sensor PII
+## 7. Perlindungan Privasi Data & Sensor PII
 
 1. **Penyensoran Berlapis:**
    - **NIM:** Disamarkan menjadi `<NIM>` / `[NOMOR_IDENTITAS]`.
