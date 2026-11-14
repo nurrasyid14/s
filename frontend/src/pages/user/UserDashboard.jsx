@@ -10,6 +10,7 @@ import {
   SUBMISSION_TYPES
 } from '../../services/studentDashboardApi.js'
 import { UNITS } from '../../data/units.js'
+import useBilingual from '../../hooks/useBilingual.js'
 import {
   FileText, CheckCircle2, Clock, ShieldCheck,
   BarChart3, Layers, Search,
@@ -21,13 +22,26 @@ import {
 } from 'recharts'
 import { AXIS_TICK } from '../../utils/chartTheme.js'
 
+// Tahap alur ringkas (Masukan/Saran) dari tahap 7-tahap, sama dengan perhitungan backend
+function streamlinedCounts(s) {
+  return {
+    received: s.received,
+    verified: s.verified + s.dispatched,
+    answered: s.in_progress + s.action_taken + s.answered,
+    resolved: s.resolved,
+  }
+}
+
+const sumStages = s => Object.values(s).reduce((a, b) => a + b, 0)
+
 function CustomChartTooltip({ active, payload, label }) {
+  const { tx } = useBilingual()
   if (!active || !payload || !payload.length) return null
   const match = payload[0]?.payload
   const fullName = match?.fullName || label
-  const resolved = payload.find(p => p.dataKey === 'resolved')?.value || 0
-  const inProgress = payload.find(p => p.dataKey === 'inProgress')?.value || 0
-  const total = match?.total || (resolved + inProgress)
+  const resolved = match?.resolved || 0
+  const pending = match?.pending || 0
+  const total = match?.total || 0
 
   return (
     <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-lg text-xs min-w-[170px] backdrop-blur-md">
@@ -38,19 +52,19 @@ function CustomChartTooltip({ active, payload, label }) {
         <div className="flex items-center justify-between gap-3">
           <span className="flex items-center gap-1.5 text-[var(--color-text-muted)]">
             <span className="w-2.5 h-2.5 rounded-sm bg-[var(--color-gold)]" />
-            Selesai
+            {tx('Selesai', 'Resolved')}
           </span>
-          <span className="font-bold text-emerald-600 dark:text-emerald-400">{resolved} tiket</span>
+          <span className="font-bold text-emerald-600 dark:text-emerald-400">{resolved} {tx('tiket', 'tickets')}</span>
         </div>
         <div className="flex items-center justify-between gap-3">
           <span className="flex items-center gap-1.5 text-[var(--color-text-muted)]">
             <span className="w-2.5 h-2.5 rounded-sm bg-[var(--color-primary)]" />
-            Diproses
+            {tx('Belum selesai', 'Not yet resolved')}
           </span>
-          <span className="font-bold text-blue-600 dark:text-blue-400">{inProgress} tiket</span>
+          <span className="font-bold text-blue-600 dark:text-blue-400">{pending} {tx('tiket', 'tickets')}</span>
         </div>
         <div className="pt-2 mt-2 border-t border-[var(--color-border)]/60 flex items-center justify-between gap-3 font-sans font-bold text-[var(--color-text)]">
-          <span>Total Aduan</span>
+          <span>{tx('Total', 'Total')}</span>
           <span className="font-mono text-sm">{total}</span>
         </div>
       </div>
@@ -61,6 +75,7 @@ function CustomChartTooltip({ active, payload, label }) {
 export default function UserDashboard() {
   const revealRef = useAutoReveal()
   const { user } = useAuth()
+  const { tx } = useBilingual()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -109,86 +124,86 @@ export default function UserDashboard() {
   // Is current view using streamlined stages (for feedback/suggestion)?
   const isStreamlined = selectedType === 'feedback' || selectedType === 'suggestion'
 
-  // Stages count based on selection (either Global or selected unit)
+  // Tahap yang ditampilkan: data nyata sesuai unit & jenis yang dipilih
   const activeStages = useMemo(() => {
     if (!data) return []
 
-    // If Masukan or Saran is picked -> show 4 streamlined stages
+    // Sumber angka per tahap: seluruh kampus atau satu unit
+    const typeStages = selectedUnit === 'ALL' ? data.globalTypeStages : currentUnitInfo?.typeStages
+    const allStages = selectedUnit === 'ALL' ? data.globalStages : currentUnitInfo?.stages
+    if (!typeStages || !allStages) return []
+
     if (isStreamlined) {
-      if (selectedUnit === 'ALL') {
-        const typeTotal = Math.max(1, data.summary.types[selectedType]?.count || 1)
-        return STREAMLINED_STAGES.map(s => {
-          let count = 0
-          if (s.key === 'received') count = Math.round(typeTotal * 0.1)
-          else if (s.key === 'verified') count = Math.round(typeTotal * 0.25)
-          else if (s.key === 'answered') count = Math.round(typeTotal * 0.25)
-          else if (s.key === 'resolved') count = Math.max(1, typeTotal - Math.round(typeTotal * 0.6))
-
-          return {
-            ...s,
-            count,
-            pct: Math.round((count / typeTotal) * 100),
-          }
-        })
-      } else if (currentUnitInfo) {
-        const unitTypeTotal = Math.max(1, currentUnitInfo.types[selectedType] || 1)
-        return STREAMLINED_STAGES.map(s => {
-          let count = 0
-          if (s.key === 'received') count = Math.max(0, Math.round(unitTypeTotal * 0.1))
-          else if (s.key === 'verified') count = Math.max(0, Math.round(unitTypeTotal * 0.25))
-          else if (s.key === 'answered') count = Math.max(0, Math.round(unitTypeTotal * 0.25))
-          else if (s.key === 'resolved') count = Math.max(1, unitTypeTotal - Math.round(unitTypeTotal * 0.6))
-
-          return {
-            ...s,
-            count,
-            pct: Math.round((count / unitTypeTotal) * 100),
-          }
-        })
-      }
-    }
-
-    // Default: 7 Stages for Aduan or All
-    if (selectedUnit === 'ALL') {
-      return data.stagesList
-    }
-    if (currentUnitInfo) {
-      const unitTotal = Math.max(1, currentUnitInfo.total)
-      return COMPLAINT_STAGES.map(s => {
-        const count = currentUnitInfo.stages[s.key] || 0
+      const counts = streamlinedCounts(typeStages[selectedType])
+      const total = sumStages(counts)
+      return STREAMLINED_STAGES.map(s => {
+        const count = counts[s.key] || 0
         return {
           ...s,
+          label: tx(s.label, s.labelEn),
+          desc: tx(s.desc, s.descEn),
           count,
-          pct: Math.round((count / unitTotal) * 100),
+          pct: total > 0 ? Math.round((count / total) * 100) : 0,
         }
       })
     }
-    return []
-  }, [data, selectedUnit, selectedType, isStreamlined, currentUnitInfo])
 
-  // Data for distribution chart (Top 7 units, adjusted by selectedType)
-  const chartData = useMemo(() => {
-    if (!data?.distribution) return []
-    return data.distribution.slice(0, 7).map(d => {
-      let total = d.count
-      let resolved = d.resolved
-      let inProgress = d.inProgress
-
-      if (selectedType !== 'all') {
-        total = d.types?.[selectedType] || Math.round(d.count * 0.3)
-        resolved = Math.round(total * 0.6)
-        inProgress = Math.max(0, total - resolved)
-      }
-
+    // 7 tahap: semua jenis, atau aduan saja
+    const stages = selectedType === 'all' ? allStages : typeStages.complaint
+    const total = sumStages(stages)
+    return COMPLAINT_STAGES.map(s => {
+      const count = stages[s.key] || 0
       return {
-        name: d.code,
-        fullName: d.name,
+        ...s,
+        label: tx(s.label, s.labelEn),
+        desc: tx(s.desc, s.descEn),
+        count,
+        pct: total > 0 ? Math.round((count / total) * 100) : 0,
+      }
+    })
+  }, [data, selectedUnit, selectedType, isStreamlined, currentUnitInfo, tx])
+
+  // Rincian per unit untuk jenis yang dipilih (angka nyata dari backend)
+  const unitBreakdown = useMemo(() => {
+    if (!data?.units) return []
+    const campusTypeTotal = selectedType === 'all' ? data.summary.total : (data.typesBreakdown[selectedType]?.count || 0)
+    return data.units.map(u => {
+      const total = selectedType === 'all' ? u.total : (u.types?.[selectedType] || 0)
+      const resolved = selectedType === 'all' ? u.stages.resolved : (u.typeStages?.[selectedType]?.resolved || 0)
+      return {
+        name: u.name,
+        code: u.code,
+        topCategories: u.topCategories || [],
         total,
         resolved,
-        inProgress,
+        pending: total - resolved,
+        percentage: campusTypeTotal > 0 ? Math.round((total / campusTypeTotal) * 1000) / 10 : 0,
       }
     })
   }, [data, selectedType])
+
+  // Data grafik distribusi (7 unit teratas)
+  const chartData = useMemo(
+    () => unitBreakdown.slice(0, 7).map(d => ({
+      name: d.code,
+      fullName: d.name,
+      total: d.total,
+      resolved: d.resolved,
+      pending: d.pending,
+    })),
+    [unitBreakdown]
+  )
+
+  // Batas SLA kampus dari data unit resmi
+  const slaRange = useMemo(() => {
+    const days = UNITS.map(u => u.slaDays).filter(Boolean)
+    return days.length ? { min: Math.min(...days), max: Math.max(...days) } : null
+  }, [])
+
+  const typeLabel = selectedType === 'complaint' ? tx('Aduan', 'Complaints')
+    : selectedType === 'feedback' ? tx('Masukan', 'Feedback')
+    : selectedType === 'suggestion' ? tx('Saran', 'Suggestions')
+    : tx('seluruh pengajuan', 'all submissions')
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-secondary)] flex flex-col text-[var(--color-text)]">
@@ -197,29 +212,32 @@ export default function UserDashboard() {
 
       {/* Main Container */}
       <main id="main-content" ref={revealRef} className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        
+
         {/* Banner biru transparansi */}
         <section aria-labelledby="dashboard-header" className="banner-blue p-6 sm:p-9">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
               <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/85">
                 <span className="live-dot h-1.5 w-1.5 rounded-full bg-[var(--color-gold)]" />
-                Transparansi publik sivitas PENS
+                {tx('Transparansi publik sivitas PENS', 'Public transparency for the PENS community')}
               </span>
               <h1 id="dashboard-header" className="mt-4 text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
-                Halo, {user?.name ? user.name.split(' ')[0] : 'Sivitas'}.<br />
-                <span className="text-[var(--color-gold)]">Begini kinerja layanan kampus.</span>
+                {tx('Halo', 'Hello')}, {user?.name ? user.name.split(' ')[0] : tx('Sivitas', 'there')}.<br />
+                <span className="text-[var(--color-gold)]">{tx('Begini kinerja layanan kampus.', 'Here is how campus services are performing.')}</span>
               </h1>
               <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/75">
-                Pantau jumlah laporan, tahapan penanganan di setiap divisi, dan kepatuhan SLA untuk tiga jenis aspirasi: aduan, masukan, dan saran.
+                {tx(
+                  'Pantau jumlah laporan, tahapan penanganan di setiap divisi, dan kepatuhan SLA untuk tiga jenis aspirasi: aduan, masukan, dan saran.',
+                  'Track the number of reports, handling stages in each division, and SLA compliance for three types of input: complaints, feedback, and suggestions.',
+                )}
               </p>
             </div>
             <div className="flex shrink-0 flex-wrap gap-2.5">
               <Link to="/user/submit" className="btn-gold !h-12 !px-6 !text-base">
-                <PlusCircle size={18} /> Ajukan Baru
+                <PlusCircle size={18} /> {tx('Ajukan Baru', 'Submit New')}
               </Link>
               <Link to="/user/complaints" className="btn-ghost-light !h-12 !px-5">
-                <FileText size={16} /> Riwayat Saya
+                <FileText size={16} /> {tx('Riwayat Saya', 'My History')}
               </Link>
             </div>
           </div>
@@ -237,35 +255,35 @@ export default function UserDashboard() {
         ) : error ? (
           <div className="p-8 text-center border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl">
             <AlertCircle size={32} className="text-orange-500 mx-auto mb-3" />
-            <h3 className="font-bold text-base">Gagal memuat data transparansi</h3>
+            <h3 className="font-bold text-base">{tx('Gagal memuat data transparansi', 'Failed to load transparency data')}</h3>
             <p className="text-xs text-[var(--color-text-muted)] mt-1 mb-4">
-              Terjadi kendala dalam mengambil data analitik kampus.
+              {tx('Terjadi kendala dalam mengambil data analitik kampus.', 'There was a problem loading campus analytics data.')}
             </p>
             <button onClick={loadData} className="btn-solid !py-2 !px-4 text-xs">
-              Coba Lagi
+              {tx('Coba Lagi', 'Try Again')}
             </button>
           </div>
         ) : (
           <>
             {/* Ringkasan: satu strip KPI, bukan empat kartu terpisah */}
             <section aria-labelledby="section-summary" className="space-y-5">
-              <h2 id="section-summary" className="sr-only">Ringkasan laporan</h2>
+              <h2 id="section-summary" className="sr-only">{tx('Ringkasan laporan', 'Report summary')}</h2>
 
               <div className="overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_12px_40px_-24px_rgba(10,36,99,0.35)]">
                 <div className="grid grid-cols-2 lg:grid-cols-4 [&>div]:p-5 sm:[&>div]:p-6">
                   <div className="border-b border-r border-[var(--color-border)] lg:border-b-0">
                     <div className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-muted)]">
-                      <FileText size={14} className="text-[var(--color-primary)]" /> Total pengajuan
+                      <FileText size={14} className="text-[var(--color-primary)]" /> {tx('Total pengajuan', 'Total submissions')}
                     </div>
                     <div className="mt-2 text-4xl font-bold tracking-tight tabular">
                       <CountUp value={data.summary.total} />
                     </div>
-                    <div className="mt-1 text-xs text-[var(--color-text-muted)]">dari 14 unit layanan</div>
+                    <div className="mt-1 text-xs text-[var(--color-text-muted)]">{tx(`dari ${data.units.length} unit layanan`, `from ${data.units.length} service units`)}</div>
                   </div>
 
                   <div className="border-b border-[var(--color-border)] lg:border-b-0 lg:border-r">
                     <div className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-muted)]">
-                      <CheckCircle2 size={14} className="text-[var(--color-status-success)]" /> Selesai
+                      <CheckCircle2 size={14} className="text-[var(--color-status-success)]" /> {tx('Selesai', 'Resolved')}
                     </div>
                     <div className="mt-2 flex items-baseline gap-2">
                       <span className="text-4xl font-bold tracking-tight tabular text-[var(--color-status-success)]">
@@ -280,17 +298,17 @@ export default function UserDashboard() {
 
                   <div className="border-r border-[var(--color-border)]">
                     <div className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-muted)]">
-                      <Clock size={14} className="text-[var(--color-status-warning)]" /> Sedang ditangani
+                      <Clock size={14} className="text-[var(--color-status-warning)]" /> {tx('Sedang ditangani', 'Being handled')}
                     </div>
                     <div className="mt-2 text-4xl font-bold tracking-tight tabular text-[var(--color-status-warning)]">
                       <CountUp value={data.summary.active} />
                     </div>
-                    <div className="mt-1 text-xs text-[var(--color-text-muted)]">rata-rata {data.summary.avgResolutionDays} hari</div>
+                    <div className="mt-1 text-xs text-[var(--color-text-muted)]">{tx('rata-rata', 'average')} {data.summary.avgResolutionDays} {tx('hari', 'days')}</div>
                   </div>
 
                   <div>
                     <div className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-muted)]">
-                      <ShieldCheck size={14} className="text-[var(--color-primary)]" /> Tepat waktu (SLA)
+                      <ShieldCheck size={14} className="text-[var(--color-primary)]" /> {tx('Tepat waktu (SLA)', 'On time (SLA)')}
                     </div>
                     <div className="mt-2 flex items-end justify-between gap-3">
                       <span className="text-4xl font-bold tracking-tight tabular text-[var(--color-primary)]">
@@ -301,7 +319,7 @@ export default function UserDashboard() {
                         <CountUp value={data.summary.avgRating} decimals={1} />
                       </span>
                     </div>
-                    <div className="mt-1 text-xs text-[var(--color-text-muted)]">skor kepuasan dari 5,0</div>
+                    <div className="mt-1 text-xs text-[var(--color-text-muted)]">{tx('skor kepuasan dari 5,0', 'satisfaction score out of 5.0')}</div>
                   </div>
                 </div>
               </div>
@@ -310,17 +328,17 @@ export default function UserDashboard() {
               <div className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-6">
                 <div className="flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <h3 className="text-base font-bold tracking-tight">Jenis aspirasi</h3>
-                    <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">Pilih satu jenis untuk menyaring seluruh dashboard di bawah.</p>
+                    <h3 className="text-base font-bold tracking-tight">{tx('Jenis aspirasi', 'Type of input')}</h3>
+                    <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{tx('Pilih satu jenis untuk menyaring seluruh dashboard di bawah.', 'Choose one type to filter the entire dashboard below.')}</p>
                   </div>
                   {selectedType !== 'all' && (
                     <button onClick={() => setSelectedType('all')} className="animate-fade-in rounded-full border border-[var(--color-border)] px-3 py-1 text-xs font-semibold text-[var(--color-primary)] transition-colors hover:bg-[var(--color-primary-soft)]">
-                      Tampilkan semua
+                      {tx('Tampilkan semua', 'Show all')}
                     </button>
                   )}
                 </div>
 
-                <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-[var(--color-surface-sunken)]" role="img" aria-label="Proporsi aduan, masukan, dan saran">
+                <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-[var(--color-surface-sunken)]" role="img" aria-label={tx('Proporsi aduan, masukan, dan saran', 'Proportion of complaints, feedback, and suggestions')}>
                   {[
                     ['complaint', 'var(--color-navy)'],
                     ['feedback', 'var(--color-primary)'],
@@ -336,9 +354,9 @@ export default function UserDashboard() {
 
                 <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
                   {[
-                    { key: 'complaint', label: 'Aduan', icon: AlertTriangle, color: 'var(--color-navy)', note: 'Masalah yang butuh investigasi, alur 7 tahap SLA.' },
-                    { key: 'feedback', label: 'Masukan', icon: MessageCircle, color: 'var(--color-primary)', note: 'Kritik dan ulasan layanan, alur ringkas 4 tahap.' },
-                    { key: 'suggestion', label: 'Saran', icon: Lightbulb, color: 'var(--color-gold)', note: 'Ide pengembangan sarana dan layanan, alur ringkas.' },
+                    { key: 'complaint', label: tx('Aduan', 'Complaints'), icon: AlertTriangle, color: 'var(--color-navy)', note: tx('Masalah yang butuh investigasi, alur 7 tahap SLA.', 'Issues that need investigation, 7-stage SLA flow.') },
+                    { key: 'feedback', label: tx('Masukan', 'Feedback'), icon: MessageCircle, color: 'var(--color-primary)', note: tx('Kritik dan ulasan layanan, alur ringkas 4 tahap.', 'Criticism and service reviews, 4-stage streamlined flow.') },
+                    { key: 'suggestion', label: tx('Saran', 'Suggestions'), icon: Lightbulb, color: 'var(--color-gold)', note: tx('Ide pengembangan sarana dan layanan, alur ringkas.', 'Ideas to improve facilities and services, streamlined flow.') },
                   ].map(({ key, label, icon: Icon, color, note }) => {
                     const active = selectedType === key
                     return (
@@ -378,19 +396,21 @@ export default function UserDashboard() {
                 <div>
                   <h2 id="section-stages" className="text-base font-bold text-[var(--color-text)] flex items-center gap-2">
                     <Layers size={18} className="text-[var(--color-primary)]" />
-                    Status Tahapan {isStreamlined ? (selectedType === 'feedback' ? 'Masukan (Alur Ringkas)' : 'Saran (Alur Ringkas)') : 'Aduan (Alur 7 Tahap SLA)'}
+                    {tx('Status Tahapan', 'Stage Status')} {isStreamlined
+                      ? (selectedType === 'feedback' ? tx('Masukan (Alur Ringkas)', 'Feedback (Streamlined Flow)') : tx('Saran (Alur Ringkas)', 'Suggestions (Streamlined Flow)'))
+                      : tx('Aduan (Alur 7 Tahap SLA)', 'Complaints (7-Stage SLA Flow)')}
                   </h2>
                   <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
                     {isStreamlined
-                      ? 'Alur ringkas: Diterima → Ditinjau Unit → Dijawab Resmi → Selesai & Dicatat'
-                      : 'Alur 7 tahap resmi: Diterima → Verifikasi → Disposisi → Proses → Lapangan → Tanggapan → Tuntas'}
+                      ? tx('Alur ringkas: Diterima → Ditinjau Unit → Dijawab Resmi → Selesai & Dicatat', 'Streamlined flow: Received → Reviewed by Unit → Officially Answered → Closed & Recorded')
+                      : tx('Alur 7 tahap resmi: Diterima → Verifikasi → Disposisi → Proses → Lapangan → Tanggapan → Tuntas', 'Official 7-stage flow: Received → Verified → Dispatched → In Progress → Field → Response → Resolved')}
                   </p>
                 </div>
 
                 {/* Filter Unit Kerja */}
                 <div className="flex items-center gap-2">
                   <label htmlFor="stage-unit-filter" className="text-xs font-semibold text-[var(--color-text-muted)] shrink-0">
-                    Pilih Unit:
+                    {tx('Pilih Unit:', 'Select Unit:')}
                   </label>
                   <select
                     id="stage-unit-filter"
@@ -398,7 +418,7 @@ export default function UserDashboard() {
                     onChange={e => setSelectedUnit(e.target.value)}
                     className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] cursor-pointer"
                   >
-                    <option value="ALL">Semua Divisi / Unit Kampus</option>
+                    <option value="ALL">{tx('Semua Divisi / Unit Kampus', 'All Divisions / Campus Units')}</option>
                     {UNITS.map(u => (
                       <option key={u.id} value={u.name}>{u.name} ({u.code})</option>
                     ))}
@@ -425,7 +445,7 @@ export default function UserDashboard() {
                         {t.key === 'complaint' && <AlertTriangle size={12} className={isActive ? 'text-white' : 'text-rose-500'} />}
                         {t.key === 'feedback' && <MessageCircle size={12} className={isActive ? 'text-white' : 'text-sky-500'} />}
                         {t.key === 'suggestion' && <Lightbulb size={12} className={isActive ? 'text-white' : 'text-orange-500'} />}
-                        {t.label}
+                        {tx(t.label, t.labelEn)}
                         <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-[var(--color-surface)] text-[var(--color-text-muted)]'}`}>
                           {t.key === 'all' ? data.summary.total : data.typesBreakdown[t.key]?.count}
                         </span>
@@ -440,13 +460,13 @@ export default function UserDashboard() {
                     onClick={() => setActiveTab('pipeline')}
                     className={`px-3 py-1 rounded-lg font-medium transition ${activeTab === 'pipeline' ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-2xs font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
                   >
-                    Alur Visual ({activeStages.length} Tahap)
+                    {tx('Alur Visual', 'Visual Flow')} ({activeStages.length} {tx('Tahap', 'Stages')})
                   </button>
                   <button
                     onClick={() => setActiveTab('matrix')}
                     className={`px-3 py-1 rounded-lg font-medium transition ${activeTab === 'matrix' ? 'bg-[var(--color-surface)] text-[var(--color-text)] shadow-2xs font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
                   >
-                    Tabel Matriks per Divisi
+                    {tx('Tabel Matriks per Divisi', 'Matrix Table by Division')}
                   </button>
                 </div>
               </div>
@@ -472,7 +492,7 @@ export default function UserDashboard() {
                         <div>
                           <div className="flex items-center justify-between mb-1.5">
                             <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-muted)]">
-                              Tahap {stage.step}
+                              {tx('Tahap', 'Stage')} {stage.step}
                             </span>
                             {isResolved ? (
                               <CheckCircle2 size={13} className="text-[var(--color-status-success)]" />
@@ -508,14 +528,14 @@ export default function UserDashboard() {
                   <table className="w-full text-left text-xs">
                     <thead className="bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] font-mono text-[11px] text-[var(--color-text-muted)]">
                       <tr>
-                        <th scope="col" className="py-3 px-3.5 font-semibold">Divisi / Unit Kerja</th>
+                        <th scope="col" className="py-3 px-3.5 font-semibold">{tx('Divisi / Unit Kerja', 'Division / Unit')}</th>
                         {/* 3 Tipe mini counter */}
-                        <th scope="col" className="py-3 px-2 text-center font-semibold text-rose-600">Aduan</th>
-                        <th scope="col" className="py-3 px-2 text-center font-semibold text-sky-600">Masukan</th>
-                        <th scope="col" className="py-3 px-2 text-center font-semibold text-orange-600">Saran</th>
-                        <th scope="col" className="py-3 px-2 text-center font-semibold">Diterima</th>
-                        <th scope="col" className="py-3 px-2 text-center font-semibold">Diproses</th>
-                        <th scope="col" className="py-3 px-2 text-center font-semibold text-emerald-600 font-bold">Selesai</th>
+                        <th scope="col" className="py-3 px-2 text-center font-semibold text-rose-600">{tx('Aduan', 'Complaints')}</th>
+                        <th scope="col" className="py-3 px-2 text-center font-semibold text-sky-600">{tx('Masukan', 'Feedback')}</th>
+                        <th scope="col" className="py-3 px-2 text-center font-semibold text-orange-600">{tx('Saran', 'Suggestions')}</th>
+                        <th scope="col" className="py-3 px-2 text-center font-semibold">{tx('Diterima', 'Received')}</th>
+                        <th scope="col" className="py-3 px-2 text-center font-semibold">{tx('Diproses', 'In Progress')}</th>
+                        <th scope="col" className="py-3 px-2 text-center font-semibold text-emerald-600 font-bold">{tx('Selesai', 'Resolved')}</th>
                         <th scope="col" className="py-3 px-3 text-right font-semibold">Total</th>
                       </tr>
                     </thead>
@@ -549,7 +569,7 @@ export default function UserDashboard() {
             {/* BAGIAN 3 & 4: DISTRIBUSI LAPORAN & KINERJA DIVISI (2-Kolom)     */}
             {/* ============================================================== */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              
+
               {/* Kolom Kiri (6 Cols): DISTRIBUSI LAPORAN PER DIVISI */}
               <section aria-labelledby="section-distribution" className="lg:col-span-6 p-6 rounded-3xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-[0_12px_40px_-24px_rgba(10,36,99,0.3)] flex flex-col justify-between space-y-6">
                 <div>
@@ -557,10 +577,10 @@ export default function UserDashboard() {
                     <div>
                       <h2 id="section-distribution" className="text-base font-bold text-[var(--color-text)] flex items-center gap-2">
                         <BarChart3 size={18} className="text-[var(--color-primary)]" />
-                        Distribusi laporan per divisi
+                        {tx('Distribusi laporan per divisi', 'Report distribution by division')}
                       </h2>
                       <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                        Proporsi {selectedType === 'all' ? 'seluruh pengajuan' : selectedType === 'complaint' ? 'Aduan' : selectedType === 'feedback' ? 'Masukan' : 'Saran'} di unit kerja kampus
+                        {tx('Proporsi', 'Share of')} {typeLabel} {tx('di unit kerja kampus', 'across campus units')}
                       </p>
                     </div>
 
@@ -568,11 +588,11 @@ export default function UserDashboard() {
                     <div className="flex items-center gap-3 text-xs self-start sm:self-auto">
                       <span className="inline-flex items-center gap-1.5 font-medium text-[var(--color-text-muted)]">
                         <span className="w-2.5 h-2.5 rounded-sm bg-[var(--color-gold)]" />
-                        Selesai
+                        {tx('Selesai', 'Resolved')}
                       </span>
                       <span className="inline-flex items-center gap-1.5 font-medium text-[var(--color-text-muted)]">
                         <span className="w-2.5 h-2.5 rounded-sm bg-[var(--color-primary)]" />
-                        Diproses
+                        {tx('Belum selesai', 'Not yet resolved')}
                       </span>
                     </div>
                   </div>
@@ -589,7 +609,7 @@ export default function UserDashboard() {
                           cursor={{ fill: 'var(--color-bg-secondary)', opacity: 0.6 }}
                         />
                         <Bar dataKey="resolved" name="resolved" stackId="a" fill="var(--color-gold)" radius={[0, 0, 4, 4]} maxBarSize={34} />
-                        <Bar dataKey="inProgress" name="inProgress" stackId="a" fill="var(--color-primary)" radius={[4, 4, 0, 0]} maxBarSize={34} />
+                        <Bar dataKey="pending" name="pending" stackId="a" fill="var(--color-primary)" radius={[4, 4, 0, 0]} maxBarSize={34} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -597,13 +617,10 @@ export default function UserDashboard() {
                   {/* Top Units List with Breakdown */}
                   <div className="mt-5 space-y-2.5">
                     <div className="text-xs font-semibold text-[var(--color-text-muted)] mb-2">
-                      Rincian Volume per Unit:
+                      {tx('Rincian Volume per Unit:', 'Volume breakdown per unit:')}
                     </div>
-                    {data.distribution.slice(0, 5).map((item, idx) => {
-                      const count = selectedType === 'all' ? item.count : (item.types?.[selectedType] || Math.round(item.count * 0.3))
-                      const resolved = Math.round(count * 0.6)
-                      const inProgress = Math.max(0, count - resolved)
-
+                    {unitBreakdown.slice(0, 5).map((item, idx) => {
+                      const count = item.total
                       return (
                         <div key={item.name} className="p-3 rounded-xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/60 flex items-center justify-between gap-3 text-xs">
                           <div className="flex-1 min-w-0">
@@ -615,26 +632,26 @@ export default function UserDashboard() {
                                 {count} <span className="font-normal text-[var(--color-text-muted)] text-[11px]">({item.percentage}%)</span>
                               </span>
                             </div>
-                            {/* Segmented Mini Progress Bar: Selesai (Emerald) & Diproses (Blue) */}
+                            {/* Segmented Mini Progress Bar: Selesai (Gold) & Belum selesai (Blue) */}
                             <div className="w-full h-2 rounded-full bg-[var(--color-border)]/50 overflow-hidden flex">
                               <div
                                 className="bg-[var(--color-gold)] h-full transition-all"
-                                style={{ width: `${(resolved / Math.max(1, count)) * 100}%` }}
-                                title={`Selesai: ${resolved}`}
+                                style={{ width: `${(item.resolved / Math.max(1, count)) * 100}%` }}
+                                title={`${tx('Selesai', 'Resolved')}: ${item.resolved}`}
                               />
                               <div
                                 className="bg-[var(--color-primary)] h-full transition-all"
-                                style={{ width: `${(inProgress / Math.max(1, count)) * 100}%` }}
-                                title={`Diproses: ${inProgress}`}
+                                style={{ width: `${(item.pending / Math.max(1, count)) * 100}%` }}
+                                title={`${tx('Belum selesai', 'Not yet resolved')}: ${item.pending}`}
                               />
                             </div>
                             <div className="mt-1.5 flex items-center justify-between text-[10px] text-[var(--color-text-muted)]">
                               <span className="truncate">
-                                <span className="font-mono font-medium">Top Isu: </span>
-                                {item.topCategories ? item.topCategories.slice(0, 3).join(', ') : 'Layanan'}
+                                <span className="font-mono font-medium">{tx('Top Isu', 'Top Issues')}: </span>
+                                {item.topCategories.length ? item.topCategories.slice(0, 3).join(', ') : '—'}
                               </span>
                               <span className="font-mono shrink-0 ml-2">
-                                <span className="text-emerald-600 font-semibold">{resolved} tuntas</span> / <span className="text-blue-600 font-semibold">{inProgress} aktif</span>
+                                <span className="text-emerald-600 font-semibold">{item.resolved} {tx('tuntas', 'done')}</span> / <span className="text-blue-600 font-semibold">{item.pending} {tx('belum', 'pending')}</span>
                               </span>
                             </div>
                           </div>
@@ -645,8 +662,8 @@ export default function UserDashboard() {
                 </div>
 
                 <div className="pt-3 border-t border-[var(--color-border)] text-xs text-[var(--color-text-muted)] flex items-center justify-between">
-                  <span>14 Unit Kampus PENS</span>
-                  <span className="font-mono text-blue-600 font-semibold">Tersinkronisasi Realtime</span>
+                  <span>{tx(`${data.units.length} Unit Kampus PENS`, `${data.units.length} PENS Campus Units`)}</span>
+                  <span className="font-mono text-blue-600 font-semibold">{tx('Dihitung dari seluruh aduan', 'Calculated from all reports')}</span>
                 </div>
               </section>
 
@@ -657,10 +674,10 @@ export default function UserDashboard() {
                     <div>
                       <h2 id="section-performance" className="text-base font-bold text-[var(--color-text)] flex items-center gap-2">
                         <Award size={18} className="text-[var(--color-status-success)]" />
-                        Kinerja divisi: SLA dan kualitas
+                        {tx('Kinerja divisi: SLA dan kualitas', 'Division performance: SLA and quality')}
                       </h2>
                       <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                        Tingkat ketepatan waktu penanganan terhadap batas standar SLA
+                        {tx('Tingkat ketepatan waktu penanganan terhadap batas standar SLA', 'On-time handling rate against the SLA standard')}
                       </p>
                     </div>
 
@@ -669,7 +686,7 @@ export default function UserDashboard() {
                       <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
                       <input
                         type="text"
-                        placeholder="Cari divisi..."
+                        placeholder={tx('Cari divisi...', 'Search division...')}
                         value={searchUnit}
                         onChange={e => setSearchUnit(e.target.value)}
                         className="pl-7 pr-3 py-1 rounded-xl text-xs bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] w-36 sm:w-44"
@@ -681,7 +698,7 @@ export default function UserDashboard() {
                   <div className="mt-4 space-y-3 max-h-[440px] overflow-y-auto pr-1">
                     {filteredUnits.length === 0 ? (
                       <div className="py-12 text-center text-xs text-[var(--color-text-muted)] font-mono">
-                        Tidak ada unit yang cocok dengan pencarian "{searchUnit}".
+                        {tx(`Tidak ada unit yang cocok dengan pencarian "${searchUnit}".`, `No units match the search "${searchUnit}".`)}
                       </div>
                     ) : (
                       filteredUnits.map(unit => {
@@ -723,19 +740,19 @@ export default function UserDashboard() {
                             {/* Performance Metrics Row */}
                             <div className="pt-2 border-t border-[var(--color-border)]/50 grid grid-cols-3 gap-2 text-[11px] font-mono">
                               <div>
-                                <span className="text-[10px] text-[var(--color-text-muted)] block">Waktu Tanggap:</span>
+                                <span className="text-[10px] text-[var(--color-text-muted)] block">{tx('Waktu Tanggap:', 'Response time:')}</span>
                                 <span className="font-bold text-[var(--color-text)]">
-                                  {unit.avgResolutionDays} hari <span className="text-[10px] text-[var(--color-text-muted)] font-normal">/ {unit.slaTargetDays}h</span>
+                                  {unit.avgResolutionDays} {tx('hari', 'days')} <span className="text-[10px] text-[var(--color-text-muted)] font-normal">/ {unit.slaTargetDays}{tx('h', 'd')}</span>
                                 </span>
                               </div>
                               <div>
-                                <span className="text-[10px] text-[var(--color-text-muted)] block">Tuntas:</span>
+                                <span className="text-[10px] text-[var(--color-text-muted)] block">{tx('Tuntas:', 'Resolved:')}</span>
                                 <span className="font-bold text-emerald-600">
-                                  {unit.resolvedCount} <span className="text-[10px] text-[var(--color-text-muted)] font-normal">dari {unit.total}</span>
+                                  {unit.resolvedCount} <span className="text-[10px] text-[var(--color-text-muted)] font-normal">{tx('dari', 'of')} {unit.total}</span>
                                 </span>
                               </div>
                               <div className="text-right">
-                                <span className="text-[10px] text-[var(--color-text-muted)] block">Kepuasan:</span>
+                                <span className="text-[10px] text-[var(--color-text-muted)] block">{tx('Kepuasan:', 'Satisfaction:')}</span>
                                 <span className="font-bold text-[var(--color-text)] inline-flex items-center gap-0.5 justify-end">
                                   <Star size={11} className="fill-[var(--color-gold)] text-[var(--color-gold)]" />
                                   {unit.rating}
@@ -750,8 +767,10 @@ export default function UserDashboard() {
                 </div>
 
                 <div className="pt-3 border-t border-[var(--color-border)] text-xs text-[var(--color-text-muted)] flex items-center justify-between">
-                  <span>Target SLA kampus: 1 - 4 hari kerja</span>
-                  <span className="font-mono text-emerald-600 font-semibold">Evaluasi Berkala</span>
+                  <span>{slaRange
+                    ? tx(`Target SLA kampus: ${slaRange.min} - ${slaRange.max} hari kerja`, `Campus SLA target: ${slaRange.min} - ${slaRange.max} working days`)
+                    : ''}</span>
+                  <span className="font-mono text-emerald-600 font-semibold">{tx('Sesuai data aduan', 'Based on report data')}</span>
                 </div>
               </section>
 

@@ -53,6 +53,7 @@ $routes->group('api', function ($routes) {
 
     $routes->get('unit/stats', 'DashboardController::unitStats', ['filter' => 'authRole:stakeholder,admin']);
     $routes->get('student/dashboard', 'DashboardController::studentDashboard');
+    $routes->get('admin/dashboard', 'DashboardController::adminDashboard', ['filter' => 'authRole:admin']);
     $routes->get('analytics/weekly', 'AnalyticsController::weekly', ['filter' => 'authRole:admin']);
 
     $routes->group('analytics', ['filter' => 'authRole:stakeholder,admin'], function ($routes) {

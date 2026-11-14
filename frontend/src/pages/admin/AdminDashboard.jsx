@@ -3,23 +3,24 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 import AdminLayout from '../../components/layout/AdminLayout.jsx'
 import { CountUp } from '../../components/motion/Motion.jsx'
-import { StatusBadge } from '../../components/ui/StatusBadge.jsx'
 import ErrorState from '../../components/ui/ErrorState.jsx'
-import { getComplaints, verifyComplaint, dispatchComplaint } from '../../services/complaintApi.js'
-import { formatDate, formatRelative } from '../../utils/formatter.js'
+import { getComplaints, getAdminDashboardStats, verifyComplaint, dispatchComplaint } from '../../services/complaintApi.js'
+import { formatRelative } from '../../utils/formatter.js'
 import { UNITS } from '../../data/units.js'
 import { useDebounce } from '../../hooks/useDebounce.js'
+import useBilingual from '../../hooks/useBilingual.js'
 import {
   CheckSquare, Send, Clock, AlertTriangle, ArrowRight,
-  ShieldCheck, Check, Building2, User, Search, Filter,
-  MoreHorizontal, ChevronDown, CheckCircle2, FileText,
-  Calendar, Layers, ArrowUpRight, ArrowDownRight, Sparkles,
-  Wrench, GraduationCap, Server, MessageSquare, Lightbulb
+  ShieldCheck, Building2, Search,
+  ChevronDown, CheckCircle2, FileText,
+  Wrench, Server, MessageSquare, Lightbulb
 } from 'lucide-react'
 
 export default function AdminDashboard() {
   const { user } = useAuth()
+  const { tx, locale, lang } = useBilingual()
   const [complaints, setComplaints] = useState([])
+  const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -54,43 +55,32 @@ export default function AdminDashboard() {
   function loadData() {
     setLoading(true)
     setError(false)
-    getComplaints({ limit: 50 })
-      .then(res => setComplaints(res.items || []))
+    Promise.all([
+      getComplaints({ limit: 50 }),
+      getAdminDashboardStats(),
+    ])
+      .then(([list, agg]) => {
+        setComplaints(list.items || [])
+        setStats(agg)
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false))
   }
 
-  // Count by 3 types
-  const typeCounts = useMemo(() => {
-    const counts = { complaint: 0, feedback: 0, suggestion: 0 }
-    complaints.forEach(c => {
-      const t = c.type || 'complaint'
-      if (counts[t] !== undefined) counts[t]++
-      else counts.complaint++
-    })
-    return counts
-  }, [complaints])
-
-  // Antrean Verifikasi (Status 'received')
-  const verificationQueue = useMemo(
-    () => complaints.filter(c => c.status === 'received'),
-    [complaints]
-  )
-  // Antrean Disposisi (Status 'verified')
-  const dispositionQueue = useMemo(
-    () => complaints.filter(c => c.status === 'verified'),
-    [complaints]
-  )
-  // Tiket Aktif Berjalan
-  const activeDispatched = useMemo(
-    () => complaints.filter(c => ['dispatched', 'in_progress', 'action_taken', 'answered'].includes(c.status)),
-    [complaints]
-  )
-  // Tiket Selesai
-  const resolvedList = useMemo(
-    () => complaints.filter(c => c.status === 'resolved'),
-    [complaints]
-  )
+  // Angka dashboard dihitung backend dari SELURUH aduan (bukan hanya 50 yang dimuat)
+  const totalCount = stats?.total ?? 0
+  const typeCounts = stats?.byType ?? { complaint: 0, feedback: 0, suggestion: 0 }
+  const verificationCount = stats?.verificationQueue ?? 0 // status received
+  const dispositionCount = stats?.dispositionQueue ?? 0 // status verified
+  const activeCount = stats?.activeDispatched ?? 0 // dispatched, in_progress, action_taken, answered
+  const resolvedCount = stats?.resolved ?? 0
+  const unitRanking = stats?.unitRanking ?? []
+  const avgResolutionDays = stats?.avgResolutionDays ?? 0
+  const completionRate = totalCount > 0 ? Math.round((resolvedCount / totalCount) * 100) : 0
+  const monthlyStats = (stats?.monthly ?? []).map(m => ({
+    ...m,
+    label: new Date(`${m.month}-01T00:00:00`).toLocaleDateString(locale, { month: 'short' }),
+  }))
 
   const debouncedSearch = useDebounce(searchQuery, 250)
 
@@ -110,12 +100,15 @@ export default function AdminDashboard() {
     setSavingAction(true)
     setActionError('')
     try {
-      await verifyComplaint(id, { verified: true, note: 'Diverifikasi langsung melalui Dashboard Administrator.' })
-      setActionSuccess('Tiket berhasil diverifikasi!')
+      await verifyComplaint(id, {
+        verified: true,
+        note: tx('Diverifikasi langsung melalui Dashboard Administrator.', 'Verified directly from the Administrator Dashboard.'),
+      })
+      setActionSuccess(tx('Tiket berhasil diverifikasi!', 'Ticket verified successfully!'))
       setTimeout(() => setActionSuccess(''), 3000)
       loadData()
     } catch {
-      setActionError('Gagal memverifikasi tiket. Silakan coba lagi.')
+      setActionError(tx('Gagal memverifikasi tiket. Silakan coba lagi.', 'Failed to verify the ticket. Please try again.'))
       setTimeout(() => setActionError(''), 4000)
     } finally {
       setSavingAction(false)
@@ -129,60 +122,54 @@ export default function AdminDashboard() {
     setActionError('')
     try {
       await dispatchComplaint(selectedTicket.id, dispositionForm)
-      setActionSuccess(`Tiket ${selectedTicket.ticket_id} berhasil didisposisikan ke ${dispositionForm.target_unit}!`)
+      setActionSuccess(tx(
+        `Tiket ${selectedTicket.ticket_id} berhasil didisposisikan ke ${dispositionForm.target_unit}!`,
+        `Ticket ${selectedTicket.ticket_id} was dispatched to ${dispositionForm.target_unit}!`,
+      ))
       setTimeout(() => setActionSuccess(''), 3000)
       setSelectedTicket(null)
       loadData()
     } catch {
-      setActionError('Gagal mendisposisikan tiket. Silakan periksa kembali isian form.')
+      setActionError(tx(
+        'Gagal mendisposisikan tiket. Silakan periksa kembali isian form.',
+        'Failed to dispatch the ticket. Please check the form and try again.',
+      ))
       setTimeout(() => setActionError(''), 4000)
     } finally {
       setSavingAction(false)
     }
   }
 
-  // Bar Chart Data for "Tren Penanganan Laporan"
-  const monthlyStats = [
-    { month: 'Jan', completed: 32, inProgress: 14 },
-    { month: 'Feb', completed: 44, inProgress: 18 },
-    { month: 'Mar', completed: 38, inProgress: 16 },
-    { month: 'Apr', completed: 52, inProgress: 24 },
-    { month: 'Mei', completed: 60, inProgress: 28 },
-    { month: 'Jun', completed: 68, inProgress: 32 },
-    { month: 'Jul', completed: 55, inProgress: 22 },
-    { month: 'Agu', completed: 48, inProgress: 19 },
-  ]
-
   return (
-    <AdminLayout title="Dashboard Administrator Sentral">
+    <AdminLayout title={tx('Dashboard Administrator Sentral', 'Central Administrator Dashboard')}>
       {/* 1. Banner sapaan biru */}
       <section className="banner-blue p-6 sm:p-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-gold)]">
-              {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              {new Date().toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </div>
             <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
-              Selamat datang, {user?.name ? user.name.split(' ')[0] : 'Admin'}
+              {tx('Selamat datang', 'Welcome')}, {user?.name ? user.name.split(' ')[0] : 'Admin'}
             </h2>
             <p className="mt-2 text-sm text-white/75">
-              Ada <strong className="text-white">{verificationQueue.length} laporan</strong> menunggu verifikasi dan{' '}
-              <strong className="text-white">{dispositionQueue.length}</strong> siap didisposisikan ke unit.
+              {tx('Ada', 'There are')} <strong className="text-white">{verificationCount} {tx('laporan menunggu verifikasi', 'reports awaiting verification')}</strong>{' '}
+              {tx('dan', 'and')} <strong className="text-white">{dispositionCount}</strong> {tx('siap didisposisikan ke unit.', 'ready to be dispatched to units.')}
             </p>
             <div className="mt-5 flex flex-wrap gap-2.5">
               <Link to="/admin/verifikasi" className="btn-gold !h-11 !px-5">
-                <CheckSquare size={16} /> Mulai Verifikasi ({verificationQueue.length})
+                <CheckSquare size={16} /> {tx('Mulai Verifikasi', 'Start Verification')} ({verificationCount})
               </Link>
               <Link to="/admin/disposisi" className="btn-ghost-light !h-11 !px-5">
-                <Send size={16} /> Disposisi Tiket
+                <Send size={16} /> {tx('Disposisi Tiket', 'Dispatch Tickets')}
               </Link>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:w-[420px]">
             {[
-              ['Total laporan', complaints.length],
-              ['Diproses unit', activeDispatched.length],
-              ['Selesai', resolvedList.length],
+              [tx('Total laporan', 'Total reports'), totalCount],
+              [tx('Diproses unit', 'In unit process'), activeCount],
+              [tx('Selesai', 'Resolved'), resolvedCount],
             ].map(([label, val]) => (
               <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.07] p-3 sm:p-4 backdrop-blur-sm">
                 <div className="text-2xl font-bold tracking-tight sm:text-3xl"><CountUp value={val} /></div>
@@ -206,8 +193,11 @@ export default function AdminDashboard() {
       )}
       {error && (
         <ErrorState
-          title="Gagal Memuat Data Antrean"
-          message="Terjadi kendala saat menghubungi layanan pusat aduan. Silakan periksa koneksi dan coba kembali."
+          title={tx('Gagal Memuat Data Antrean', 'Failed to Load Queue Data')}
+          message={tx(
+            'Terjadi kendala saat menghubungi layanan pusat aduan. Silakan periksa koneksi dan coba kembali.',
+            'There was a problem reaching the central complaint service. Please check your connection and try again.',
+          )}
           onRetry={loadData}
         />
       )}
@@ -218,26 +208,23 @@ export default function AdminDashboard() {
         <div className="lg:col-span-4 rounded-3xl p-6 bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-medium">
-              <span>Total Aspirasi &amp; Aduan</span>
+              <span>{tx('Total Aspirasi & Aduan', 'Total Aspirations & Complaints')}</span>
               <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[var(--color-bg-secondary)] border border-[var(--color-border)] flex items-center gap-1 text-[var(--color-text)]">
-                Semua Periode <ChevronDown size={12} />
+                {tx('Semua Periode', 'All Periods')} <ChevronDown size={12} />
               </span>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
               <span className="text-3xl sm:text-4xl font-extrabold font-mono tracking-tight text-[var(--color-text)]">
-                <CountUp value={complaints.length} />
+                <CountUp value={totalCount} />
               </span>
-              <span className="text-xs font-mono text-[var(--color-text-muted)]">laporan</span>
-            </div>
-            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300">
-              <ArrowUpRight size={13} /> +12% dari bulan lalu
+              <span className="text-xs font-mono text-[var(--color-text-muted)]">{tx('laporan', 'reports')}</span>
             </div>
 
             {/* 3-Type Summary Breakdown */}
             <div className="mt-4 pt-3.5 border-t border-[var(--color-border)]">
               <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-medium mb-2.5">
-                <span>Distribusi Tipe Masuk</span>
-                <span className="text-[10px] font-mono">Filter Cepat</span>
+                <span>{tx('Distribusi Tipe Masuk', 'Incoming Type Distribution')}</span>
+                <span className="text-[10px] font-mono">{tx('Filter Cepat', 'Quick Filter')}</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <button
@@ -250,12 +237,12 @@ export default function AdminDashboard() {
                   }`}
                 >
                   <div className="flex items-center gap-1 text-[10px] font-bold text-rose-600 dark:text-rose-400">
-                    <AlertTriangle size={11} /> Aduan
+                    <AlertTriangle size={11} /> {tx('Aduan', 'Complaints')}
                   </div>
                   <div className="text-base font-extrabold font-mono text-[var(--color-text)] mt-0.5">
                     <CountUp value={typeCounts.complaint} />
                   </div>
-                  <div className="text-[9px] text-[var(--color-text-muted)] truncate">7 Tahap SLA</div>
+                  <div className="text-[9px] text-[var(--color-text-muted)] truncate">{tx('7 Tahap SLA', '7-Stage SLA')}</div>
                 </button>
 
                 <button
@@ -268,12 +255,12 @@ export default function AdminDashboard() {
                   }`}
                 >
                   <div className="flex items-center gap-1 text-[10px] font-bold text-sky-600 dark:text-sky-400">
-                    <MessageSquare size={11} /> Masukan
+                    <MessageSquare size={11} /> {tx('Masukan', 'Feedback')}
                   </div>
                   <div className="text-base font-extrabold font-mono text-[var(--color-text)] mt-0.5">
                     <CountUp value={typeCounts.feedback} />
                   </div>
-                  <div className="text-[9px] text-[var(--color-text-muted)] truncate">Evaluasi Mutu</div>
+                  <div className="text-[9px] text-[var(--color-text-muted)] truncate">{tx('Evaluasi Mutu', 'Quality Review')}</div>
                 </button>
 
                 <button
@@ -286,12 +273,12 @@ export default function AdminDashboard() {
                   }`}
                 >
                   <div className="flex items-center gap-1 text-[10px] font-bold text-orange-600 dark:text-orange-400">
-                    <Lightbulb size={11} /> Saran
+                    <Lightbulb size={11} /> {tx('Saran', 'Suggestion')}
                   </div>
                   <div className="text-base font-extrabold font-mono text-[var(--color-text)] mt-0.5">
                     <CountUp value={typeCounts.suggestion} />
                   </div>
-                  <div className="text-[9px] text-[var(--color-text-muted)] truncate">Ide Inovasi</div>
+                  <div className="text-[9px] text-[var(--color-text-muted)] truncate">{tx('Ide Inovasi', 'Innovation Ideas')}</div>
                 </button>
               </div>
             </div>
@@ -302,13 +289,13 @@ export default function AdminDashboard() {
                 to="/admin/disposisi"
                 className="py-2.5 px-4 rounded-full text-xs font-bold text-center text-white bg-[var(--color-navy)] hover:bg-[var(--color-navy-hover)] dark:bg-[var(--color-primary)] dark:hover:bg-blue-600 transition shadow-xs flex items-center justify-center gap-1.5"
               >
-                <Send size={13} /> Disposisi
+                <Send size={13} /> {tx('Disposisi', 'Dispatch')}
               </Link>
               <Link
                 to="/admin/complaints"
                 className="py-2.5 px-4 rounded-full text-xs font-bold text-center text-[var(--color-text)] bg-[var(--color-bg-secondary)] hover:bg-[var(--color-border)]/50 border border-[var(--color-border)] transition flex items-center justify-center gap-1.5"
               >
-                <FileText size={13} /> Laporan
+                <FileText size={13} /> {tx('Laporan', 'Reports')}
               </Link>
             </div>
           </div>
@@ -316,25 +303,17 @@ export default function AdminDashboard() {
           {/* Sub-cards: Kategori / Unit Terbanyak */}
           <div className="mt-5 pt-4 border-t border-[var(--color-border)]">
             <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] font-medium mb-2.5">
-              <span>Unit Teratas</span>
-              <span>14 Unit Kampus</span>
+              <span>{tx('Unit Teratas', 'Top Units')}</span>
+              <span>{unitRanking.length} {tx('Unit Terlibat', 'Units Involved')}</span>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <div className="p-2 rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/60 text-center">
-                <div className="text-[10px] font-medium text-[var(--color-text-muted)] truncate">Sarpras</div>
-                <div className="text-xs font-bold font-mono mt-0.5 text-[var(--color-text)]">482</div>
-                <div className="text-[9px] font-bold text-emerald-600 mt-0.5">Aktif</div>
-              </div>
-              <div className="p-2 rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/60 text-center">
-                <div className="text-[10px] font-medium text-[var(--color-text-muted)] truncate">Akademik</div>
-                <div className="text-xs font-bold font-mono mt-0.5 text-[var(--color-text)]">326</div>
-                <div className="text-[9px] font-bold text-emerald-600 mt-0.5">Aktif</div>
-              </div>
-              <div className="p-2 rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/60 text-center">
-                <div className="text-[10px] font-medium text-[var(--color-text-muted)] truncate">IT Center</div>
-                <div className="text-xs font-bold font-mono mt-0.5 text-[var(--color-text)]">195</div>
-                <div className="text-[9px] font-bold text-emerald-600 mt-0.5">Aktif</div>
-              </div>
+              {[0, 1, 2].map(i => (
+                <div key={i} className="p-2 rounded-2xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)]/60 text-center">
+                  <div className="text-[10px] font-medium text-[var(--color-text-muted)] truncate">{unitRanking[i]?.name || '—'}</div>
+                  <div className="text-xs font-bold font-mono mt-0.5 text-[var(--color-text)]">{unitRanking[i]?.count ?? 0}</div>
+                  <div className="text-[9px] font-bold text-emerald-600 mt-0.5">{unitRanking[i] ? tx('Tiket', 'Tickets') : tx('Kosong', 'Empty')}</div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -345,90 +324,78 @@ export default function AdminDashboard() {
           <div className="banner-blue !rounded-3xl p-5 shadow-[0_16px_40px_-20px_rgba(10,36,99,0.7)] flex flex-col justify-between">
             <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full border border-[var(--color-gold)]/30" />
             <div className="flex items-center justify-between relative z-10">
-              <span className="text-xs font-medium text-white/75">Perlu Verifikasi</span>
+              <span className="text-xs font-medium text-white/75">{tx('Perlu Verifikasi', 'Needs Verification')}</span>
               <span className="w-7 h-7 rounded-full bg-[var(--color-gold)] flex items-center justify-center text-[var(--color-on-gold)]">
                 <CheckSquare size={14} />
               </span>
             </div>
             <div className="my-3 relative z-10">
               <div className="text-3xl font-extrabold font-mono tracking-tight">
-                <CountUp value={verificationQueue.length} />
-              </div>
-              <div className="text-[11px] text-white/65 mt-1 flex items-center gap-1 font-medium">
-                <ArrowUpRight size={12} /> +7% bulan ini
+                <CountUp value={verificationCount} />
               </div>
             </div>
             <Link
               to="/admin/verifikasi"
               className="group text-[11px] font-bold text-[var(--color-gold)] flex items-center gap-1"
             >
-              Tinjau Antrean <ArrowRight size={11} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+              {tx('Tinjau Antrean', 'Review Queue')} <ArrowRight size={11} className="transition-transform duration-200 group-hover:translate-x-0.5" />
             </Link>
           </div>
 
           {/* Metric Card 2: Perlu Disposisi */}
           <div className="rounded-3xl p-5 bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xs flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-[var(--color-text-muted)]">Perlu Disposisi</span>
+              <span className="text-xs font-medium text-[var(--color-text-muted)]">{tx('Perlu Disposisi', 'Needs Dispatch')}</span>
               <span className="w-7 h-7 rounded-full bg-blue-50 dark:bg-blue-950 text-[var(--color-primary)] flex items-center justify-center">
                 <Send size={14} />
               </span>
             </div>
             <div className="my-3">
               <div className="text-3xl font-extrabold font-mono text-[var(--color-text)]">
-                <CountUp value={dispositionQueue.length} />
-              </div>
-              <div className="text-[11px] text-rose-500 mt-1 flex items-center gap-1 font-medium">
-                <ArrowDownRight size={12} /> -5% bulan ini
+                <CountUp value={dispositionCount} />
               </div>
             </div>
             <Link
               to="/admin/disposisi"
               className="text-[11px] font-bold text-[var(--color-primary)] flex items-center gap-1"
             >
-              Arahkan ke Unit <ArrowRight size={11} />
+              {tx('Arahkan ke Unit', 'Route to Unit')} <ArrowRight size={11} />
             </Link>
           </div>
 
           {/* Metric Card 3: Disposisi Aktif */}
           <div className="rounded-3xl p-5 bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xs flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-[var(--color-text-muted)]">Disposisi Aktif</span>
+              <span className="text-xs font-medium text-[var(--color-text-muted)]">{tx('Disposisi Aktif', 'Active Dispatches')}</span>
               <span className="w-7 h-7 rounded-full bg-orange-50 dark:bg-orange-950 text-orange-600 flex items-center justify-center">
                 <Clock size={14} />
               </span>
             </div>
             <div className="my-3">
               <div className="text-3xl font-extrabold font-mono text-[var(--color-text)]">
-                <CountUp value={activeDispatched.length} />
-              </div>
-              <div className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1 font-medium">
-                <ArrowUpRight size={12} /> +8% diproses
+                <CountUp value={activeCount} />
               </div>
             </div>
             <div className="text-[11px] text-[var(--color-text-muted)] font-mono">
-              Dalam penanganan
+              {tx('Dalam penanganan', 'Being handled')}
             </div>
           </div>
 
           {/* Metric Card 4: Laporan Selesai */}
           <div className="rounded-3xl p-5 bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xs flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-[var(--color-text-muted)]">Laporan Selesai</span>
+              <span className="text-xs font-medium text-[var(--color-text-muted)]">{tx('Laporan Selesai', 'Resolved Reports')}</span>
               <span className="w-7 h-7 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center">
                 <ShieldCheck size={14} />
               </span>
             </div>
             <div className="my-3">
               <div className="text-3xl font-extrabold font-mono text-[var(--color-text)]">
-                <CountUp value={resolvedList.length} />
-              </div>
-              <div className="text-[11px] text-emerald-600 mt-1 flex items-center gap-1 font-medium">
-                <ArrowUpRight size={12} /> +4% tuntas
+                <CountUp value={resolvedCount} />
               </div>
             </div>
             <div className="text-[11px] text-[var(--color-text-muted)] font-mono">
-              Feedback terpenuhi
+              {tx('Tiket berstatus selesai', 'Tickets marked resolved')}
             </div>
           </div>
         </div>
@@ -438,15 +405,15 @@ export default function AdminDashboard() {
           <div>
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-sm font-bold text-[var(--color-text)]">Tren Penanganan Laporan</h3>
-                <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">Rasio penyelesaian bulanan</p>
+                <h3 className="text-sm font-bold text-[var(--color-text)]">{tx('Tren Penanganan Laporan', 'Report Handling Trend')}</h3>
+                <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">{tx('Rasio penyelesaian bulanan', 'Monthly resolution ratio')}</p>
               </div>
               <div className="flex items-center gap-3 text-[11px] font-medium text-[var(--color-text-muted)]">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-[var(--color-primary)]" /> Selesai
+                  <span className="w-2.5 h-2.5 rounded-sm bg-[var(--color-primary)]" /> {tx('Selesai', 'Resolved')}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-[var(--color-gold)]" /> Proses
+                  <span className="w-2.5 h-2.5 rounded-sm bg-[var(--color-gold)]" /> {tx('Proses', 'In progress')}
                 </span>
               </div>
             </div>
@@ -455,25 +422,26 @@ export default function AdminDashboard() {
             <div className="mt-8 flex items-end justify-between gap-2 h-44 px-2 border-b border-[var(--color-border)] pb-2">
               {monthlyStats.map((item, idx) => {
                 const total = item.completed + item.inProgress
-                const heightPercent = Math.min(100, Math.round((total / 100) * 100))
+                const maxTotal = Math.max(1, ...monthlyStats.map(m => m.completed + m.inProgress))
+                const heightPercent = Math.round((total / maxTotal) * 100)
                 return (
                   <div key={item.month} className="flex-1 flex flex-col items-center gap-1.5 group">
                     <div className="grow-y w-full max-w-[20px] flex flex-col items-center justify-end rounded-t-lg overflow-hidden h-36 bg-[var(--color-bg-secondary)]" style={{ '--i': idx }}>
                       {/* Top Bar: Selesai (Bold Blue) */}
                       <div
                         className="w-full bg-[var(--color-primary)] transition-[filter] group-hover:brightness-110"
-                        style={{ height: `${(item.completed / total) * heightPercent}%` }}
-                        title={`${item.month}: ${item.completed} Selesai`}
+                        style={{ height: `${total ? (item.completed / total) * heightPercent : 0}%` }}
+                        title={`${item.label}: ${item.completed} ${tx('Selesai', 'Resolved')}`}
                       />
                       {/* Bottom Bar: In Progress (Navy / Slate) */}
                       <div
                         className="w-full bg-[var(--color-gold)] transition-[filter] group-hover:brightness-110"
-                        style={{ height: `${(item.inProgress / total) * heightPercent}%` }}
-                        title={`${item.month}: ${item.inProgress} Diproses`}
+                        style={{ height: `${total ? (item.inProgress / total) * heightPercent : 0}%` }}
+                        title={`${item.label}: ${item.inProgress} ${tx('Diproses', 'In progress')}`}
                       />
                     </div>
                     <span className="text-[10px] font-mono font-medium text-[var(--color-text-muted)]">
-                      {item.month}
+                      {item.label}
                     </span>
                   </div>
                 )
@@ -482,8 +450,8 @@ export default function AdminDashboard() {
           </div>
 
           <div className="mt-4 flex items-center justify-between text-xs text-[var(--color-text-muted)] pt-2">
-            <span>Rata-rata penyelesaian: <strong className="text-[var(--color-text)]">84%</strong></span>
-            <span className="text-emerald-600 font-semibold font-mono">SLA Optimal</span>
+            <span>{tx('Tingkat penyelesaian', 'Resolution rate')}: <strong className="text-[var(--color-text)]">{completionRate}%</strong></span>
+            <span className="text-emerald-600 font-semibold font-mono">{resolvedCount} / {totalCount}</span>
           </div>
         </div>
       </div>
@@ -495,16 +463,11 @@ export default function AdminDashboard() {
           {/* SLA Limit Card ("Monthly Spending Limit" in Finexy) */}
           <div className="rounded-3xl p-5 bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xs">
             <div className="text-xs font-bold text-[var(--color-text)] mb-3">
-              Standar Waktu Tanggap (SLA)
-            </div>
-            {/* Progress Bar with Bold Blue Striped Fill */}
-            <div className="w-full h-3 rounded-full bg-[var(--color-bg-secondary)] overflow-hidden flex border border-[var(--color-border)]/50">
-              <div className="h-full grow-x bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-gold)] w-2/5 rounded-full" />
-              <div className="h-full bg-blue-300 dark:bg-blue-900 w-1/4" />
+              {tx('Standar Waktu Tanggap (SLA)', 'Response Time Standard (SLA)')}
             </div>
             <div className="flex items-center justify-between text-[11px] font-mono mt-3 text-[var(--color-text-muted)]">
-              <span><strong>1.4 hari</strong> terpakai</span>
-              <span>Batas SLA: <strong>3.0 hari</strong></span>
+              <span><strong>{avgResolutionDays} {tx('hari', 'days')}</strong> {tx('rata-rata penyelesaian', 'average resolution')}</span>
+              <span>{resolvedCount} {tx('tiket selesai', 'tickets resolved')}</span>
             </div>
           </div>
 
@@ -513,36 +476,36 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Building2 size={16} className="text-[var(--color-primary)]" />
-                <span className="text-xs font-bold text-[var(--color-text)]">Unit Kerja Siaga</span>
+                <span className="text-xs font-bold text-[var(--color-text)]">{tx('Unit Kerja Siaga', 'Units on Standby')}</span>
               </div>
               <Link to="/stakeholder" className="text-[11px] font-semibold text-[var(--color-primary)] hover:underline">
-                + Kelola
+                + {tx('Kelola', 'Manage')}
               </Link>
             </div>
 
             {/* 2 Visual Preview Cards */}
             <div className="grid grid-cols-2 gap-3">
-              {/* Card 1: Dark Slate Card */}
+              {/* Card 1: Dark Slate Card (unit tiket terbanyak #1) */}
               <div className="rounded-2xl p-3.5 bg-[var(--color-navy)] text-white shadow-sm flex flex-col justify-between min-h-[95px]">
                 <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/20">Aktif</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/20">{unitRanking[0] ? `${unitRanking[0].count} ${tx('tiket', 'tickets')}` : tx('Kosong', 'Empty')}</span>
                   <Wrench size={13} className="text-blue-300" />
                 </div>
                 <div className="mt-2">
-                  <div className="text-xs font-bold">Sarpras &amp; Lab</div>
-                  <div className="text-[9px] font-mono opacity-70">PIC: Ir. Ahmad</div>
+                  <div className="text-xs font-bold">{unitRanking[0]?.name || tx('Belum ada unit', 'No units yet')}</div>
+                  <div className="text-[9px] font-mono opacity-70">{tx('Unit tiket terbanyak', 'Unit with most tickets')}</div>
                 </div>
               </div>
 
-              {/* Card 2: Bold Blue Card */}
+              {/* Card 2: Bold Blue Card (unit tiket terbanyak #2) */}
               <div className="rounded-2xl p-3.5 banner-blue !rounded-2xl text-white shadow-sm flex flex-col justify-between min-h-[95px]">
                 <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/20">Aktif</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/20">{unitRanking[1] ? `${unitRanking[1].count} ${tx('tiket', 'tickets')}` : tx('Kosong', 'Empty')}</span>
                   <Server size={13} className="text-sky-200" />
                 </div>
                 <div className="mt-2">
-                  <div className="text-xs font-bold">IT &amp; Jaringan</div>
-                  <div className="text-[9px] font-mono opacity-80">PIC: Tim Jarkom</div>
+                  <div className="text-xs font-bold">{unitRanking[1]?.name || tx('Belum ada unit', 'No units yet')}</div>
+                  <div className="text-[9px] font-mono opacity-80">{tx('Unit tiket terbanyak', 'Unit with most tickets')}</div>
                 </div>
               </div>
             </div>
@@ -556,8 +519,8 @@ export default function AdminDashboard() {
             <div className="flex flex-col gap-3 pb-4 border-b border-[var(--color-border)]">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-sm font-bold text-[var(--color-text)]">Aktivitas &amp; Laporan Sivitas</h3>
-                  <p className="text-[11px] text-[var(--color-text-muted)]">Rekap seluruh aduan, masukan, dan saran kampus</p>
+                  <h3 className="text-sm font-bold text-[var(--color-text)]">{tx('Aktivitas & Laporan Sivitas', 'Campus Activity & Reports')}</h3>
+                  <p className="text-[11px] text-[var(--color-text-muted)]">{tx('Rekap seluruh aduan, masukan, dan saran kampus', 'Summary of all campus complaints, feedback, and suggestions')}</p>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -565,7 +528,7 @@ export default function AdminDashboard() {
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
                     <input
                       type="text"
-                      placeholder="Cari ID, kata kunci..."
+                      placeholder={tx('Cari ID, kata kunci...', 'Search ID, keywords...')}
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
                       className="pl-8 pr-3 py-1.5 rounded-full text-xs bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] w-44 sm:w-52"
@@ -576,7 +539,7 @@ export default function AdminDashboard() {
                     onChange={e => setFilterUnit(e.target.value)}
                     className="py-1.5 px-3 rounded-full text-xs font-medium bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text)]"
                   >
-                    <option value="all">Semua Unit</option>
+                    <option value="all">{tx('Semua Unit', 'All Units')}</option>
                     {UNITS.map(u => (
                       <option key={u.id} value={u.name}>{u.name}</option>
                     ))}
@@ -595,7 +558,7 @@ export default function AdminDashboard() {
                       : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
                   }`}
                 >
-                  Semua ({complaints.length})
+                  {tx('Semua', 'All')} ({totalCount})
                 </button>
                 <button
                   type="button"
@@ -606,7 +569,7 @@ export default function AdminDashboard() {
                       : 'bg-[var(--color-bg-secondary)] text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30'
                   }`}
                 >
-                  <AlertTriangle size={12} /> Aduan ({typeCounts.complaint})
+                  <AlertTriangle size={12} /> {tx('Aduan', 'Complaints')} ({typeCounts.complaint})
                 </button>
                 <button
                   type="button"
@@ -617,7 +580,7 @@ export default function AdminDashboard() {
                       : 'bg-[var(--color-bg-secondary)] text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/30'
                   }`}
                 >
-                  <MessageSquare size={12} /> Masukan ({typeCounts.feedback})
+                  <MessageSquare size={12} /> {tx('Masukan', 'Feedback')} ({typeCounts.feedback})
                 </button>
                 <button
                   type="button"
@@ -628,7 +591,7 @@ export default function AdminDashboard() {
                       : 'bg-[var(--color-bg-secondary)] text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/30'
                   }`}
                 >
-                  <Lightbulb size={12} /> Saran ({typeCounts.suggestion})
+                  <Lightbulb size={12} /> {tx('Saran', 'Suggestions')} ({typeCounts.suggestion})
                 </button>
               </div>
             </div>
@@ -640,20 +603,20 @@ export default function AdminDashboard() {
               </div>
             ) : filteredComplaints.length === 0 ? (
               <div className="py-12 text-center text-xs font-mono text-[var(--color-text-muted)]">
-                Tidak ada laporan yang sesuai dengan kriteria filter.
+                {tx('Tidak ada laporan yang sesuai dengan kriteria filter.', 'No reports match the current filters.')}
               </div>
             ) : (
               <div className="overflow-x-auto mt-2">
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="text-[11px] font-mono text-[var(--color-text-muted)] border-b border-[var(--color-border)]/60">
-                      <th className="py-3 px-3 font-semibold">ID Tiket</th>
-                      <th className="py-3 px-3 font-semibold">Jenis</th>
-                      <th className="py-3 px-3 font-semibold">Deskripsi Laporan</th>
-                      <th className="py-3 px-3 font-semibold">Unit Pelaksana</th>
+                      <th className="py-3 px-3 font-semibold">{tx('ID Tiket', 'Ticket ID')}</th>
+                      <th className="py-3 px-3 font-semibold">{tx('Jenis', 'Type')}</th>
+                      <th className="py-3 px-3 font-semibold">{tx('Deskripsi Laporan', 'Report Description')}</th>
+                      <th className="py-3 px-3 font-semibold">{tx('Unit Pelaksana', 'Executing Unit')}</th>
                       <th className="py-3 px-3 font-semibold">Status</th>
-                      <th className="py-3 px-3 font-semibold">Tanggal</th>
-                      <th className="py-3 px-3 text-right font-semibold">Tindakan</th>
+                      <th className="py-3 px-3 font-semibold">{tx('Tanggal', 'Date')}</th>
+                      <th className="py-3 px-3 text-right font-semibold">{tx('Tindakan', 'Action')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--color-border)]/40">
@@ -672,15 +635,15 @@ export default function AdminDashboard() {
                           <td className="py-3.5 px-3 whitespace-nowrap">
                             {typeKey === 'feedback' ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-900/60">
-                                <MessageSquare size={10} /> Masukan
+                                <MessageSquare size={10} /> {tx('Masukan', 'Feedback')}
                               </span>
                             ) : typeKey === 'suggestion' ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-900/60">
-                                <Lightbulb size={10} /> Saran
+                                <Lightbulb size={10} /> {tx('Saran', 'Suggestion')}
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60">
-                                <AlertTriangle size={10} /> Aduan
+                                <AlertTriangle size={10} /> {tx('Aduan', 'Complaint')}
                               </span>
                             )}
                           </td>
@@ -699,7 +662,7 @@ export default function AdminDashboard() {
 
                           {/* Unit */}
                           <td className="py-3.5 px-3 text-[var(--color-text-muted)] font-medium text-[11px] truncate max-w-[130px]">
-                            {c.target_unit || c.unit || 'Belum didisposisikan'}
+                            {c.target_unit || c.unit || tx('Belum didisposisikan', 'Not yet dispatched')}
                           </td>
 
                           {/* Status with dot */}
@@ -708,13 +671,13 @@ export default function AdminDashboard() {
                               <span className={`w-2 h-2 rounded-full ${
                                 isResolved ? 'bg-emerald-500' : isPending ? 'bg-orange-500' : 'bg-blue-500'
                               }`} />
-                              {isResolved ? 'Selesai' : isPending ? 'Verifikasi' : 'Diproses'}
+                              {isResolved ? tx('Selesai', 'Resolved') : isPending ? tx('Verifikasi', 'Verification') : tx('Diproses', 'In progress')}
                             </span>
                           </td>
 
                           {/* Tanggal */}
                           <td className="py-3.5 px-3 text-[11px] font-mono text-[var(--color-text-muted)] whitespace-nowrap">
-                            {formatRelative(c.created_at)}
+                            {formatRelative(c.created_at, lang)}
                           </td>
 
                           {/* Actions */}
@@ -725,7 +688,7 @@ export default function AdminDashboard() {
                                 disabled={savingAction}
                                 className="px-3 py-1 rounded-full text-[11px] font-bold bg-[var(--color-primary)] text-white hover:bg-blue-700 transition-colors shadow-2xs"
                               >
-                                Verifikasi
+                                {tx('Verifikasi', 'Verify')}
                               </button>
                             ) : (
                               <button
@@ -734,12 +697,15 @@ export default function AdminDashboard() {
                                   setDispositionForm({
                                     target_unit: c.target_unit || c.unit || UNITS[0].name,
                                     assigned_pic: '',
-                                    disposition_note: `Tindak lanjuti penanganan tiket ${c.ticket_id}.`,
+                                    disposition_note: tx(
+                                      `Tindak lanjuti penanganan tiket ${c.ticket_id}.`,
+                                      `Follow up on the handling of ticket ${c.ticket_id}.`,
+                                    ),
                                   })
                                 }}
                                 className="px-3 py-1 rounded-full text-[11px] font-bold border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-colors"
                               >
-                                Disposisi
+                                {tx('Disposisi', 'Dispatch')}
                               </button>
                             )}
                           </td>
@@ -754,9 +720,12 @@ export default function AdminDashboard() {
 
           {/* Footer of Table */}
           <div className="pt-4 mt-2 border-t border-[var(--color-border)] flex items-center justify-between text-xs text-[var(--color-text-muted)]">
-            <span>Menampilkan {Math.min(6, filteredComplaints.length)} dari {filteredComplaints.length} laporan</span>
+            <span>{tx(
+              `Menampilkan ${Math.min(6, filteredComplaints.length)} dari ${filteredComplaints.length} laporan`,
+              `Showing ${Math.min(6, filteredComplaints.length)} of ${filteredComplaints.length} reports`,
+            )}</span>
             <Link to="/admin/complaints" className="text-[var(--color-primary)] font-bold hover:underline flex items-center gap-1">
-              Lihat Seluruh Laporan <ArrowRight size={13} />
+              {tx('Lihat Seluruh Laporan', 'View All Reports')} <ArrowRight size={13} />
             </Link>
           </div>
         </div>
@@ -775,7 +744,7 @@ export default function AdminDashboard() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-mono uppercase text-[var(--color-primary)] font-bold">
-                    DISPOSISI RESMI ADMIN
+                    {tx('DISPOSISI RESMI ADMIN', 'OFFICIAL ADMIN DISPATCH')}
                   </span>
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
                     selectedTicket.type === 'feedback'
@@ -785,7 +754,7 @@ export default function AdminDashboard() {
                       : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
                   }`}>
                     {selectedTicket.type === 'feedback' ? <MessageSquare size={10} /> : selectedTicket.type === 'suggestion' ? <Lightbulb size={10} /> : <AlertTriangle size={10} />}
-                    {selectedTicket.type === 'feedback' ? 'Masukan' : selectedTicket.type === 'suggestion' ? 'Saran' : 'Aduan'}
+                    {selectedTicket.type === 'feedback' ? tx('Masukan', 'Feedback') : selectedTicket.type === 'suggestion' ? tx('Saran', 'Suggestion') : tx('Aduan', 'Complaint')}
                   </span>
                 </div>
                 <h3 id="modal-quick-disposition-title" className="text-base font-bold text-[var(--color-text)] font-mono mt-0.5">
@@ -794,7 +763,7 @@ export default function AdminDashboard() {
               </div>
               <button
                 onClick={() => setSelectedTicket(null)}
-                aria-label="Tutup modal disposisi cepat"
+                aria-label={tx('Tutup modal disposisi cepat', 'Close quick dispatch modal')}
                 className="p-2 rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-colors text-sm"
               >
                 ✕
@@ -808,7 +777,7 @@ export default function AdminDashboard() {
             <form onSubmit={handleQuickDispatch} className="space-y-3.5 text-xs">
               <div>
                 <label htmlFor="quick-target-unit" className="block font-bold text-[var(--color-text)] mb-1">
-                  Pilih Unit Kerja Tujuan (14 Standar Unit) *
+                  {tx('Pilih Unit Kerja Tujuan (14 Standar Unit)', 'Select Target Unit (14 Standard Units)')} *
                 </label>
                 <select
                   id="quick-target-unit"
@@ -824,12 +793,12 @@ export default function AdminDashboard() {
 
               <div>
                 <label htmlFor="quick-pic" className="block font-bold text-[var(--color-text)] mb-1">
-                  Nama PIC Unit (Opsional)
+                  {tx('Nama PIC Unit (Opsional)', 'Unit PIC Name (Optional)')}
                 </label>
                 <input
                   id="quick-pic"
                   type="text"
-                  placeholder="Contoh: Koordinator Sarpras / Ir. Ahmad"
+                  placeholder={tx('Contoh: Koordinator Sarpras', 'Example: Facilities Coordinator')}
                   value={dispositionForm.assigned_pic}
                   onChange={e => setDispositionForm(f => ({ ...f, assigned_pic: e.target.value }))}
                   className="input-field text-xs rounded-xl"
@@ -838,7 +807,7 @@ export default function AdminDashboard() {
 
               <div>
                 <label htmlFor="quick-note" className="block font-bold text-[var(--color-text)] mb-1">
-                  Catatan Arahan Disposisi Admin *
+                  {tx('Catatan Arahan Disposisi Admin', 'Admin Dispatch Instructions')} *
                 </label>
                 <textarea
                   id="quick-note"
@@ -846,10 +815,10 @@ export default function AdminDashboard() {
                   required
                   placeholder={
                     selectedTicket.type === 'feedback'
-                      ? 'Tuliskan arahan tindak lanjut masukan untuk evaluasi mutu layanan unit...'
+                      ? tx('Tuliskan arahan tindak lanjut masukan untuk evaluasi mutu layanan unit...', 'Write follow-up instructions for this feedback to the unit quality review...')
                       : selectedTicket.type === 'suggestion'
-                      ? 'Tuliskan telaah rekomendasi usulan saran inovasi sivitas...'
-                      : 'Tuliskan instruksi atau arahan pimpinan penanganan aduan kepada unit terkait...'
+                      ? tx('Tuliskan telaah rekomendasi usulan saran inovasi sivitas...', 'Write a review and recommendation for this campus innovation suggestion...')
+                      : tx('Tuliskan instruksi atau arahan pimpinan penanganan aduan kepada unit terkait...', 'Write instructions for handling this complaint to the relevant unit...')
                   }
                   value={dispositionForm.disposition_note}
                   onChange={e => setDispositionForm(f => ({ ...f, disposition_note: e.target.value }))}
@@ -863,14 +832,14 @@ export default function AdminDashboard() {
                   onClick={() => setSelectedTicket(null)}
                   className="btn-outline !py-2 !px-4 text-xs rounded-full min-h-[40px]"
                 >
-                  Batal
+                  {tx('Batal', 'Cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={savingAction}
                   className="btn-solid !py-2 !px-5 text-xs font-bold rounded-full min-h-[40px] shadow-sm"
                 >
-                  {savingAction ? 'Menyimpan...' : 'Kirimkan Disposisi ke Unit'}
+                  {savingAction ? tx('Menyimpan...', 'Saving...') : tx('Kirimkan Disposisi ke Unit', 'Send Dispatch to Unit')}
                 </button>
               </div>
             </form>
