@@ -72,6 +72,14 @@ $lowText = "Mohon info jadwal pendaftaran seminar nasional pekan depan.";
 $evalLow = $priorityService->evaluateUrgency($lowText);
 assertTest("Urgency: Deteksi status Rendah", $evalLow['urgency_label'] === 'Rendah' && $evalLow['is_urgent'] === false);
 
+// 1.2.1 Urgency Score Scaling Contract (DB 0.0-1.0 to API 0.0-10.0)
+assertTest("Urgency Score: 0.15 dikonversi tepat ke 1.5", \App\Services\ComplaintService::normalizeUrgencyScore(0.15) === 1.5);
+assertTest("Urgency Score: 0.45 dikonversi tepat ke 4.5", \App\Services\ComplaintService::normalizeUrgencyScore(0.45) === 4.5);
+assertTest("Urgency Score: 0.70 dikonversi tepat ke 7.0", \App\Services\ComplaintService::normalizeUrgencyScore(0.70) === 7.0);
+assertTest("Urgency Score: 1.00 dikonversi tepat ke 10.0", \App\Services\ComplaintService::normalizeUrgencyScore(1.00) === 10.0);
+assertTest("Urgency Score: Nilai skala 0-10 tidak dikalikan ulang", \App\Services\ComplaintService::normalizeUrgencyScore(4.5) === 4.5);
+assertTest("Urgency Score: Nilai null menghasilkan default 5.0", \App\Services\ComplaintService::normalizeUrgencyScore(null) === 5.0);
+
 // 1.3 Category/Unit Fallback Mapping
 $catIT = $priorityService->classifyUnitFallback("Koneksi WiFi di gedung pascasarjana sering putus dan RTO.");
 assertTest("Unit Mapping: WiFi -> TIK/Sistem Informasi", $catIT === 'TIK/Sistem Informasi');

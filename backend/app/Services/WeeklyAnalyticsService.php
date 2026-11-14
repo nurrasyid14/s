@@ -101,7 +101,7 @@ class WeeklyAnalyticsService
                 }
 
                 try {
-                    $createdAt = new DateTimeImmutable($createdAtStr, $utc)->setTimezone($timezone);
+                    $createdAt = (new DateTimeImmutable($createdAtStr, $utc))->setTimezone($timezone);
                 } catch (\Throwable $e) {
                     continue;
                 }

@@ -51,11 +51,14 @@ export default function ComplaintForm() {
 
   async function handleSubmit() {
     setLoading(true)
+    setError('')
     try {
       const result = await submitComplaint(form)
       setSubmitted(result)
-    } catch {
-      setError('Gagal mengirim aduan. Coba lagi.')
+    } catch (err) {
+      const backendMessage = err.response?.data?.message
+      const fallbackMessage = err.message || 'Gagal mengirim pengajuan. Silakan periksa koneksi dan coba lagi.'
+      setError(backendMessage || fallbackMessage)
     } finally {
       setLoading(false)
     }

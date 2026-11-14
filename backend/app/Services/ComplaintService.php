@@ -1126,10 +1126,14 @@ class ComplaintService
                     'approved'    => $isApproved,
                 ];
             } elseif (str_starts_with($text, '[Disposisi ke ')) {
-                preg_match('/^\[Disposisi ke ([^\]]+)\](?:\s*PIC:\s*([^.]+)\.)?\s*(.*)$/s', $text, $m);
+                preg_match('/^\[Disposisi ke ([^\]]+)\]\s*(.*)$/s', $text, $m);
                 $u = !empty($m[1]) ? trim($m[1]) : $targetUnit;
-                $pic = !empty($m[2]) ? trim($m[2]) : "Koordinator {$u}";
-                $note = !empty($m[3]) ? trim($m[3]) : 'Mohon segera ditindaklanjuti sesuai SOP unit.';
+                $rest = !empty($m[2]) ? trim($m[2]) : '';
+                [$pic, $note] = $this->splitPrefixNameBody($rest, 'PIC:');
+                if ($pic === '') {
+                    $pic = "Koordinator {$u}";
+                    $note = $rest !== '' ? $rest : 'Mohon segera ditindaklanjuti sesuai SOP unit.';
+                }
                 $disposition = [
                     'target_unit'      => $u,
                     'assigned_pic'     => $pic,
@@ -1139,9 +1143,13 @@ class ComplaintService
                     'target_sla_date'  => date('c', strtotime($rCreatedAt . ' + 3 days')),
                 ];
             } elseif (str_starts_with($text, '[Jawaban Resmi Unit]')) {
-                preg_match('/^\[Jawaban Resmi Unit\](?:\s*Oleh:\s*([^.]+)\.)?\s*(.*)$/s', $text, $m);
-                $answeredBy = !empty($m[1]) ? trim($m[1]) : $byName;
-                $ans = !empty($m[2]) ? trim($m[2]) : $text;
+                preg_match('/^\[Jawaban Resmi Unit\]\s*(.*)$/s', $text, $m);
+                $rest = !empty($m[1]) ? trim($m[1]) : '';
+                [$answeredBy, $ans] = $this->splitPrefixNameBody($rest, 'Oleh:');
+                if ($answeredBy === '') {
+                    $answeredBy = $byName ?: 'Kepala / Koordinator Unit';
+                    $ans = $rest !== '' ? $rest : $text;
+                }
                 $unitAnswer = [
                     'answer'      => $ans,
                     'answered_by' => $answeredBy,
@@ -1192,6 +1200,9 @@ class ComplaintService
 
         $isAnonymous = !empty($row['is_anonymous']);
 
+        $rawUrgency = isset($row['urgency_score']) ? (float) $row['urgency_score'] : null;
+        $formattedUrgency = self::normalizeUrgencyScore($rawUrgency);
+
         return [
             'id'             => $id,
             'ticket_id'      => $row['ticket_id'] ?? "SL-{$id}",
@@ -1204,7 +1215,7 @@ class ComplaintService
             'sender_name'    => $isAnonymous ? null : ($row['sender_name'] ?? null),
             'sender_role'    => $row['sender_role'] ?? 'Mahasiswa',
             'status'         => $statusKey,
-            'urgency_score'  => isset($row['urgency_score']) ? round((float) $row['urgency_score'] * 10, 1) : 5.0,
+            'urgency_score'  => $formattedUrgency,
             'nlp_category'    => $row['category'] ?? $targetUnit,
             'nlp_confidence'  => isset($row['category_confidence']) ? round((float) $row['category_confidence'], 2) : null,
             'unit_confidence' => isset($row['unit_confidence']) ? round((float) $row['unit_confidence'], 2) : null,
@@ -1220,5 +1231,57 @@ class ComplaintService
             'created_at'     => $createdAt,
             'updated_at'     => $row['updated_at'] ?? $createdAt,
         ];
+    }
+
+    /**
+     * Menormalisasi skor urgensi dari database (skala 0.0–1.0) ke kontrak API (skala 0.0–10.0).
+     * Aturan deterministik tunggal:
+     * - Nilai database bernilai 0.0–1.0 dikalikan 10 dan dibulatkan 1 desimal.
+     * - Nilai yang sudah pada skala 0–10 dijaga maksimum 10.0 tanpa penggandaan ulang.
+     * - Nilai null mengembalikan default 5.0.
+     */
+    public static function normalizeUrgencyScore(?float $rawUrgency): float
+    {
+        if ($rawUrgency === null) {
+            return 5.0;
+        }
+        return $rawUrgency <= 1.0 ? round($rawUrgency * 10, 1) : min(10.0, round($rawUrgency, 1));
+    }
+
+    /**
+     * Memisahkan prefix nama (PIC:/Oleh:) dari isi catatan/jawaban dengan toleransi gelar akademis bertitik (Dr., Ir., Prof., S.T., dsb).
+     */
+    private function splitPrefixNameBody(string $text, string $prefix): array
+    {
+        if (!str_starts_with($text, $prefix)) {
+            return ['', $text];
+        }
+        $after = trim(substr($text, strlen($prefix)));
+
+        // Pola nama bergelar: gelar depan jamak, nama utama, dan gelar belakang (post-nominal)
+        $frontPattern = '(?:(?:Prof|Dr|Ir|Drs|Dra|apt|dr|drg|Ns|KH|Hj|H)\.\s*)*';
+        $coreNamePattern = '[A-Z][a-zA-Z\'\-]*(?:\s+[A-Z][a-zA-Z\'\-]*)*';
+        $backTitlePattern = '(?:\s*,\s*(?:[A-Z][a-zA-Z]*(?:\.[A-Z][a-zA-Z]*)*\.?|\bIPM\b|\bEng\b)(?:\s*,\s*(?:[A-Z][a-zA-Z]*(?:\.[A-Z][a-zA-Z]*)*\.?|\bIPM\b|\bEng\b))*)?';
+
+        $fullRegex = '/^(' . $frontPattern . $coreNamePattern . $backTitlePattern . ')(?:\.+|\s*)\s+(.+)$/s';
+
+        if (preg_match($fullRegex, $after, $m)) {
+            $name = trim($m[1]);
+            $body = trim($m[2]);
+
+            // Pertahankan titik penutup pada singkatan gelar belakang (misal S.T., M.Kom., Ph.D.)
+            if (preg_match('/,\s*[A-Z][a-zA-Z]*(?:\.[A-Z][a-zA-Z]*)*$/', $name) && !str_ends_with($name, '.')) {
+                $name .= '.';
+            }
+
+            return [$name, $body];
+        }
+
+        // Fallback: cari pembatas titik pertama diikuti spasi
+        if (preg_match('/^(.*?)\.\s+(.*)$/s', $after, $m)) {
+            return [trim($m[1]), trim($m[2])];
+        }
+
+        return [$after, ''];
     }
 }

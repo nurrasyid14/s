@@ -619,7 +619,7 @@ class ComplaintController extends ResourceController
                 'u.user_role AS sender_role',
                 'c.assigned_unit AS unit',
             ])
-            ->select('(ca.urgency_score * 10) AS urgency_score', false)
+            ->select('ca.urgency_score', false)
             ->select('CASE WHEN c.is_anonymous THEN NULL ELSE u.name END AS sender_name', false)
             ->join($latest, 'latest_analysis.complaint_id = c.id', 'left', false)
             ->join('complaint_analysis ca', 'ca.id = latest_analysis.latest_id', 'left')
