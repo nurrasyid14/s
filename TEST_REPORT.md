@@ -10,16 +10,16 @@
 
 | Komponen Uji | Total Kasus Uji | Berhasil (PASS) | Gagal (FAIL) | Status |
 |---|---:|---:|---:|:---:|
-| **Backend CI4 Test Suite** (`backend/tests/run_tests.php`) | 199 | 199 | 0 | **PASS (100%)** |
+| **Backend CI4 Test Suite** (`backend/tests/run_tests.php`) | 217 | 217 | 0 | **PASS (100%)** |
 | **ML Service Test Suite** (`ml-service/tests/run_tests.py`) | 26 | 26 | 0 | **PASS (100%)** |
-| **Frontend Production Build** (`npm run build`) | 44 Chunks | 44 Chunks (4.36s) | 0 | **PASS** |
+| **Frontend Production Build** (`npm run build`) | 45 Chunks | 45 Chunks (4.47s) | 0 | **PASS** |
 | **Frontend ESLint Check** (`npm run lint`) | Codebase | 0 Errors (43 warnings) | 0 | **PASS** |
 | **PHP Syntax Check** | Seluruh file `.php` | Bebas syntax error | 0 | **PASS** |
 | **Database Migrations** | 11 Migrasi | Batch 1–10 Applied | 0 | **PASS** |
 
 ---
 
-## 2. Rincian Eksekusi Backend Test Suite (125 Uji)
+## 2. Rincian Eksekusi Backend Test Suite (217 Uji)
 
 Perintah eksekusi: `php backend/tests/run_tests.php`
 
@@ -101,6 +101,32 @@ SUARALENS BACKEND SERVICES UNIT TEST RUNNER
   [PASS] Evidence: Ekstensi yang diizinkan mencakup jpg, png, pdf
   [PASS] Evidence: Batas ukuran maksimum tepat 5MB (5242880 bytes)
   [PASS] Evidence: Ekstensi berbahaya (.php, .exe, .sh) ditolak
+  [PASS] Upload Security: File JPG valid diterima
+  [PASS] Upload Security: File PNG valid diterima
+  [PASS] Upload Security: File PDF valid diterima
+  [PASS] Upload Security: File dengan ekstensi PHP ditolak
+  [PASS] Upload Security: File dengan ekstensi EXE ditolak
+  [PASS] Upload Security: MIME type tidak sesuai ekstensi ditolak
+  [PASS] Upload Security: MIME type tidak terdeteksi / tidak cocok ditolak (Fail-Closed)
+  [PASS] Upload Security: Dokumen DOCX valid dengan struktur OpenXML diterima
+  [PASS] Upload Security: File ZIP biasa di-rename menjadi DOCX ditolak
+  [PASS] Upload Security: Dokumen DOC valid dengan magic bytes OLE2 diterima
+  [PASS] Upload Security: File teks disamarkan menjadi DOC ditolak
+  [PASS] Upload Security: File melebihi batas 5MB ditolak
+  [PASS] Upload Security: File kosong (0 byte) ditolak
+  [PASS] Upload Security: File gagal upload/parsial ditolak
+  [PASS] Storage Security: File fisik berhasil disimpan di direktori terisolasi
+  [PASS] Storage Security: Nama file penyimpanan acak unik (bukan nama asli)
+  [PASS] Storage Security: Direktori uploads dilindungi file .htaccess non-executable
+  [PASS] Compensation: File valid di dalam direktori upload berhasil dihapus via deleteFile()
+  [PASS] Compensation: Batch file fisik tersimpan sebelum simulasi kegagalan
+  [PASS] Compensation: purgeFiles() membersihkan seluruh file secara tuntas (Zero Orphan)
+  [PASS] Storage Security: deleteFile() menolak menghapus file di luar WRITEPATH
+  [PASS] Storage Security: deleteFile() menolak menghapus file di luar direktori upload (misal logs)
+  [PASS] Storage Security: deleteFile() menolak path traversal
+  [PASS] Storage Security: deleteFile() menolak path dengan null-byte
+  [PASS] Storage Security: deleteFile() menangani file tidak ada dengan aman (return false)
+  [PASS] Storage Security: deleteFile() memiliki proteksi is_link untuk menolak symlink
 
 [9] Testing MLService Resilience & Heuristic Fallback Integration...
   [PASS] ML Resilience: Gagal graceful tanpa crash saat offline
@@ -196,8 +222,43 @@ SUARALENS BACKEND SERVICES UNIT TEST RUNNER
   [PASS] Lifecycle: Verifikasi jawaban resmi unit ada
   [PASS] Lifecycle: Verifikasi feedback rating 5 bintang tercatat
 
+[17] Testing Attachment Lifecycle, Compensation & Protected Serving...
+  [PASS] Attachment Lifecycle: Aduan dengan lampiran valid berhasil dibuat
+  [PASS] Attachment Lifecycle: Detail memuat array lampiran
+  [PASS] Attachment Lifecycle: URL lampiran mengarah ke endpoint terproteksi
+  [PASS] Protected Attachment: Pemilik sah dapat mengakses file fisik
+  [PASS] Protected Attachment: MIME type lampiran valid
+  [PASS] Protected Attachment: Pengguna lain dilarang mengakses file lampiran (IDOR)
+  [PASS] Protected Attachment: Stakeholder divisi berbeda dilarang mengakses file lampiran
+  [PASS] Protected Attachment: Stakeholder divisi terkait berwenang mengakses file lampiran
+  [PASS] Protected Attachment: Admin sentral berwenang mengakses file lampiran
+  [PASS] Protected Attachment: Percobaan path traversal ditolak secara mutlak
+  [PASS] Attachment Security: Pembuatan aduan dengan lampiran PHP ditolak (Fail-Fast)
+  [PASS] Attachment Security: Database tidak menambah baris aduan saat upload ditolak
+  [PASS] Zero Orphan: File fisik uji berhasil tersimpan sementara
+  [PASS] Zero Orphan: File fisik dibersihkan saat transaksi gagal (Zero Orphan Guaranteed)
+  [PASS] Metadata Lampiran: Parsing format JSON terstruktur berhasil
+  [PASS] Metadata Lampiran: Nama file dengan karakter khusus (| dan tanda petik) tidak korup
+  [PASS] Metadata Lampiran: Format legacy delimiter tetap kompatibel
+  [PASS] Header Security: Sanitasi nama file menghilangkan karakter CRLF dan null-byte
+  [PASS] Header Security: Content-Disposition fallback ASCII valid
+  [PASS] Header Security: Content-Disposition memuat RFC 5987 encoding
+  [PASS] Header Security: File gambar dan PDF mendapatkan header 'inline'
+  [PASS] Header Security: Dokumen DOC, DOCX, dan file binary mendapatkan header 'attachment'
+
+[18] Testing Atomic Database Transaction Rollback on Mid-Operation Failure...
+  [PASS] Transaction Atomicity: Rollback membatalkan perubahan status ke nilai awal
+  [PASS] Transaction Atomicity: createComplaint membungkus complaint + reply + analysis secara atomik
+  [PASS] Transaction Atomicity: verifyComplaint memverifikasi kembalian update dan insert
+  [PASS] Transaction Atomicity: dispatchComplaint memverifikasi kembalian update dan insert
+  [PASS] Transaction Atomicity: acceptByUnit memverifikasi kembalian update dan insert
+  [PASS] Transaction Atomicity: followupByUnit memverifikasi kembalian update dan insert
+  [PASS] Transaction Atomicity: answerByUnit memverifikasi kembalian update dan insert
+  [PASS] Transaction Atomicity: submitFeedback memverifikasi kembalian update dan insert
+  [PASS] Transaction Atomicity: updateStatus memverifikasi kembalian update dan insert
+
 ============================================================
-TEST RESULTS: Passed: 199, Failed: 0
+TEST RESULTS: Passed: 217, Failed: 0
 ============================================================
 ```
 

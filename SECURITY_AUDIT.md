@@ -124,3 +124,32 @@ Jika operasi update atau insert gagal, `$db->transRollback()` dieksekusi secara 
    - **Email:** Disamarkan menjadi `<EMAIL>`.
 2. **Sanitasi Database:** Teks yang disimpan di kolom `complaints.description` merupakan hasil sanitasi `redacted_text`. Teks mentah berisi nomor kontak dan identitas mahasiswa tidak pernah disimpan di database utama.
 3. **Resiliensi Sensor:** Jika koneksi NLP HuggingFace tidak tersedia, pembersih regex lokal tetap mengeksekusi penyensoran sebelum teks disimpan.
+
+---
+
+## 8. Keamanan File Upload Tingkat Lanjut, Validasi Fail-Closed & Filesystem Containment
+
+### A. Strict Filesystem Containment (`EvidenceService::deleteFile`)
+1. **Peniadaan Fallback Tak Terverifikasi:** Menghapus fallback penghapusan `unlink()` langsung tanpa containment.
+2. **Validasi Direktori Upload Ketat:** Target path diverifikasi dengan `realpath()` dan diwajibkan berada di dalam `$realUploadRoot = realpath(WRITEPATH . 'uploads') . DIRECTORY_SEPARATOR`. File di luar direktori upload (termasuk folder `logs`, `cache`, atau di luar `WRITEPATH`) ditolak secara mutlak dan mengembalikan `false`.
+3. **Pencegahan Path Traversal & Injeksi:** String path diperiksa dari karakter null-byte (`\0`) dan direktori traversal (`..`).
+4. **Anti-Symlink Hijacking:** File bertipe symbolic link (`is_link()`) ditolak untuk mencegah symlink escape atau penghapusan file di luar sandbox.
+5. **Penanganan Graceful:** File yang tidak ditemukan tidak memicu *fatal error* melainkan dicatat dalam log dan mengembalikan `false` secara aman.
+
+### B. Validasi Fail-Closed & Integritas Dokumen Office
+1. **Fail-Closed MIME Detection:** MIME type fisik file diperiksa menggunakan PHP `finfo(FILEINFO_MIME_TYPE)`. Jika MIME tidak dapat dideteksi atau file rusak, validasi otomatis ditolak (fail-closed). MIME header dari klien tidak dipercaya sebagai sumber otentik.
+2. **Verifikasi Arsip OpenXML (DOCX):** Memeriksa struktur arsip ZIP secara nyata menggunakan `ZipArchive`. Dokumen `.docx` diwajibkan memuat entri XML standar OpenXML: `[Content_Types].xml` dan `word/document.xml`. File ZIP biasa yang sekadar di-rename menjadi `.docx` otomatis ditolak.
+3. **Verifikasi Magic Bytes OLE2 (DOC):** Dokumen legacy `.doc` diverifikasi memiliki 8-byte magic number OLE2 Compound Document (`\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1`).
+
+### C. Standarisasi Metadata Lampiran Terstruktur (JSON)
+1. **Pencegahan Delimiter Injection:** Metadata lampiran disimpan di tabel riwayat (`complaint_replies`) dalam format JSON terstruktur:
+   `[Lampiran Bukti] {"name":"...","path":"...","size":...,"type":"..."}`
+   Hal ini mencegah kerentanan pemisahan token (*delimiter injection*) ketika nama file asli memuat karakter pipa `|`, kutip ganda, atau spasi.
+2. **Backward-Compatible Parsing:** Method `parseAttachmentMeta()` di `ComplaintService` mendukung pemrosesan format JSON modern sekaligus format legacy delimiter (`Nama: ... | Path: ... | Size: ... | Type: ...`).
+3. **Resolusi Path Fisik Independen:** Path fisik tidak pernah diambil mentah dari input pengguna. Path fisik selalu direkonstruksi di sisi server melalui direktori sah `WRITEPATH . 'uploads/complaints/'` digabungkan dengan `basename()` yang terdaftar sah di database tiket bersangkutan.
+
+### D. Protected Download Headers (Anti-CRLF & RFC 5987)
+1. **Pencegahan CRLF Injection / HTTP Response Splitting:** Karakter `\r`, `\n`, dan `\0` pada nama file asli dibersihkan sebelum masuk ke header HTTP.
+2. **Kepatuhan RFC 5987 / RFC 6266:** Header `Content-Disposition` disusun dengan fallback nama ASCII yang aman serta parameter `filename*=UTF-8''` yang di-encode menggunakan `rawurlencode()`.
+3. **Prinsip Least-Privilege Disposition:** Hanya MIME type aman (`image/jpeg`, `image/png`, `application/pdf`) yang diizinkan untuk ditampilkan secara `inline`. Tipe dokumen dan biner (`doc`, `docx`, `octet-stream`) dipaksa menggunakan mode `attachment` (download langsung).
+4. **MIME Sniffing Prevention:** Header `X-Content-Type-Options: nosniff` selalu disertakan pada seluruh respons download berkas.

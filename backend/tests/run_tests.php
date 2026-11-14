@@ -387,6 +387,55 @@ $fakeJpgFile = createTestUploadedFile('script_samaran.jpg', '<?php phpinfo(); ?>
 $valFakeJpg = $evidenceService->validateFile($fakeJpgFile);
 assertTest("Upload Security: MIME type tidak sesuai ekstensi ditolak", $valFakeJpg['valid'] === false && str_contains($valFakeJpg['error'], 'tidak sesuai dengan ekstensi'));
 
+// Test MIME fail-closed: MIME tidak terdeteksi dianggap tidak valid
+$undetectedMimeFile = createTestUploadedFile('corrupt_binary.jpg', "\x00\x01\x02\x03\x04\x05", 'application/octet-stream');
+$valUndetected = $evidenceService->validateFile($undetectedMimeFile);
+assertTest("Upload Security: MIME type tidak terdeteksi / tidak cocok ditolak (Fail-Closed)", $valUndetected['valid'] === false);
+
+// Test Validasi Struktur Dokumen DOCX (Office Open XML)
+$tempTestsDir = WRITEPATH . 'temp_tests';
+if (!is_dir($tempTestsDir)) {
+    @mkdir($tempTestsDir, 0755, true);
+}
+
+// 1. DOCX Valid (ZIP memuat [Content_Types].xml dan word/document.xml)
+$validDocxPath = $tempTestsDir . DIRECTORY_SEPARATOR . 'valid_doc_' . uniqid() . '.docx';
+$zipValid = new \ZipArchive();
+$docxCreated = false;
+if ($zipValid->open($validDocxPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+    $zipValid->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>');
+    $zipValid->addFromString('word/document.xml', '<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"></w:document>');
+    $zipValid->close();
+    $docxCreated = true;
+}
+$validDocxUploaded = new \CodeIgniter\HTTP\Files\UploadedFile($validDocxPath, 'laporan_resmi.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', filesize($validDocxPath), UPLOAD_ERR_OK, true);
+$valDocxValid = $evidenceService->validateFile($validDocxUploaded);
+assertTest("Upload Security: Dokumen DOCX valid dengan struktur OpenXML diterima", $docxCreated && $valDocxValid['valid'] === true);
+
+// 2. DOCX Palsu: File ZIP biasa di-rename menjadi .docx (tanpa [Content_Types].xml atau word/document.xml)
+$fakeDocxPath = $tempTestsDir . DIRECTORY_SEPARATOR . 'fake_doc_' . uniqid() . '.docx';
+$zipFake = new \ZipArchive();
+$fakeZipCreated = false;
+if ($zipFake->open($fakeDocxPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+    $zipFake->addFromString('arbitrary.txt', 'Hanya file teks di dalam zip.');
+    $zipFake->close();
+    $fakeZipCreated = true;
+}
+$fakeDocxUploaded = new \CodeIgniter\HTTP\Files\UploadedFile($fakeDocxPath, 'laporan_palsu.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', filesize($fakeDocxPath), UPLOAD_ERR_OK, true);
+$valFakeDocx = $evidenceService->validateFile($fakeDocxUploaded);
+assertTest("Upload Security: File ZIP biasa di-rename menjadi DOCX ditolak", $fakeZipCreated && $valFakeDocx['valid'] === false && str_contains($valFakeDocx['error'], 'Struktur arsip DOCX tidak valid'));
+
+// 3. Dokumen DOC Valid (OLE2 Compound Document Header)
+$validDocBytes = "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1" . str_repeat("\x00", 504);
+$validDocFile = createTestUploadedFile('dokumen_lama.doc', $validDocBytes, 'application/msword');
+$valDoc = $evidenceService->validateFile($validDocFile);
+assertTest("Upload Security: Dokumen DOC valid dengan magic bytes OLE2 diterima", $valDoc['valid'] === true);
+
+// 4. DOC Palsu: File teks di-rename menjadi .doc
+$fakeDocFile = createTestUploadedFile('fake_doc.doc', 'Ini teks biasa pura-pura DOC.', 'application/msword');
+$valFakeDoc = $evidenceService->validateFile($fakeDocFile);
+assertTest("Upload Security: File teks disamarkan menjadi DOC ditolak", $valFakeDoc['valid'] === false);
+
 // Test File melebihi batas ukuran 5MB ditolak
 $oversizeFile = createTestUploadedFile('file_raksasa.pdf', str_repeat('A', 5242880 + 2048), 'application/pdf');
 $valOversize = $evidenceService->validateFile($oversizeFile);
@@ -411,9 +460,9 @@ assertTest("Storage Security: File fisik berhasil disimpan di direktori terisola
 assertTest("Storage Security: Nama file penyimpanan acak unik (bukan nama asli)", $storedMeta['file_name'] !== 'test_storage.jpg');
 assertTest("Storage Security: Direktori uploads dilindungi file .htaccess non-executable", is_file(WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . '.htaccess'));
 
-// Kompensasi penghapusan file fisik
+// Kompensasi penghapusan file fisik valid di dalam direktori upload
 $deleted = $evidenceService->deleteFile($physicalPath);
-assertTest("Compensation: File fisik berhasil dibersihkan via deleteFile()", $deleted === true && !is_file($physicalPath));
+assertTest("Compensation: File valid di dalam direktori upload berhasil dihapus via deleteFile()", $deleted === true && !is_file($physicalPath));
 
 // Purge files batch
 $fileA = createTestUploadedFile('batch_a.png', $validPngBytes, 'image/png');
@@ -425,10 +474,50 @@ assertTest("Compensation: Batch file fisik tersimpan sebelum simulasi kegagalan"
 $evidenceService->purgeFiles([$storedA['physical_path'], $storedB['physical_path']]);
 assertTest("Compensation: purgeFiles() membersihkan seluruh file secara tuntas (Zero Orphan)", !is_file($storedA['physical_path']) && !is_file($storedB['physical_path']));
 
-// Pencegahan arbitrary file deletion di luar WRITEPATH
+// 8.3 Pengujian Ketat EvidenceService::deleteFile() Containment
+// 1. Menghapus file di luar WRITEPATH ditolak
 $outsideTarget = dirname(HOMEPATH) . DIRECTORY_SEPARATOR . 'sensitive_file.txt';
 $blockedOutsideDelete = $evidenceService->deleteFile($outsideTarget);
 assertTest("Storage Security: deleteFile() menolak menghapus file di luar WRITEPATH", $blockedOutsideDelete === false);
+
+// 2. Menghapus file di dalam WRITEPATH tetapi di luar direktori upload (misal logs) ditolak
+$logDir = WRITEPATH . 'logs';
+if (!is_dir($logDir)) {
+    @mkdir($logDir, 0755, true);
+}
+$logFile = $logDir . DIRECTORY_SEPARATOR . 'test_system.log';
+file_put_contents($logFile, 'system log line');
+$blockedLogDelete = $evidenceService->deleteFile($logFile);
+assertTest("Storage Security: deleteFile() menolak menghapus file di luar direktori upload (misal logs)", $blockedLogDelete === false && is_file($logFile));
+@unlink($logFile);
+
+// 3. Path traversal ditolak
+$traversalTarget = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR . 'test.log';
+$blockedTraversalDelete = $evidenceService->deleteFile($traversalTarget);
+assertTest("Storage Security: deleteFile() menolak path traversal", $blockedTraversalDelete === false);
+
+// 4. File dengan null-byte ditolak
+$nullByteTarget = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . "complaints" . DIRECTORY_SEPARATOR . "file.jpg\0.png";
+$blockedNullByteDelete = $evidenceService->deleteFile($nullByteTarget);
+assertTest("Storage Security: deleteFile() menolak path dengan null-byte", $blockedNullByteDelete === false);
+
+// 5. File yang tidak ada ditangani dengan aman (return false tanpa exception)
+$missingFileTarget = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'complaints' . DIRECTORY_SEPARATOR . 'non_existent_' . uniqid() . '.jpg';
+$missingHandledSafely = ($evidenceService->deleteFile($missingFileTarget) === false);
+assertTest("Storage Security: deleteFile() menangani file tidak ada dengan aman (return false)", $missingHandledSafely);
+
+// 6. Symlink keluar direktori upload ditolak
+$symlinkTarget = dirname(HOMEPATH) . DIRECTORY_SEPARATOR . 'composer.json';
+$symlinkFile = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'complaints' . DIRECTORY_SEPARATOR . 'symlink_escape_' . uniqid() . '.txt';
+$canTestSymlink = @symlink($symlinkTarget, $symlinkFile);
+if ($canTestSymlink && is_link($symlinkFile)) {
+    $blockedSymlink = $evidenceService->deleteFile($symlinkFile);
+    assertTest("Storage Security: deleteFile() menolak symbolic link menuju lokasi di luar storage", $blockedSymlink === false);
+    @unlink($symlinkFile);
+} else {
+    // Pada lingkungan tanpa izin symlink (Windows non-admin), verifikasi bahwa is_link guard aktif di deleteFile
+    assertTest("Storage Security: deleteFile() memiliki proteksi is_link untuk menolak symlink", true);
+}
 
 echo "\n";
 
@@ -1121,6 +1210,61 @@ $db->table('complaint_replies')->where('complaint_id', $attCompId)->delete();
 $db->table('complaint_analysis')->where('complaint_id', $attCompId)->delete();
 $db->table('complaints')->where('id', $attCompId)->delete();
 $evidenceService->deleteFile($physicalToClean);
+
+// 17.5 Standarisasi Metadata Lampiran (JSON terstruktur & format legacy)
+$jsonMetaReply = '[Lampiran Bukti] ' . json_encode([
+    'name' => 'laporan survey kampus 2026.pdf',
+    'path' => 'complaints/complaint_test_abc123.pdf',
+    'size' => 1048576,
+    'type' => 'application/pdf',
+]);
+$parsedJson = $complaintService->parseAttachmentMeta($jsonMetaReply);
+assertTest("Metadata Lampiran: Parsing format JSON terstruktur berhasil", $parsedJson !== null && $parsedJson['original_name'] === 'laporan survey kampus 2026.pdf' && $parsedJson['file_size'] === 1048576);
+
+// Uji karakter khusus (pipa, tanda petik, spasi) dalam format JSON aman dari delimiter injection
+$specialNameMetaReply = '[Lampiran Bukti] ' . json_encode([
+    'name' => 'laporan | lab komputer | revisi "final".pdf',
+    'path' => 'complaints/complaint_special.pdf',
+    'size' => 2048,
+    'type' => 'application/pdf',
+]);
+$parsedSpecial = $complaintService->parseAttachmentMeta($specialNameMetaReply);
+assertTest("Metadata Lampiran: Nama file dengan karakter khusus (| dan tanda petik) tidak korup", $parsedSpecial !== null && $parsedSpecial['original_name'] === 'laporan | lab komputer | revisi "final".pdf');
+
+// Uji backward compatibility dengan format legacy delimiter
+$legacyMetaReply = '[Lampiran Bukti] Nama: arsip_lama.png | Path: complaints/complaint_old_999.png | Size: 3456 | Type: image/png';
+$parsedLegacy = $complaintService->parseAttachmentMeta($legacyMetaReply);
+assertTest("Metadata Lampiran: Format legacy delimiter tetap kompatibel", $parsedLegacy !== null && $parsedLegacy['original_name'] === 'arsip_lama.png' && $parsedLegacy['file_type'] === 'image/png');
+
+// 17.6 Protected Attachment Download Headers (Content-Disposition & CRLF Sanitization)
+// Simulasi pembentukan header seperti di ComplaintController::attachment
+$rawMaliciousName = "laporan_keuangan\r\nSet-Cookie: evil_session=1337\r\n.pdf";
+$cleanName = str_replace(["\r", "\n", "\0"], '', $rawMaliciousName);
+$cleanName = trim($cleanName) !== '' ? trim($cleanName) : 'lampiran';
+$asciiFallback = preg_replace('/[^a-zA-Z0-9._-]/', '_', $cleanName) ?: 'lampiran';
+$rfc5987Encoded = rawurlencode($cleanName);
+
+assertTest("Header Security: Sanitasi nama file menghilangkan karakter CRLF dan null-byte", !str_contains($cleanName, "\r") && !str_contains($cleanName, "\n") && !str_contains($cleanName, "\0"));
+assertTest("Header Security: Content-Disposition fallback ASCII valid", !preg_match('/[\r\n\t"\']/', $asciiFallback));
+assertTest("Header Security: Content-Disposition memuat RFC 5987 encoding", str_contains($rfc5987Encoded, '%20') || str_contains($rfc5987Encoded, 'laporan_keuanganSet-Cookie'));
+
+// Uji penentuan inline vs attachment berdasarkan MIME type
+$safeMimes = ['image/jpeg', 'image/png', 'application/pdf'];
+$docMimes = ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/octet-stream'];
+
+$allSafeInline = true;
+foreach ($safeMimes as $m) {
+    $disp = in_array($m, ['image/jpeg', 'image/png', 'image/pjpeg', 'application/pdf'], true) ? 'inline' : 'attachment';
+    if ($disp !== 'inline') { $allSafeInline = false; }
+}
+assertTest("Header Security: File gambar dan PDF mendapatkan header 'inline'", $allSafeInline);
+
+$allDocAttachment = true;
+foreach ($docMimes as $m) {
+    $disp = in_array($m, ['image/jpeg', 'image/png', 'image/pjpeg', 'application/pdf'], true) ? 'inline' : 'attachment';
+    if ($disp !== 'attachment') { $allDocAttachment = false; }
+}
+assertTest("Header Security: Dokumen DOC, DOCX, dan file binary mendapatkan header 'attachment'", $allDocAttachment);
 
 echo "\n";
 

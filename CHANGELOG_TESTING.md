@@ -61,8 +61,27 @@ Dokumen ini mencatat kronologi perbaikan, hardening keamanan, audit service-laye
   - Penanganan mode offline aman (`TRANSFORMERS_OFFLINE=1`).
   - Hasil: **26 / 26 PASS (100% Success Rate)**.
 - **Frontend Build & Linter:**
-  - Vite 6 mengompilasi 44 chunks dalam 4.36s (0 errors).
+  - Vite 6 mengompilasi 45 chunks dalam 4.47s (0 errors).
   - ESLint lolos dengan 0 errors (Exit code 0).
+
+---
+
+### 5. Follow-Up Security Hardening — Filesystem Containment & Protected Attachment
+- **`backend/app/Services/EvidenceService.php`:**
+  - **Strict Containment `deleteFile()`:** Menghapus fallback `unlink()` tanpa batas direktori. Memvalidasi bahwa path target wajib berada di dalam `$realUploadRoot = realpath(WRITEPATH . 'uploads') . DIRECTORY_SEPARATOR`. Menolak path traversal, karakter null-byte (`\0`), dan symlink (`is_link`). Menangani file non-existent dengan aman (`false` tanpa exception).
+  - **MIME Type Fail-Closed:** Pemeriksaan fisik hanya melalui `finfo(FILEINFO_MIME_TYPE)` tanpa fallback ke MIME header client. MIME yang tidak terdeteksi otomatis ditolak (`fail-closed`).
+  - **Validasi Struktur DOCX & DOC:** Untuk DOCX, memeriksa arsip ZIP wajib memuat `[Content_Types].xml` dan `word/document.xml` (menolak plain ZIP yang di-rename). Untuk DOC, memeriksa magic bytes OLE2 `\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1`.
+- **`backend/app/Services/ComplaintService.php`:**
+  - **Standarisasi Metadata JSON:** Mengubah pencatatan metadata lampiran pada balasan menjadi JSON terstruktur (`[Lampiran Bukti] {"name":...,"path":...,"size":...,"type":...}`) untuk mencegah *delimiter injection*.
+  - **Parser `parseAttachmentMeta()`:** Mendukung deserialisasi JSON modern dan format legacy delimiter (`Nama: ... | Path: ...`) secara backward-compatible.
+  - **Independensi Path Fisik:** Path fisik pada `getComplaintAttachment()` selalu dibangun dari server (`WRITEPATH . uploads/complaints/ . safeFilename`) dan diverifikasi terdaftar di database pengaduan tersebut.
+- **`backend/app/Controllers/ComplaintController.php`:**
+  - **Protected Download Headers:** Membersihkan karakter `\r`, `\n`, dan `\0` pada nama file asli untuk mencegah HTTP Response Splitting / CRLF injection.
+  - **Kepatuhan RFC 5987 / RFC 6266:** Membentuk `Content-Disposition` dengan fallback ASCII (`filename="..."`) dan encoding UTF-8 (`filename*=UTF-8''...`).
+  - **Least-Privilege Disposition:** Hanya MIME gambar aman dan PDF yang diizinkan `inline`, sedangkan dokumen Word (`doc`, `docx`) dan biner dipaksa `attachment`. Menjaga header `X-Content-Type-Options: nosniff`.
+- **`backend/tests/run_tests.php`:**
+  - Menambah kasus uji komprehensif sehingga total pengujian backend meningkat dari 199 menjadi **217 kasus uji**.
+  - Hasil: **217 / 217 PASS (100% Success Rate)**.
 
 ---
 
@@ -70,10 +89,10 @@ Dokumen ini mencatat kronologi perbaikan, hardening keamanan, audit service-laye
 
 | Nama File | Kategori | Perubahan Utama |
 |---|---|---|
-| `backend/app/Services/EvidenceService.php` | Backend / Security | Validasi MIME type fisik via `finfo`, whitelist ekstensi, proteksi .htaccess, kompensasi `deleteFile()` dan `purgeFiles()` |
-| `backend/app/Services/ComplaintService.php` | Backend / Security | Validasi lampiran fail-fast, kompensasi zero orphan files saat transaksi rollback, endpoint protected attachment `getComplaintAttachment()`, pengetatan `updateStatus()`, dan return check transaksi |
-| `backend/app/Controllers/ComplaintController.php` | Backend / Controller | Endpoint terproteksi `attachment()` dengan sanitasi basename, anti-traversal, dan header nosniff |
+| `backend/app/Services/EvidenceService.php` | Backend / Security | Filesystem containment `deleteFile()`, penolakan symlink & traversal, fail-closed MIME `finfo`, validasi ZIP OpenXML DOCX & magic bytes OLE2 DOC |
+| `backend/app/Services/ComplaintService.php` | Backend / Security | Metadata lampiran JSON terstruktur, parser `parseAttachmentMeta()`, sanitasi path download berbasis server `WRITEPATH . uploads/complaints/` |
+| `backend/app/Controllers/ComplaintController.php` | Backend / Controller | Sanitasi anti-CRLF nama file, header Content-Disposition RFC 5987/6266, restriksi `inline` vs `attachment`, header nosniff |
 | `backend/app/Config/Routes.php` | Backend / Routing | Rute terproteksi `complaints/(:num)/attachments/(:segment)` dengan filter `authRole:user,stakeholder,admin` |
-| `backend/tests/run_tests.php` | QA / Testing | Penambahan Seksi 8 (Upload security) dan Seksi 17–18 (199 uji terverifikasi lolos 100%) |
-| `TEST_REPORT.md` | Dokumentasi | Laporan aktual 199 backend tests + 26 ML tests + Vite build |
-| `SECURITY_AUDIT.md` | Dokumentasi | Dokumentasi upload security, zero orphan compensation, ACID integrity, dan protected attachment serving |
+| `backend/tests/run_tests.php` | QA / Testing | Penambahan kasus uji containment, DOCX/DOC, JSON metadata, header CRLF/RFC 5987 (total 217 uji terverifikasi lolos 100%) |
+| `TEST_REPORT.md` | Dokumentasi | Laporan aktual 217 backend tests + 26 ML tests + Vite build |
+| `SECURITY_AUDIT.md` | Dokumentasi | Dokumentasi containment filesystem, validasi OpenXML/OLE2, standarisasi JSON metadata, dan anti-CRLF headers |

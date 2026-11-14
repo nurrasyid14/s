@@ -136,18 +136,19 @@ class ComplaintService
                 throw new RuntimeException('Gagal menyimpan data pengaduan: ' . json_encode($this->complaintModel->errors()));
             }
 
-            // Simpan referensi lampiran ke tabel riwayat dalam transaksi yang sama
+            // Simpan referensi lampiran ke tabel riwayat dalam format JSON terstruktur untuk mencegah delimiter injection
             foreach ($storedAttachments as $stored) {
+                $metaPayload = [
+                    'name' => (string) ($stored['original_name'] ?? 'lampiran'),
+                    'path' => (string) ($stored['file_path'] ?? ''),
+                    'size' => (int) ($stored['file_size'] ?? 0),
+                    'type' => (string) ($stored['file_type'] ?? 'application/octet-stream'),
+                ];
+
                 $replyId = $this->replyModel->insert([
                     'complaint_id' => $complaintId,
                     'user_id'      => (int) $authenticatedUser['id'],
-                    'reply'        => sprintf(
-                        '[Lampiran Bukti] Nama: %s | Path: %s | Size: %d | Type: %s',
-                        $stored['original_name'],
-                        $stored['file_path'],
-                        $stored['file_size'],
-                        $stored['file_type']
-                    ),
+                    'reply'        => '[Lampiran Bukti] ' . json_encode($metaPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
                 ]);
 
                 if (!$replyId) {
@@ -936,6 +937,46 @@ class ComplaintService
     }
 
     /**
+     * Parse metadata lampiran dari teks reply (mendukung format JSON terstruktur modern dan delimiter legacy).
+     */
+    public function parseAttachmentMeta(string $replyText): ?array
+    {
+        if (!str_starts_with($replyText, '[Lampiran Bukti]')) {
+            return null;
+        }
+
+        $body = trim(substr($replyText, strlen('[Lampiran Bukti]')));
+        if ($body === '') {
+            return null;
+        }
+
+        // 1. Coba parsing format JSON terstruktur
+        if (str_starts_with($body, '{') && str_ends_with($body, '}')) {
+            $data = json_decode($body, true);
+            if (is_array($data) && !empty($data['path'])) {
+                return [
+                    'original_name' => (string) ($data['name'] ?? basename((string) $data['path'])),
+                    'file_path'     => (string) $data['path'],
+                    'file_size'     => (int) ($data['size'] ?? 0),
+                    'file_type'     => (string) ($data['type'] ?? 'application/octet-stream'),
+                ];
+            }
+        }
+
+        // 2. Fallback format delimiter legacy: Nama: %s | Path: %s | Size: %d | Type: %s
+        if (preg_match('/Nama:\s*([^|]+)\s*\|\s*Path:\s*([^|]+)\s*\|\s*Size:\s*([0-9]+)\s*\|\s*Type:\s*(.*)$/s', $replyText, $m)) {
+            return [
+                'original_name' => trim($m[1]),
+                'file_path'     => trim($m[2]),
+                'file_size'     => (int) $m[3],
+                'file_type'     => trim($m[4]),
+            ];
+        }
+
+        return null;
+    }
+
+    /**
      * Mengambil file lampiran pengaduan secara terproteksi berdasarkan otorisasi RBAC & IDOR.
      */
     public function getComplaintAttachment(int $id, string $filename, array $user): array
@@ -948,9 +989,9 @@ class ComplaintService
         // Tegakkan validasi akses: pemilik aduan, unit penugasan, atau admin
         $this->assertComplaintAccess($complaint, $user, 'view');
 
-        // Sanitasi filename untuk mencegah path traversal
+        // Sanitasi filename untuk mencegah path traversal dan karakter berbahaya
         $safeFilename = basename($filename);
-        if ($safeFilename === '' || $safeFilename !== $filename || str_contains($filename, '..')) {
+        if ($safeFilename === '' || $safeFilename !== $filename || str_contains($filename, '..') || str_contains($filename, '/') || str_contains($filename, "\\") || str_contains($filename, "\0")) {
             throw new InvalidArgumentException('Nama file lampiran tidak valid.');
         }
 
@@ -964,16 +1005,14 @@ class ComplaintService
         $attachmentMeta = null;
         foreach ($replies as $r) {
             $text = (string) ($r['reply'] ?? '');
-            if (str_contains($text, $safeFilename)) {
-                $found = true;
-                preg_match('/Nama:\s*([^|]+)\s*\|\s*Path:\s*([^|]+)\s*\|\s*Size:\s*([0-9]+)\s*\|\s*Type:\s*(.*)$/s', $text, $m);
-                $attachmentMeta = [
-                    'original_name' => !empty($m[1]) ? trim($m[1]) : $safeFilename,
-                    'file_path'     => !empty($m[2]) ? trim($m[2]) : '',
-                    'file_size'     => !empty($m[3]) ? (int) $m[3] : 0,
-                    'file_type'     => !empty($m[4]) ? trim($m[4]) : 'application/octet-stream',
-                ];
-                break;
+            $meta = $this->parseAttachmentMeta($text);
+            if ($meta !== null) {
+                $storedBase = basename($meta['file_path']);
+                if ($storedBase === $safeFilename) {
+                    $found = true;
+                    $attachmentMeta = $meta;
+                    break;
+                }
             }
         }
 
@@ -981,11 +1020,17 @@ class ComplaintService
             throw new InvalidArgumentException('File lampiran tidak terdaftar pada pengaduan ini.');
         }
 
-        $physicalPath = WRITEPATH . ltrim($attachmentMeta['file_path'], '/\\');
-        $realPhysical = realpath($physicalPath);
-        $realRoot     = realpath(WRITEPATH);
+        // Selalu bangun path fisik dari direktori upload complaints yang sah (tidak percaya path dari luar)
+        $complaintUploadDir = realpath(WRITEPATH . 'uploads/complaints');
+        if (!$complaintUploadDir) {
+            throw new RuntimeException('Direktori penyimpanan lampiran tidak ditemukan.');
+        }
 
-        if (!$realPhysical || !$realRoot || !str_starts_with($realPhysical, $realRoot) || !is_file($realPhysical)) {
+        $physicalPath = $complaintUploadDir . DIRECTORY_SEPARATOR . $safeFilename;
+        $realPhysical = realpath($physicalPath);
+
+        // Verifikasi containment ketat di dalam uploads/complaints dan pastikan file reguler
+        if (!$realPhysical || !str_starts_with($realPhysical, $complaintUploadDir . DIRECTORY_SEPARATOR) || !is_file($realPhysical)) {
             throw new RuntimeException('File lampiran fisik tidak ditemukan di server.');
         }
 
@@ -1058,15 +1103,16 @@ class ComplaintService
             $rCreatedAt = $r['created_at'];
 
             if (str_starts_with($text, '[Lampiran Bukti]')) {
-                preg_match('/Nama:\s*([^|]+)\s*\|\s*Path:\s*([^|]+)\s*\|\s*Size:\s*([0-9]+)\s*\|\s*Type:\s*(.*)$/s', $text, $m);
-                $relPath = !empty($m[2]) ? trim($m[2]) : '';
-                $safeFilename = basename($relPath);
-                $attachments[] = [
-                    'name' => !empty($m[1]) ? trim($m[1]) : 'Lampiran',
-                    'url'  => $safeFilename !== '' ? base_url('api/complaints/' . $id . '/attachments/' . $safeFilename) : '#',
-                    'size' => !empty($m[3]) ? (int) $m[3] : 0,
-                    'type' => !empty($m[4]) ? trim($m[4]) : 'application/octet-stream',
-                ];
+                $meta = $this->parseAttachmentMeta($text);
+                if ($meta !== null) {
+                    $safeFilename = basename($meta['file_path']);
+                    $attachments[] = [
+                        'name' => $meta['original_name'] !== '' ? $meta['original_name'] : 'Lampiran',
+                        'url'  => $safeFilename !== '' ? base_url('api/complaints/' . $id . '/attachments/' . $safeFilename) : '#',
+                        'size' => (int) $meta['file_size'],
+                        'type' => $meta['file_type'] !== '' ? $meta['file_type'] : 'application/octet-stream',
+                    ];
+                }
                 continue;
             }
 

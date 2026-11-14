@@ -5,6 +5,7 @@ namespace App\Services;
 use CodeIgniter\HTTP\Files\UploadedFile;
 use InvalidArgumentException;
 use RuntimeException;
+use ZipArchive;
 
 class EvidenceService
 {
@@ -19,7 +20,11 @@ class EvidenceService
         'jpeg' => ['image/jpeg', 'image/pjpeg'],
         'png'  => ['image/png'],
         'pdf'  => ['application/pdf', 'application/x-pdf'],
-        'doc'  => ['application/msword'],
+        'doc'  => [
+            'application/msword',
+            'application/vnd.ms-office',
+            'application/x-ole-storage',
+        ],
         'docx' => [
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'application/zip',
@@ -33,7 +38,8 @@ class EvidenceService
      * 2. File tidak boleh 0 byte
      * 3. Batas ukuran (maksimal 5MB)
      * 4. Whitelist ekstensi aman
-     * 5. Kesesuaian MIME type dari isi fisik file (finfo) terhadap ekstensi
+     * 5. Kesesuaian MIME type dari isi fisik file (finfo) terhadap ekstensi (fail-closed)
+     * 6. Validasi struktur arsip OpenXML untuk DOCX dan magic bytes untuk DOC
      */
     public function validateFile(UploadedFile $file): array
     {
@@ -90,26 +96,56 @@ class EvidenceService
         }
 
         // Deteksi MIME type fisik dari isi file sesungguhnya via finfo
-        $actualMime = $this->detectActualMimeType($file);
+        $actualMime = $this->detectActualMimeType($tempPath);
+
+        // MIME tidak terdeteksi harus dianggap tidak valid (fail-closed)
+        if ($actualMime === '') {
+            return [
+                'valid' => false,
+                'error' => 'MIME type fisik file tidak dapat dideteksi atau file tidak valid.',
+            ];
+        }
+
         $allowedMimesForExt = self::ALLOWED_MIME_TYPES[$extension] ?? [];
 
-        if ($actualMime !== '' && !in_array($actualMime, $allowedMimesForExt, true)) {
+        if (!in_array($actualMime, $allowedMimesForExt, true)) {
             return [
                 'valid' => false,
                 'error' => "MIME type file '{$actualMime}' tidak sesuai dengan ekstensi '.{$extension}'.",
             ];
         }
 
+        // Validasi struktur arsip spesifik jika ekstensi DOCX
+        if ($extension === 'docx') {
+            if (!$this->isValidDocxArchive($tempPath)) {
+                return [
+                    'valid' => false,
+                    'error' => 'Struktur arsip DOCX tidak valid. File bukan dokumen Microsoft Word yang sah.',
+                ];
+            }
+        }
+
+        // Validasi struktur header spesifik jika ekstensi DOC
+        if ($extension === 'doc') {
+            if (!$this->isValidDocFile($tempPath)) {
+                return [
+                    'valid' => false,
+                    'error' => 'Header file DOC tidak valid. File bukan dokumen Microsoft Word yang sah.',
+                ];
+            }
+        }
+
         return ['valid' => true, 'error' => null];
     }
 
     /**
-     * Mendeteksi MIME type nyata dari isi fisik file menggunakan PHP finfo.
+     * Mendeteksi MIME type nyata HANYA dari isi fisik file menggunakan PHP finfo.
+     * Tidak menggunakan fallback MIME dari header client.
      */
     public function detectActualMimeType(string|UploadedFile $fileOrPath): string
     {
         $path = is_string($fileOrPath) ? $fileOrPath : $fileOrPath->getTempName();
-        if (is_file($path) && is_readable($path)) {
+        if (is_string($path) && is_file($path) && is_readable($path)) {
             $finfo = new \finfo(FILEINFO_MIME_TYPE);
             $detected = $finfo->file($path);
             if ($detected && is_string($detected)) {
@@ -117,14 +153,50 @@ class EvidenceService
             }
         }
 
-        if ($fileOrPath instanceof UploadedFile) {
-            $clientMime = $fileOrPath->getClientMimeType();
-            if ($clientMime) {
-                return strtolower(trim($clientMime));
-            }
+        return '';
+    }
+
+    /**
+     * Validasi integritas struktur arsip dokumen DOCX (Office Open XML).
+     * Wajib berupa file zip yang memuat [Content_Types].xml dan word/document.xml.
+     */
+    public function isValidDocxArchive(string $filePath): bool
+    {
+        if (!class_exists(ZipArchive::class) || !is_file($filePath) || !is_readable($filePath)) {
+            return false;
         }
 
-        return '';
+        $zip = new ZipArchive();
+        $res = $zip->open($filePath, ZipArchive::RDONLY);
+        if ($res !== true) {
+            return false;
+        }
+
+        $hasContentTypes = ($zip->locateName('[Content_Types].xml') !== false);
+        $hasWordDocument = ($zip->locateName('word/document.xml') !== false);
+
+        $zip->close();
+
+        return $hasContentTypes && $hasWordDocument;
+    }
+
+    /**
+     * Validasi header biner file DOC (OLE2 Compound Document).
+     */
+    public function isValidDocFile(string $filePath): bool
+    {
+        if (!is_file($filePath) || !is_readable($filePath)) {
+            return false;
+        }
+
+        $handle = @fopen($filePath, 'rb');
+        if (!$handle) {
+            return false;
+        }
+        $header = fread($handle, 8);
+        fclose($handle);
+
+        return $header === "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1";
     }
 
     /**
@@ -188,7 +260,7 @@ class EvidenceService
 
         $detectedMime = $this->detectActualMimeType($actualPhysicalPath);
         if ($detectedMime === '') {
-            $detectedMime = $file->getClientMimeType() ?: 'application/octet-stream';
+            $detectedMime = 'application/octet-stream';
         }
 
         return [
@@ -225,27 +297,53 @@ class EvidenceService
     }
 
     /**
-     * Kompensasi: Hapus satu file fisik dari disk.
+     * Kompensasi: Hapus satu file fisik dari disk dengan validasi containment ketat.
+     * Hanya file di dalam direktori upload yang diizinkan untuk dihapus.
      */
     public function deleteFile(string $filePath): bool
     {
+        // Tolak null-byte
+        if (str_contains($filePath, "\0")) {
+            log_message('warning', 'Percobaan penghapusan file dengan null-byte ditolak.');
+            return false;
+        }
+
+        $uploadRoot = WRITEPATH . 'uploads';
+        $realUploadRoot = realpath($uploadRoot);
+        if (!$realUploadRoot) {
+            return false;
+        }
+
         $target = str_starts_with($filePath, WRITEPATH)
             ? $filePath
             : WRITEPATH . ltrim($filePath, '/\\');
 
+        // Tolak symlink secara mutlak (tidak boleh menghapus symlink atau mengikuti keluar)
+        if (is_link($target)) {
+            log_message('warning', "Percobaan penghapusan symbolic link ditolak: {$target}");
+            return false;
+        }
+
         $realTarget = realpath($target);
-        $realRoot   = realpath(WRITEPATH);
-
-        // Pastikan path berada di dalam direktori WRITEPATH untuk mencegah arbitrary file deletion
-        if ($realTarget && $realRoot && str_starts_with($realTarget, $realRoot) && is_file($realTarget)) {
-            return @unlink($realTarget);
+        if (!$realTarget) {
+            return false; // File tidak ditemukan atau path tidak valid
         }
 
-        if (is_file($target)) {
-            return @unlink($target);
+        // Verifikasi containment: realpath target WAJIB berada di dalam direktori upload
+        $allowedPrefix = $realUploadRoot . DIRECTORY_SEPARATOR;
+        if (!str_starts_with($realTarget, $allowedPrefix) || !is_file($realTarget)) {
+            log_message('warning', "Percobaan penghapusan file di luar direktori upload ditolak: {$realTarget}");
+            return false;
         }
 
-        return false;
+        // Lakukan penghapusan HANYA setelah containment lolos
+        $deleted = @unlink($realTarget);
+        if (!$deleted) {
+            log_message('error', "Gagal menghapus file fisik di direktori upload: {$realTarget}");
+            return false;
+        }
+
+        return true;
     }
 
     /**

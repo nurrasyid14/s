@@ -560,10 +560,33 @@ class ComplaintController extends ResourceController
                 return $this->respond(['status' => false, 'message' => 'Gagal membaca file fisik.'], 500);
             }
 
+            // Sanitasi nama file untuk Content-Disposition (cegah CRLF injection / HTTP Response Splitting)
+            $rawName = (string) ($att['original_name'] ?? 'lampiran');
+            // Hapus karakter CRLF dan null-byte
+            $cleanName = str_replace(["\r", "\n", "\0"], '', $rawName);
+            $cleanName = trim($cleanName) !== '' ? trim($cleanName) : 'lampiran';
+
+            // ASCII fallback untuk atribut filename="..."
+            $asciiFallback = preg_replace('/[^a-zA-Z0-9._-]/', '_', $cleanName) ?: 'lampiran';
+            // RFC 5987 / RFC 6266 UTF-8 encoded untuk filename*=UTF-8''...
+            $rfc5987Encoded = rawurlencode($cleanName);
+
+            // Tentukan disposition: hanya gambar aman dan PDF yang diizinkan inline, dokumen lain dipaksa download (attachment)
+            $mime = strtolower((string) ($att['file_type'] ?? ''));
+            $inlineTypes = ['image/jpeg', 'image/png', 'image/pjpeg', 'application/pdf'];
+            $disposition = in_array($mime, $inlineTypes, true) ? 'inline' : 'attachment';
+
+            $contentDisposition = sprintf(
+                '%s; filename="%s"; filename*=UTF-8\'\'%s',
+                $disposition,
+                $asciiFallback,
+                $rfc5987Encoded
+            );
+
             return $this->response
                 ->setHeader('Content-Type', $att['file_type'])
                 ->setHeader('Content-Length', (string) $att['file_size'])
-                ->setHeader('Content-Disposition', 'inline; filename="' . addslashes($att['original_name']) . '"')
+                ->setHeader('Content-Disposition', $contentDisposition)
                 ->setHeader('X-Content-Type-Options', 'nosniff')
                 ->setBody($fileData);
         } catch (InvalidArgumentException $e) {
