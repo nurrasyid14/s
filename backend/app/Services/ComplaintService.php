@@ -265,6 +265,11 @@ class ComplaintService
             throw new InvalidArgumentException('Pengaduan tidak ditemukan.');
         }
 
+        // Otorisasi ketat Service-Layer: Hanya Admin Sentral yang dapat memverifikasi aduan
+        if (($user['role'] ?? '') !== 'admin') {
+            throw new InvalidArgumentException('Akses ditolak: Hanya Admin Sentral yang berhak memverifikasi aduan.');
+        }
+
         $newStatus = $verified ? 'verified' : 'rejected';
         $db = \Config\Database::connect();
         $db->transBegin();
@@ -309,6 +314,11 @@ class ComplaintService
         $complaint = $this->complaintModel->find($id);
         if (!$complaint) {
             throw new InvalidArgumentException('Pengaduan tidak ditemukan.');
+        }
+
+        // Otorisasi ketat Service-Layer: Hanya Admin Sentral yang dapat mendisposisikan aduan
+        if (($user['role'] ?? '') !== 'admin') {
+            throw new InvalidArgumentException('Akses ditolak: Hanya Admin Sentral yang berhak mendisposisikan aduan.');
         }
 
         if (!$this->slaService->isValidUnit($targetUnit)) {
@@ -483,9 +493,13 @@ class ComplaintService
             throw new InvalidArgumentException('Pengaduan tidak ditemukan.');
         }
 
-        // Hanya pelapor atau admin yang boleh mengisi feedback
-        if ($user['role'] === 'user' && (int) $complaint['user_id'] !== (int) $user['id']) {
-            throw new InvalidArgumentException('Anda tidak memiliki otoritas memberikan feedback untuk tiket ini.');
+        // Hanya pelapor pengaduan (role: user pemilik tiket) atau admin yang boleh mengisi feedback
+        if ($user['role'] === 'user') {
+            if ((int) $complaint['user_id'] !== (int) $user['id']) {
+                throw new InvalidArgumentException('Anda tidak memiliki otoritas memberikan feedback untuk tiket ini.');
+            }
+        } elseif ($user['role'] !== 'admin') {
+            throw new InvalidArgumentException('Akses ditolak: Hanya pelapor pengaduan yang dapat memberikan feedback kepuasan.');
         }
 
         $normalizedStatus = $this->normalizeStatus((string) $complaint['status']);
@@ -540,6 +554,9 @@ class ComplaintService
             throw new InvalidArgumentException('Pengaduan tidak ditemukan.');
         }
 
+        // Validasi hak akses RBAC & IDOR: Mahasiswa dan peran asing dilarang mengubah status tiket
+        $this->assertComplaintAccess($complaint, $user, 'status');
+
         $normalizedStatus = $this->normalizeStatus($rawStatus);
         $allowedStatuses = [
             'received', 'verified', 'dispatched', 'in_progress', 'action_taken', 'answered', 'resolved', 'rejected'
@@ -547,6 +564,11 @@ class ComplaintService
 
         if (!in_array($normalizedStatus, $allowedStatuses, true)) {
             throw new InvalidArgumentException("Status '{$rawStatus}' tidak valid.");
+        }
+
+        // Stakeholder dilarang mengubah status sentral secara sepihak
+        if ($user['role'] === 'stakeholder' && in_array($normalizedStatus, ['verified', 'dispatched', 'rejected'], true)) {
+            throw new InvalidArgumentException("Akses ditolak: Stakeholder tidak berwenang mengubah status ke '{$normalizedStatus}'.");
         }
 
         $updateFields = ['status' => $normalizedStatus];
@@ -560,14 +582,24 @@ class ComplaintService
             $updateFields['assigned_unit'] = $assignedUnit;
         }
 
-        $this->complaintModel->update($id, $updateFields);
+        $db = \Config\Database::connect();
+        $db->transBegin();
 
-        if ($note !== null && $note !== '') {
-            $this->replyModel->insert([
-                'complaint_id' => $id,
-                'user_id'      => (int) $user['id'],
-                'reply'        => "[Perubahan Status ke {$normalizedStatus}] " . $note,
-            ]);
+        try {
+            $this->complaintModel->update($id, $updateFields);
+
+            if ($note !== null && $note !== '') {
+                $this->replyModel->insert([
+                    'complaint_id' => $id,
+                    'user_id'      => (int) $user['id'],
+                    'reply'        => "[Perubahan Status ke {$normalizedStatus}] " . $note,
+                ]);
+            }
+
+            $db->transCommit();
+        } catch (Throwable $e) {
+            $db->transRollback();
+            throw $e;
         }
 
         return [
@@ -750,7 +782,7 @@ class ComplaintService
                 throw new InvalidArgumentException('Akses ditolak: Anda hanya berwenang mengakses pengaduan yang ditugaskan ke divisi Anda.');
             }
 
-            if (in_array($action, ['verify', 'feedback'], true)) {
+            if (in_array($action, ['verify', 'dispatch', 'feedback'], true)) {
                 throw new InvalidArgumentException('Akses ditolak: Anda tidak memiliki wewenang untuk tindakan ini.');
             }
             return;
@@ -761,7 +793,7 @@ class ComplaintService
                 throw new InvalidArgumentException('Pengaduan tidak ditemukan.');
             }
 
-            if (in_array($action, ['reanalyze', 'verify', 'dispatch', 'accept', 'followup', 'answer'], true)) {
+            if (in_array($action, ['reanalyze', 'verify', 'dispatch', 'accept', 'followup', 'answer', 'status'], true)) {
                 throw new InvalidArgumentException('Akses ditolak: Anda tidak memiliki wewenang untuk tindakan ini.');
             }
             return;

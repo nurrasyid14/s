@@ -210,8 +210,8 @@ class ComplaintController extends ResourceController
         }
 
         $user = $this->authenticatedUser();
-        if (!$user || !in_array($user['role'], ['admin', 'stakeholder'], true)) {
-            return $this->respond(['status' => false, 'message' => 'Otoritas verifikasi diperlukan.'], 403);
+        if (!$user || $user['role'] !== 'admin') {
+            return $this->respond(['status' => false, 'message' => 'Otoritas verifikasi diperlukan (Hanya Admin Sentral).'], 403);
         }
 
         $data = $this->getRequestData();
@@ -222,7 +222,9 @@ class ComplaintController extends ResourceController
             $res = $this->complaintService->verifyComplaint((int) $id, $verified, $note, $user);
             return $this->respond($res);
         } catch (InvalidArgumentException $e) {
-            return $this->respond(['status' => false, 'message' => $e->getMessage()], 404);
+            $msg = $e->getMessage();
+            $code = str_contains($msg, 'tidak ditemukan') ? 404 : 403;
+            return $this->respond(['status' => false, 'message' => $msg], $code);
         } catch (Throwable $e) {
             log_message('error', 'Gagal verifikasi: ' . $e->getMessage());
             return $this->respond(['status' => false, 'message' => 'Gagal memproses verifikasi aduan.'], 500);
@@ -240,8 +242,8 @@ class ComplaintController extends ResourceController
         }
 
         $user = $this->authenticatedUser();
-        if (!$user || !in_array($user['role'], ['admin', 'stakeholder'], true)) {
-            return $this->respond(['status' => false, 'message' => 'Otoritas disposisi diperlukan.'], 403);
+        if (!$user || $user['role'] !== 'admin') {
+            return $this->respond(['status' => false, 'message' => 'Otoritas disposisi diperlukan (Hanya Admin Sentral).'], 403);
         }
 
         $data = $this->getRequestData();
@@ -258,7 +260,9 @@ class ComplaintController extends ResourceController
             $res = $this->complaintService->dispatchComplaint((int) $id, $targetUnit, $pic, $note, $slaDate, $user);
             return $this->respond($res);
         } catch (InvalidArgumentException $e) {
-            return $this->respond(['status' => false, 'message' => $e->getMessage()], 400);
+            $msg = $e->getMessage();
+            $code = str_contains($msg, 'tidak ditemukan') ? 404 : (str_contains($msg, 'Akses ditolak') ? 403 : 400);
+            return $this->respond(['status' => false, 'message' => $msg], $code);
         } catch (Throwable $e) {
             log_message('error', 'Gagal disposisi: ' . $e->getMessage());
             return $this->respond(['status' => false, 'message' => 'Gagal memproses disposisi aduan.'], 500);

@@ -2,7 +2,7 @@
     "pipeline_version": "1.2.0",
     "watermark_column": "COALESCE(updated_at, created_at)",
     "last_watermark": "2026-11-14 17:31:50",
-    "last_extracted_at": "2026-11-15T00:33:16+07:00",
+    "last_extracted_at": "2026-11-15T00:55:53+07:00",
     "last_extracted_count": 0,
     "cumulative_records_extracted": 4,
     "status": "success",

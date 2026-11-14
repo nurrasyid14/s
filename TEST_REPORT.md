@@ -10,7 +10,7 @@
 
 | Komponen Uji | Total Kasus Uji | Berhasil (PASS) | Gagal (FAIL) | Status |
 |---|---:|---:|---:|:---:|
-| **Backend CI4 Test Suite** (`backend/tests/run_tests.php`) | 125 | 125 | 0 | **PASS (100%)** |
+| **Backend CI4 Test Suite** (`backend/tests/run_tests.php`) | 136 | 136 | 0 | **PASS (100%)** |
 | **ML Service Test Suite** (`ml-service/tests/run_tests.py`) | 26 | 26 | 0 | **PASS (100%)** |
 | **Frontend Production Build** (`npm run build`) | 44 Chunks | 44 Chunks (5.14s) | 0 | **PASS** |
 | **Frontend ESLint Check** (`npm run lint`) | Codebase | 0 Errors (43 warnings) | 0 | **PASS** |
@@ -160,6 +160,17 @@ SUARALENS BACKEND SERVICES UNIT TEST RUNNER
   [PASS] RBAC: Stakeholder dilarang mengakses pengaduan unit lain
   [PASS] RBAC: User biasa dilarang melakukan analisis ulang
   [PASS] RBAC: Role tidak dikenal ditolak secara default
+  [PASS] RBAC Mutate: Stakeholder ditolak saat memverifikasi aduan
+  [PASS] RBAC Integrity: Status database tidak berubah setelah penolakan stakeholder
+  [PASS] RBAC Mutate: User ditolak saat memverifikasi aduan
+  [PASS] RBAC Integrity: Status database tidak berubah setelah penolakan user
+  [PASS] RBAC Mutate: Role tidak dikenal ditolak saat memverifikasi aduan
+  [PASS] RBAC Mutate: Admin berhasil melakukan verifikasi aduan
+  [PASS] RBAC Mutate: Stakeholder ditolak saat melakukan disposisi aduan
+  [PASS] RBAC Integrity: Unit penugasan tidak berubah saat disposisi stakeholder ditolak
+  [PASS] RBAC Mutate: User ditolak saat melakukan disposisi aduan
+  [PASS] RBAC Integrity: Unit penugasan tidak berubah saat disposisi user ditolak
+  [PASS] RBAC Mutate: Admin berhasil melakukan disposisi pengaduan
 
 [15] Testing Comprehensive IDOR & Cross-User Isolation...
   [PASS] IDOR: User lain tidak dapat membaca detail pengaduan (returns null/404)
@@ -186,7 +197,7 @@ SUARALENS BACKEND SERVICES UNIT TEST RUNNER
   [PASS] Lifecycle: Verifikasi feedback rating 5 bintang tercatat
 
 ============================================================
-TEST RESULTS: Passed: 125, Failed: 0
+TEST RESULTS: Passed: 136, Failed: 0
 ============================================================
 ```
 

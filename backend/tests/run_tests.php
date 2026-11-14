@@ -586,6 +586,84 @@ try {
 }
 assertTest("RBAC: Role tidak dikenal ditolak secara default", $unknownRoleBlocked);
 
+// 14.5 Real Data Mutation & Non-Mutation Defense Tests
+$rbacTestComp = $complaintService->createComplaint([
+    'type'        => 'complaint',
+    'description' => 'Uji ketahanan RBAC dan verifikasi non-mutasi database saat akses ditolak.',
+    'category'    => 'Sarana Prasarana dan Layanan Umum',
+], $regularUser);
+$rbacCompId = (int) $rbacTestComp['id'];
+$initialCompRow = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+
+// Test verifyComplaint() - Stakeholder ditolak & data tidak berubah
+$stkVerifyBlocked = false;
+try {
+    $complaintService->verifyComplaint($rbacCompId, true, "Verifikasi ilegal oleh stakeholder", $matchingStakeholder);
+} catch (InvalidArgumentException $e) {
+    $stkVerifyBlocked = true;
+}
+$rowAfterStkVerify = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Stakeholder ditolak saat memverifikasi aduan", $stkVerifyBlocked);
+assertTest("RBAC Integrity: Status database tidak berubah setelah penolakan stakeholder", $rowAfterStkVerify['status'] === $initialCompRow['status']);
+
+// Test verifyComplaint() - User ditolak & data tidak berubah
+$userVerifyBlocked = false;
+try {
+    $complaintService->verifyComplaint($rbacCompId, true, "Verifikasi ilegal oleh user", $regularUser);
+} catch (InvalidArgumentException $e) {
+    $userVerifyBlocked = true;
+}
+$rowAfterUserVerify = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: User ditolak saat memverifikasi aduan", $userVerifyBlocked);
+assertTest("RBAC Integrity: Status database tidak berubah setelah penolakan user", $rowAfterUserVerify['status'] === $initialCompRow['status']);
+
+// Test verifyComplaint() - Unknown Role ditolak & data tidak berubah
+$unknownVerifyBlocked = false;
+try {
+    $complaintService->verifyComplaint($rbacCompId, true, "Verifikasi oleh role asing", $unknownRoleUser);
+} catch (InvalidArgumentException $e) {
+    $unknownVerifyBlocked = true;
+}
+assertTest("RBAC Mutate: Role tidak dikenal ditolak saat memverifikasi aduan", $unknownVerifyBlocked);
+
+// Test verifyComplaint() - Admin berhasil & data berubah
+$adminVerifyRes = $complaintService->verifyComplaint($rbacCompId, true, "Verifikasi sah oleh Admin Sentral", $adminUser);
+$rowAfterAdminVerify = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Admin berhasil melakukan verifikasi aduan", $adminVerifyRes['status'] === true && $rowAfterAdminVerify['status'] === 'verified');
+
+// Test dispatchComplaint() - Stakeholder ditolak & unit tidak berubah
+$stkDispatchBlocked = false;
+try {
+    $complaintService->dispatchComplaint($rbacCompId, 'Akademik', 'PIC', 'Disposisi ilegal', null, $matchingStakeholder);
+} catch (InvalidArgumentException $e) {
+    $stkDispatchBlocked = true;
+}
+$rowAfterStkDispatch = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Stakeholder ditolak saat melakukan disposisi aduan", $stkDispatchBlocked);
+assertTest("RBAC Integrity: Unit penugasan tidak berubah saat disposisi stakeholder ditolak", $rowAfterStkDispatch['assigned_unit'] === $rowAfterAdminVerify['assigned_unit']);
+
+// Test dispatchComplaint() - User ditolak & unit tidak berubah
+$userDispatchBlocked = false;
+try {
+    $complaintService->dispatchComplaint($rbacCompId, 'Akademik', 'PIC', 'Disposisi user ilegal', null, $regularUser);
+} catch (InvalidArgumentException $e) {
+    $userDispatchBlocked = true;
+}
+$rowAfterUserDispatch = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: User ditolak saat melakukan disposisi aduan", $userDispatchBlocked);
+assertTest("RBAC Integrity: Unit penugasan tidak berubah saat disposisi user ditolak", $rowAfterUserDispatch['assigned_unit'] === $rowAfterAdminVerify['assigned_unit']);
+
+// Test dispatchComplaint() - Admin berhasil & unit terdisposisi
+$adminDispatchRes = $complaintService->dispatchComplaint($rbacCompId, 'Sarana Prasarana dan Layanan Umum', 'Pak Budi', 'Disposisi resmi admin', null, $adminUser);
+$rowAfterAdminDispatch = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Admin berhasil melakukan disposisi pengaduan", $adminDispatchRes['status'] === true && $rowAfterAdminDispatch['status'] === 'dispatched');
+
+// Cleanup RBAC test fixtures
+$db->table('complaint_reviews')->where('complaint_analysis_id', (int) $rbacTestComp['data']['analysis_id'])->delete();
+$db->table('complaint_replies')->where('complaint_id', $rbacCompId)->delete();
+$db->table('complaint_analysis')->where('complaint_id', $rbacCompId)->delete();
+$db->table('complaints')->where('id', $rbacCompId)->delete();
+
 echo "\n";
 
 // -----------------------------------------------------------------
