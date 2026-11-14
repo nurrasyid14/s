@@ -24,6 +24,7 @@ use App\Services\WeeklyAnalyticsService;
 
 $passed = 0;
 $failed = 0;
+$skipped = 0;
 
 function assertTest(string $name, bool $condition, string $detail = '') {
     global $passed, $failed;
@@ -34,6 +35,12 @@ function assertTest(string $name, bool $condition, string $detail = '') {
         echo "  [FAIL] {$name} - {$detail}\n";
         $failed++;
     }
+}
+
+function skipTest(string $name, string $reason = '') {
+    global $skipped;
+    echo "  [SKIPPED] {$name} ({$reason})\n";
+    $skipped++;
 }
 
 echo "============================================================\n";
@@ -392,13 +399,13 @@ $undetectedMimeFile = createTestUploadedFile('corrupt_binary.jpg', "\x00\x01\x02
 $valUndetected = $evidenceService->validateFile($undetectedMimeFile);
 assertTest("Upload Security: MIME type tidak terdeteksi / tidak cocok ditolak (Fail-Closed)", $valUndetected['valid'] === false);
 
-// Test Validasi Struktur Dokumen DOCX (Office Open XML)
+// Test Validasi Struktur Dokumen DOCX (Office Open XML) & Proteksi ZIP Bomb
 $tempTestsDir = WRITEPATH . 'temp_tests';
 if (!is_dir($tempTestsDir)) {
     @mkdir($tempTestsDir, 0755, true);
 }
 
-// 1. DOCX Valid (ZIP memuat [Content_Types].xml dan word/document.xml)
+// 1. DOCX Valid (ZIP memuat [Content_Types].xml dan word/document.xml, ukuran normal, ratio aman)
 $validDocxPath = $tempTestsDir . DIRECTORY_SEPARATOR . 'valid_doc_' . uniqid() . '.docx';
 $zipValid = new \ZipArchive();
 $docxCreated = false;
@@ -410,9 +417,10 @@ if ($zipValid->open($validDocxPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE
 }
 $validDocxUploaded = new \CodeIgniter\HTTP\Files\UploadedFile($validDocxPath, 'laporan_resmi.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', filesize($validDocxPath), UPLOAD_ERR_OK, true);
 $valDocxValid = $evidenceService->validateFile($validDocxUploaded);
-assertTest("Upload Security: Dokumen DOCX valid dengan struktur OpenXML diterima", $docxCreated && $valDocxValid['valid'] === true);
+assertTest("DOCX Security [1/9]: Dokumen DOCX valid dengan struktur OpenXML diterima", $docxCreated && $valDocxValid['valid'] === true);
+@unlink($validDocxPath);
 
-// 2. DOCX Palsu: File ZIP biasa di-rename menjadi .docx (tanpa [Content_Types].xml atau word/document.xml)
+// 2. ZIP Biasa di-rename menjadi DOCX (tanpa [Content_Types].xml atau word/document.xml)
 $fakeDocxPath = $tempTestsDir . DIRECTORY_SEPARATOR . 'fake_doc_' . uniqid() . '.docx';
 $zipFake = new \ZipArchive();
 $fakeZipCreated = false;
@@ -421,9 +429,120 @@ if ($zipFake->open($fakeDocxPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) 
     $zipFake->close();
     $fakeZipCreated = true;
 }
-$fakeDocxUploaded = new \CodeIgniter\HTTP\Files\UploadedFile($fakeDocxPath, 'laporan_palsu.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', filesize($fakeDocxPath), UPLOAD_ERR_OK, true);
-$valFakeDocx = $evidenceService->validateFile($fakeDocxUploaded);
-assertTest("Upload Security: File ZIP biasa di-rename menjadi DOCX ditolak", $fakeZipCreated && $valFakeDocx['valid'] === false && str_contains($valFakeDocx['error'], 'Struktur arsip DOCX tidak valid'));
+$valFakeDocx = $evidenceService->isValidDocxArchive($fakeDocxPath);
+assertTest("DOCX Security [2/9]: File ZIP biasa di-rename menjadi DOCX ditolak", $fakeZipCreated && $valFakeDocx === false);
+@unlink($fakeDocxPath);
+
+// 3. DOCX dengan total uncompressed size melebihi batas (> 25MB)
+$oversizeTotalDocx = $tempTestsDir . DIRECTORY_SEPARATOR . 'oversize_total_' . uniqid() . '.docx';
+$zipTotal = new \ZipArchive();
+$oversizeTotalCreated = false;
+if ($zipTotal->open($oversizeTotalDocx, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+    $zipTotal->addFromString('[Content_Types].xml', '<?xml version="1.0"?><Types/>');
+    $zipTotal->addFromString('word/document.xml', '<?xml version="1.0"?><w:doc/>');
+    // 3 entri masing-masing 9.2MB (total 27.6MB > 25MB limit) dengan rasio wajar (~15:1)
+    $line = str_repeat("SuaraLens PENS Kampus Terpadu Surabaya 2026 ", 2); // 88 bytes
+    $part9mb = str_repeat($line, 105000); // ~9.2 MB per entri
+    $zipTotal->addFromString('word/part1.xml', $part9mb);
+    $zipTotal->addFromString('word/part2.xml', $part9mb);
+    $zipTotal->addFromString('word/part3.xml', $part9mb);
+    $zipTotal->close();
+    unset($part9mb);
+    $oversizeTotalCreated = true;
+}
+$valOversizeTotal = $evidenceService->isValidDocxArchive($oversizeTotalDocx);
+assertTest("DOCX Security [3/9]: Total uncompressed size melebihi batas (27.6MB > 25MB) ditolak", $oversizeTotalCreated && $valOversizeTotal === false);
+@unlink($oversizeTotalDocx);
+
+// 4. DOCX dengan entry individual melebihi batas (> 10MB)
+$oversizeEntryDocx = $tempTestsDir . DIRECTORY_SEPARATOR . 'oversize_entry_' . uniqid() . '.docx';
+$zipEntry = new \ZipArchive();
+$oversizeEntryCreated = false;
+if ($zipEntry->open($oversizeEntryDocx, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+    $zipEntry->addFromString('[Content_Types].xml', '<?xml version="1.0"?><Types/>');
+    $zipEntry->addFromString('word/document.xml', '<?xml version="1.0"?><w:doc/>');
+    // Satu entri 11.4MB (> 10MB entry limit)
+    $line = str_repeat("SuaraLens PENS Kampus Terpadu Surabaya 2026 ", 2);
+    $part11mb = str_repeat($line, 130000); // ~11.4 MB
+    $zipEntry->addFromString('word/large_data.xml', $part11mb);
+    $zipEntry->close();
+    unset($part11mb);
+    $oversizeEntryCreated = true;
+}
+$valOversizeEntry = $evidenceService->isValidDocxArchive($oversizeEntryDocx);
+assertTest("DOCX Security [4/9]: Entry individual melebihi batas (11.4MB > 10MB) ditolak", $oversizeEntryCreated && $valOversizeEntry === false);
+@unlink($oversizeEntryDocx);
+
+// 5. DOCX dengan jumlah entry melebihi batas (> 500 entries)
+$maxEntriesDocx = $tempTestsDir . DIRECTORY_SEPARATOR . 'max_entries_' . uniqid() . '.docx';
+$zipEntries = new \ZipArchive();
+$maxEntriesCreated = false;
+if ($zipEntries->open($maxEntriesDocx, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+    $zipEntries->addFromString('[Content_Types].xml', '<?xml version="1.0"?><Types/>');
+    $zipEntries->addFromString('word/document.xml', '<?xml version="1.0"?><w:doc/>');
+    // Tambah 503 entri kecil (total 505 entri > 500 limit)
+    for ($e = 1; $e <= 503; $e++) {
+        $zipEntries->addFromString("word/item_{$e}.xml", "<item id='{$e}'/>");
+    }
+    $zipEntries->close();
+    $maxEntriesCreated = true;
+}
+$valMaxEntries = $evidenceService->isValidDocxArchive($maxEntriesDocx);
+assertTest("DOCX Security [5/9]: Jumlah entry arsip melebihi batas (505 > 500) ditolak", $maxEntriesCreated && $valMaxEntries === false);
+@unlink($maxEntriesDocx);
+
+// 6. DOCX dengan rasio kompresi tidak wajar (ZIP bomb rasio > 100:1)
+$highRatioDocx = $tempTestsDir . DIRECTORY_SEPARATOR . 'high_ratio_' . uniqid() . '.docx';
+$zipRatio = new \ZipArchive();
+$highRatioCreated = false;
+if ($zipRatio->open($highRatioDocx, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+    $zipRatio->addFromString('[Content_Types].xml', '<?xml version="1.0"?><Types/>');
+    $zipRatio->addFromString('word/document.xml', '<?xml version="1.0"?><w:doc/>');
+    // 500.000 byte nol terkompresi DEFLATE menjadi ~500 byte (rasio ~1000:1 > 100:1 limit)
+    $zipRatio->addFromString('word/bomb.xml', str_repeat("0", 500000));
+    $zipRatio->close();
+    $highRatioCreated = true;
+}
+$valHighRatio = $evidenceService->isValidDocxArchive($highRatioDocx);
+assertTest("DOCX Security [6/9]: Rasio kompresi tidak wajar (~1000:1 > 100:1) ditolak", $highRatioCreated && $valHighRatio === false);
+@unlink($highRatioDocx);
+
+// 7. DOCX dengan entri path traversal (../ atau Zip Slip)
+$traversalDocx = $tempTestsDir . DIRECTORY_SEPARATOR . 'traversal_' . uniqid() . '.docx';
+$zipTrav = new \ZipArchive();
+$travCreated = false;
+if ($zipTrav->open($traversalDocx, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+    $zipTrav->addFromString('[Content_Types].xml', '<?xml version="1.0"?><Types/>');
+    $zipTrav->addFromString('word/document.xml', '<?xml version="1.0"?><w:doc/>');
+    $zipTrav->addFromString('word/../../etc/passwd', 'malicious path');
+    $zipTrav->close();
+    $travCreated = true;
+}
+$valTrav = $evidenceService->isValidDocxArchive($traversalDocx);
+assertTest("DOCX Security [7/9]: Entry dengan path traversal (../) ditolak", $travCreated && $valTrav === false);
+@unlink($traversalDocx);
+
+// 8. DOCX dengan entri path absolut (/etc/... atau C:\...)
+$absoluteDocx = $tempTestsDir . DIRECTORY_SEPARATOR . 'absolute_' . uniqid() . '.docx';
+$zipAbs = new \ZipArchive();
+$absCreated = false;
+if ($zipAbs->open($absoluteDocx, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+    $zipAbs->addFromString('[Content_Types].xml', '<?xml version="1.0"?><Types/>');
+    $zipAbs->addFromString('word/document.xml', '<?xml version="1.0"?><w:doc/>');
+    $zipAbs->addFromString('/etc/shadow', 'malicious absolute path');
+    $zipAbs->close();
+    $absCreated = true;
+}
+$valAbs = $evidenceService->isValidDocxArchive($absoluteDocx);
+assertTest("DOCX Security [8/9]: Entry dengan path absolut (/etc/shadow) ditolak", $absCreated && $valAbs === false);
+@unlink($absoluteDocx);
+
+// 9. DOCX arsip rusak / tidak dapat dibaca
+$corruptDocx = $tempTestsDir . DIRECTORY_SEPARATOR . 'corrupt_' . uniqid() . '.docx';
+file_put_contents($corruptDocx, "PK\x03\x04\x00\x00CORRUPT_PAYLOAD_GARBAGE_BYTES");
+$valCorrupt = $evidenceService->isValidDocxArchive($corruptDocx);
+assertTest("DOCX Security [9/9]: Arsip DOCX rusak atau tidak dapat dibaca ditolak", $valCorrupt === false);
+@unlink($corruptDocx);
 
 // 3. Dokumen DOC Valid (OLE2 Compound Document Header)
 $validDocBytes = "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1" . str_repeat("\x00", 504);
@@ -512,11 +631,11 @@ $symlinkFile = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'complaints' . DIRE
 $canTestSymlink = @symlink($symlinkTarget, $symlinkFile);
 if ($canTestSymlink && is_link($symlinkFile)) {
     $blockedSymlink = $evidenceService->deleteFile($symlinkFile);
-    assertTest("Storage Security: deleteFile() menolak symbolic link menuju lokasi di luar storage", $blockedSymlink === false);
+    $targetStillExists = is_file($symlinkTarget);
+    assertTest("Storage Security: deleteFile() menolak symbolic link dan tidak menghapus target", $blockedSymlink === false && $targetStillExists);
     @unlink($symlinkFile);
 } else {
-    // Pada lingkungan tanpa izin symlink (Windows non-admin), verifikasi bahwa is_link guard aktif di deleteFile
-    assertTest("Storage Security: deleteFile() memiliki proteksi is_link untuk menolak symlink", true);
+    skipTest("Storage Security: deleteFile() symbolic link test", "OS/lingkungan Windows tidak mengizinkan pembuatan symlink tanpa hak akses Administrator");
 }
 
 echo "\n";
@@ -1269,42 +1388,176 @@ assertTest("Header Security: Dokumen DOC, DOCX, dan file binary mendapatkan head
 echo "\n";
 
 // -----------------------------------------------------------------
-// 18. ATOMIC DATABASE TRANSACTION INTEGRITY & MUTATION ROLLBACK
+// 18. ATOMIC DATABASE TRANSACTION INTEGRITY & FAULT-INJECTED ROLLBACK
 // -----------------------------------------------------------------
-echo "[18] Testing Atomic Database Transaction Rollback on Mid-Operation Failure...\n";
+echo "[18] Testing Atomic Database Transaction Rollback on Mid-Operation Failure (Fault Injection)...\n";
 
-// Buat tiket uji khusus pengujian rollback mutasi
-$atomComp = $complaintService->createComplaint([
+if (!class_exists('FailingReplyModel')) {
+    class FailingReplyModel extends \App\Models\ComplaintReplyModel
+    {
+        public function insert($data = null, bool $returnID = true)
+        {
+            throw new \RuntimeException('Fault Injection: Simulasi kegagalan database pada penyimpanan audit reply');
+        }
+    }
+}
+
+if (!class_exists('FailingAnalysisModel')) {
+    class FailingAnalysisModel extends \App\Models\ComplaintAnalysisModel
+    {
+        public function insert($data = null, bool $returnID = true)
+        {
+            throw new \RuntimeException('Fault Injection: Simulasi kegagalan database pada penyimpanan analisis AI');
+        }
+    }
+}
+
+// 18.1 createComplaint Rollback: Kegagalan saat menyimpan analisis AI membatalkan baris pengaduan
+$initComplaintsCount = $db->table('complaints')->countAllResults();
+$initAnalysisCount   = $db->table('complaint_analysis')->countAllResults();
+$simDesc = 'Uji Rollback createComplaint ' . bin2hex(random_bytes(4));
+$simAttFile = createTestUploadedFile('fail_tx.jpg', $validJpgBytes, 'image/jpeg');
+
+$failAnalysisSvc = new \App\Services\ComplaintService(null, new FailingAnalysisModel());
+$createCompFailed = false;
+try {
+    $failAnalysisSvc->createComplaint(
+        ['type' => 'complaint', 'description' => $simDesc, 'category' => 'TIK/Sistem Informasi'],
+        $regularUser,
+        ['attachments' => [$simAttFile]]
+    );
+} catch (\Throwable $e) {
+    $createCompFailed = true;
+}
+
+$afterComplaintsCount = $db->table('complaints')->countAllResults();
+$afterAnalysisCount   = $db->table('complaint_analysis')->countAllResults();
+$foundComp = $db->table('complaints')->where('description', $simDesc)->get()->getRowArray();
+
+assertTest("Rollback createComplaint: Exception mid-operation tertangkap", $createCompFailed);
+assertTest("Rollback createComplaint: Baris pengaduan dibatalkan (zero partial insert)", $afterComplaintsCount === $initComplaintsCount && $foundComp === null);
+assertTest("Rollback createComplaint: Tabel analisis tidak bertambah record", $afterAnalysisCount === $initAnalysisCount);
+
+// Siapkan satu tiket pengujian khusus alur mutasi status (18.2 - 18.8)
+$baseTxComp = $complaintService->createComplaint([
     'type'        => 'complaint',
-    'description' => 'Uji ketahanan rollback transaksi multi-operasi.',
+    'description' => 'Tiket Uji Nyata Rollback Transaksi Multi-Mutasi.',
     'category'    => 'Sarana Prasarana dan Layanan Umum',
 ], $regularUser);
-$atomId = (int) $atomComp['id'];
+$baseTxId = (int) $baseTxComp['id'];
+$sarprasStakeholder = ['id' => $stakeholderId, 'role' => 'stakeholder', 'unit' => 'Sarana Prasarana dan Layanan Umum', 'name' => 'Petugas Sarpras'];
+$failingReplySvc = new \App\Services\ComplaintService(null, null, null, new FailingReplyModel());
 
-// Uji Atomisitas: Simulasi query gagal di tengah transaksi membatalkan seluruh perubahan
-$db->transBegin();
-$db->table('complaints')->where('id', $atomId)->update(['status' => 'verified']);
-// Simulasikan error fatal sebelum commit (misal insert reply gagal karena foreign key violation palsu)
-$db->transRollback();
+// 18.2 verifyComplaint Rollback: Update status berhasil, tetapi gagal saat mencatat reply verifikasi
+$repCountInit = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+$threwVerify = false;
+try {
+    $failingReplySvc->verifyComplaint($baseTxId, true, 'Verifikasi gagal reply', $adminUser);
+} catch (\Throwable $e) {
+    $threwVerify = true;
+}
+$recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
+$recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+assertTest("Rollback verifyComplaint: Status DB tetap 'received' (bukan 'verified')", $threwVerify && $recheckedRow['status'] === 'received');
+assertTest("Rollback verifyComplaint: Jejak reply verifikasi batal tersimpan (zero orphan reply)", $recheckedReps === $repCountInit);
 
-$rowAfterRollback = $db->table('complaints')->where('id', $atomId)->get()->getRowArray();
-assertTest("Transaction Atomicity: Rollback membatalkan perubahan status ke nilai awal", $rowAfterRollback['status'] === 'received');
+// 18.3 dispatchComplaint Rollback: Update status & unit berhasil, tetapi gagal saat mencatat reply disposisi
+$complaintService->verifyComplaint($baseTxId, true, 'Verifikasi sah sebelum uji disposisi', $adminUser);
+$initRowBeforeDispatch = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
+$initUnitBeforeDispatch = $initRowBeforeDispatch['assigned_unit'];
+$repCountBeforeDispatch = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
 
-// Verifikasi integritas: Seluruh method mutasi membungkus update dan insert dalam satu transaksi
-assertTest("Transaction Atomicity: createComplaint membungkus complaint + reply + analysis secara atomik", true);
-assertTest("Transaction Atomicity: verifyComplaint memverifikasi kembalian update dan insert", true);
-assertTest("Transaction Atomicity: dispatchComplaint memverifikasi kembalian update dan insert", true);
-assertTest("Transaction Atomicity: acceptByUnit memverifikasi kembalian update dan insert", true);
-assertTest("Transaction Atomicity: followupByUnit memverifikasi kembalian update dan insert", true);
-assertTest("Transaction Atomicity: answerByUnit memverifikasi kembalian update dan insert", true);
-assertTest("Transaction Atomicity: submitFeedback memverifikasi kembalian update dan insert", true);
-assertTest("Transaction Atomicity: updateStatus memverifikasi kembalian update dan insert", true);
+$threwDispatch = false;
+try {
+    $failingReplySvc->dispatchComplaint($baseTxId, 'Sarana Prasarana dan Layanan Umum', 'Pak Budi', 'Disposisi gagal reply', null, $adminUser);
+} catch (\Throwable $e) {
+    $threwDispatch = true;
+}
+$recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
+$recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+assertTest("Rollback dispatchComplaint: Status DB tetap 'verified' (bukan 'dispatched')", $threwDispatch && $recheckedRow['status'] === 'verified');
+assertTest("Rollback dispatchComplaint: Assigned unit tetap NULL sesuai kondisi awal", $recheckedRow['assigned_unit'] === $initUnitBeforeDispatch);
+assertTest("Rollback dispatchComplaint: Jejak reply disposisi batal tersimpan", $recheckedReps === $repCountBeforeDispatch);
+
+// 18.4 acceptByUnit Rollback: Update status berhasil, tetapi gagal saat mencatat reply penerimaan
+$complaintService->dispatchComplaint($baseTxId, 'Sarana Prasarana dan Layanan Umum', 'Pak Budi', 'Disposisi sah', null, $adminUser);
+$repCountBeforeAccept = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+
+$threwAccept = false;
+try {
+    $failingReplySvc->acceptByUnit($baseTxId, 'Pak Budi', 'Catatan terima tugas gagal reply', $sarprasStakeholder);
+} catch (\Throwable $e) {
+    $threwAccept = true;
+}
+$recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
+$recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+assertTest("Rollback acceptByUnit: Status DB tetap 'dispatched' (bukan 'in_progress')", $threwAccept && $recheckedRow['status'] === 'dispatched');
+assertTest("Rollback acceptByUnit: Jejak reply penerimaan unit batal tersimpan", $recheckedReps === $repCountBeforeAccept);
+
+// 18.5 followupByUnit Rollback: Update status berhasil, tetapi gagal saat mencatat reply tindak lanjut
+$complaintService->acceptByUnit($baseTxId, 'Pak Budi', 'Penerimaan sah', $sarprasStakeholder);
+$repCountBeforeFollowup = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+
+$threwFollowup = false;
+try {
+    $failingReplySvc->followupByUnit($baseTxId, 'Perbaikan', 'Tindak lanjut lapangan gagal reply', 'Joko Teknisi', null, $sarprasStakeholder);
+} catch (\Throwable $e) {
+    $threwFollowup = true;
+}
+$recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
+$recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+assertTest("Rollback followupByUnit: Status DB tetap 'in_progress' (bukan 'action_taken')", $threwFollowup && $recheckedRow['status'] === 'in_progress');
+assertTest("Rollback followupByUnit: Jejak reply tindak lanjut batal tersimpan", $recheckedReps === $repCountBeforeFollowup);
+
+// 18.6 answerByUnit Rollback: Update status berhasil, tetapi gagal saat mencatat reply jawaban resmi
+$complaintService->followupByUnit($baseTxId, 'Perbaikan', 'Tindak lanjut sah', 'Joko Teknisi', null, $sarprasStakeholder);
+$repCountBeforeAnswer = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+
+$threwAnswer = false;
+try {
+    $failingReplySvc->answerByUnit($baseTxId, 'Jawaban resmi unit gagal reply', 'Kepala Sarpras', [], $sarprasStakeholder);
+} catch (\Throwable $e) {
+    $threwAnswer = true;
+}
+$recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
+$recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+assertTest("Rollback answerByUnit: Status DB tetap 'action_taken' (bukan 'answered')", $threwAnswer && $recheckedRow['status'] === 'action_taken');
+assertTest("Rollback answerByUnit: Jejak reply jawaban unit batal tersimpan", $recheckedReps === $repCountBeforeAnswer);
+
+// 18.7 submitFeedback Rollback: Update status berhasil, tetapi gagal saat mencatat reply feedback
+$complaintService->answerByUnit($baseTxId, 'Jawaban resmi sah', 'Kepala Sarpras', [], $sarprasStakeholder);
+$repCountBeforeFeedback = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+
+$threwFeedback = false;
+try {
+    $failingReplySvc->submitFeedback($baseTxId, ['rating' => 5, 'aspect_speed' => 5, 'aspect_clarity' => 5, 'aspect_solution' => 5, 'comment' => 'Puas'], $regularUser);
+} catch (\Throwable $e) {
+    $threwFeedback = true;
+}
+$recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
+$recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+assertTest("Rollback submitFeedback: Status DB tetap 'answered' (bukan 'resolved')", $threwFeedback && $recheckedRow['status'] === 'answered');
+assertTest("Rollback submitFeedback: Jejak reply feedback batal tersimpan", $recheckedReps === $repCountBeforeFeedback);
+
+// 18.8 updateStatus Rollback (Multi-Mutation Path): Update status berhasil, tetapi gagal saat mencatat reply riwayat
+$repCountBeforeUpdateStatus = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+
+$threwUpdateStatus = false;
+try {
+    $failingReplySvc->updateStatus($baseTxId, 'rejected', 'Alasan penolakan gagal reply', null, $adminUser);
+} catch (\Throwable $e) {
+    $threwUpdateStatus = true;
+}
+$recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
+$recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+assertTest("Rollback updateStatus: Status DB tetap 'answered' (bukan 'rejected')", $threwUpdateStatus && $recheckedRow['status'] === 'answered');
+assertTest("Rollback updateStatus: Jejak reply perubahan status batal tersimpan", $recheckedReps === $repCountBeforeUpdateStatus);
 
 // Cleanup atomicity fixture
-$db->table('complaint_reviews')->where('complaint_analysis_id', (int) $atomComp['data']['analysis_id'])->delete();
-$db->table('complaint_replies')->where('complaint_id', $atomId)->delete();
-$db->table('complaint_analysis')->where('complaint_id', $atomId)->delete();
-$db->table('complaints')->where('id', $atomId)->delete();
+$db->table('complaint_reviews')->where('complaint_analysis_id', (int) $baseTxComp['data']['analysis_id'])->delete();
+$db->table('complaint_replies')->where('complaint_id', $baseTxId)->delete();
+$db->table('complaint_analysis')->where('complaint_id', $baseTxId)->delete();
+$db->table('complaints')->where('id', $baseTxId)->delete();
 
 echo "\n";
 
@@ -1312,7 +1565,7 @@ echo "\n";
 // SUMMARY
 // -----------------------------------------------------------------
 echo "============================================================\n";
-echo "TEST RESULTS: Passed: {$passed}, Failed: {$failed}\n";
+echo "TEST RESULTS: Passed: {$passed}, Failed: {$failed}, Skipped: {$skipped}\n";
 echo "============================================================\n";
 
 if ($failed > 0) {

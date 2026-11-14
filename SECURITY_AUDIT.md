@@ -138,7 +138,14 @@ Jika operasi update atau insert gagal, `$db->transRollback()` dieksekusi secara 
 
 ### B. Validasi Fail-Closed & Integritas Dokumen Office
 1. **Fail-Closed MIME Detection:** MIME type fisik file diperiksa menggunakan PHP `finfo(FILEINFO_MIME_TYPE)`. Jika MIME tidak dapat dideteksi atau file rusak, validasi otomatis ditolak (fail-closed). MIME header dari klien tidak dipercaya sebagai sumber otentik.
-2. **Verifikasi Arsip OpenXML (DOCX):** Memeriksa struktur arsip ZIP secara nyata menggunakan `ZipArchive`. Dokumen `.docx` diwajibkan memuat entri XML standar OpenXML: `[Content_Types].xml` dan `word/document.xml`. File ZIP biasa yang sekadar di-rename menjadi `.docx` otomatis ditolak.
+2. **Verifikasi Arsip OpenXML (DOCX) & Proteksi ZIP Bomb:**
+   - Memeriksa struktur arsip ZIP secara nyata menggunakan `ZipArchive` tanpa mengekstrak ke filesystem dan tanpa memuat seluruh konten ke RAM.
+   - Dokumen `.docx` diwajibkan memuat entri XML standar OpenXML: `[Content_Types].xml` dan `word/document.xml`. File ZIP biasa yang sekadar di-rename menjadi `.docx` otomatis ditolak.
+   - **Batas Total Uncompressed Size:** Maksimal 25 MB (`DOCX_MAX_TOTAL_UNCOMPRESSED_SIZE`). Memberikan ruang dekompresi hingga 5x dari batas upload 5MB (sangat cukup untuk dokumen teks ratusan halaman dengan lampiran gambar), sekaligus menghentikan serangan dekompresi raksasa.
+   - **Batas Uncompressed Size per Entry:** Maksimal 10 MB (`DOCX_MAX_ENTRY_UNCOMPRESSED_SIZE`). Melindungi dari satu file XML tunggal yang sengaja dibuat masif.
+   - **Batas Jumlah Entry:** Maksimal 500 file (`DOCX_MAX_ENTRY_COUNT`). Struktur OpenXML Word normal memuat 10–100 file internal; batas 500 mencegah *descriptor/inode exhaustion*.
+   - **Batas Rasio Kompresi:** Maksimal 100:1 (`DOCX_MAX_COMPRESSION_RATIO`). Rasio kompresi teks normal berkisar 5:1 hingga 30:1; rasio > 100:1 pada entri berukuran > 1KB ditolak sebagai bom arsip.
+   - **Anti-Traversal & Anti-Absolute Path (Zip Slip):** Seluruh nama entri diperiksa. Entri yang memuat `../`, `..\`, atau diawali dengan path absolut (`/`, `\`, `C:`) serta karakter null-byte (`\0`) langsung ditolak.
 3. **Verifikasi Magic Bytes OLE2 (DOC):** Dokumen legacy `.doc` diverifikasi memiliki 8-byte magic number OLE2 Compound Document (`\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1`).
 
 ### C. Standarisasi Metadata Lampiran Terstruktur (JSON)

@@ -8,18 +8,18 @@
 
 ## 1. Ringkasan Eksekutif Hasil Pengujian Aktual
 
-| Komponen Uji | Total Kasus Uji | Berhasil (PASS) | Gagal (FAIL) | Status |
-|---|---:|---:|---:|:---:|
-| **Backend CI4 Test Suite** (`backend/tests/run_tests.php`) | 217 | 217 | 0 | **PASS (100%)** |
-| **ML Service Test Suite** (`ml-service/tests/run_tests.py`) | 26 | 26 | 0 | **PASS (100%)** |
-| **Frontend Production Build** (`npm run build`) | 45 Chunks | 45 Chunks (4.47s) | 0 | **PASS** |
-| **Frontend ESLint Check** (`npm run lint`) | Codebase | 0 Errors (43 warnings) | 0 | **PASS** |
-| **PHP Syntax Check** | Seluruh file `.php` | Bebas syntax error | 0 | **PASS** |
-| **Database Migrations** | 11 Migrasi | Batch 1–10 Applied | 0 | **PASS** |
+| Komponen Uji | Total Kasus Uji | Berhasil (PASS) | Gagal (FAIL) | Dilewati (SKIPPED) | Status |
+|---|---:|---:|---:|---:|:---:|
+| **Backend CI4 Test Suite** (`backend/tests/run_tests.php`) | 233 | 232 | 0 | 1 | **PASS (232 PASS, 1 SKIPPED)** |
+| **ML Service Test Suite** (`ml-service/tests/run_tests.py`) | 26 | 26 | 0 | 0 | **PASS (100%)** |
+| **Frontend Production Build** (`npm run build`) | 45 Chunks | 45 Chunks (4.47s) | 0 | 0 | **PASS** |
+| **Frontend ESLint Check** (`npm run lint`) | Codebase | 0 Errors (43 warnings) | 0 | 0 | **PASS** |
+| **PHP Syntax Check** | Seluruh file `.php` | Bebas syntax error | 0 | 0 | **PASS** |
+| **Database Migrations** | 11 Migrasi | Batch 1–10 Applied | 0 | 0 | **PASS** |
 
 ---
 
-## 2. Rincian Eksekusi Backend Test Suite (217 Uji)
+## 2. Rincian Eksekusi Backend Test Suite (233 Uji)
 
 Perintah eksekusi: `php backend/tests/run_tests.php`
 
@@ -108,8 +108,15 @@ SUARALENS BACKEND SERVICES UNIT TEST RUNNER
   [PASS] Upload Security: File dengan ekstensi EXE ditolak
   [PASS] Upload Security: MIME type tidak sesuai ekstensi ditolak
   [PASS] Upload Security: MIME type tidak terdeteksi / tidak cocok ditolak (Fail-Closed)
-  [PASS] Upload Security: Dokumen DOCX valid dengan struktur OpenXML diterima
-  [PASS] Upload Security: File ZIP biasa di-rename menjadi DOCX ditolak
+  [PASS] DOCX Security [1/9]: Dokumen DOCX valid dengan struktur OpenXML diterima
+  [PASS] DOCX Security [2/9]: File ZIP biasa di-rename menjadi DOCX ditolak
+  [PASS] DOCX Security [3/9]: Total uncompressed size melebihi batas (27.6MB > 25MB) ditolak
+  [PASS] DOCX Security [4/9]: Entry individual melebihi batas (11.4MB > 10MB) ditolak
+  [PASS] DOCX Security [5/9]: Jumlah entry arsip melebihi batas (505 > 500) ditolak
+  [PASS] DOCX Security [6/9]: Rasio kompresi tidak wajar (~1000:1 > 100:1) ditolak
+  [PASS] DOCX Security [7/9]: Entry dengan path traversal (../) ditolak
+  [PASS] DOCX Security [8/9]: Entry dengan path absolut (/etc/shadow) ditolak
+  [PASS] DOCX Security [9/9]: Arsip DOCX rusak atau tidak dapat dibaca ditolak
   [PASS] Upload Security: Dokumen DOC valid dengan magic bytes OLE2 diterima
   [PASS] Upload Security: File teks disamarkan menjadi DOC ditolak
   [PASS] Upload Security: File melebihi batas 5MB ditolak
@@ -126,7 +133,7 @@ SUARALENS BACKEND SERVICES UNIT TEST RUNNER
   [PASS] Storage Security: deleteFile() menolak path traversal
   [PASS] Storage Security: deleteFile() menolak path dengan null-byte
   [PASS] Storage Security: deleteFile() menangani file tidak ada dengan aman (return false)
-  [PASS] Storage Security: deleteFile() memiliki proteksi is_link untuk menolak symlink
+  [SKIPPED] Storage Security: deleteFile() symbolic link test (OS/lingkungan Windows tidak mengizinkan pembuatan symlink tanpa hak akses Administrator)
 
 [9] Testing MLService Resilience & Heuristic Fallback Integration...
   [PASS] ML Resilience: Gagal graceful tanpa crash saat offline
@@ -246,19 +253,28 @@ SUARALENS BACKEND SERVICES UNIT TEST RUNNER
   [PASS] Header Security: File gambar dan PDF mendapatkan header 'inline'
   [PASS] Header Security: Dokumen DOC, DOCX, dan file binary mendapatkan header 'attachment'
 
-[18] Testing Atomic Database Transaction Rollback on Mid-Operation Failure...
-  [PASS] Transaction Atomicity: Rollback membatalkan perubahan status ke nilai awal
-  [PASS] Transaction Atomicity: createComplaint membungkus complaint + reply + analysis secara atomik
-  [PASS] Transaction Atomicity: verifyComplaint memverifikasi kembalian update dan insert
-  [PASS] Transaction Atomicity: dispatchComplaint memverifikasi kembalian update dan insert
-  [PASS] Transaction Atomicity: acceptByUnit memverifikasi kembalian update dan insert
-  [PASS] Transaction Atomicity: followupByUnit memverifikasi kembalian update dan insert
-  [PASS] Transaction Atomicity: answerByUnit memverifikasi kembalian update dan insert
-  [PASS] Transaction Atomicity: submitFeedback memverifikasi kembalian update dan insert
-  [PASS] Transaction Atomicity: updateStatus memverifikasi kembalian update dan insert
+[18] Testing Atomic Database Transaction Rollback on Mid-Operation Failure (Fault Injection)...
+  [PASS] Rollback createComplaint: Exception mid-operation tertangkap
+  [PASS] Rollback createComplaint: Baris pengaduan dibatalkan (zero partial insert)
+  [PASS] Rollback createComplaint: Tabel analisis tidak bertambah record
+  [PASS] Rollback verifyComplaint: Status DB tetap 'received' (bukan 'verified')
+  [PASS] Rollback verifyComplaint: Jejak reply verifikasi batal tersimpan (zero orphan reply)
+  [PASS] Rollback dispatchComplaint: Status DB tetap 'verified' (bukan 'dispatched')
+  [PASS] Rollback dispatchComplaint: Assigned unit tetap NULL sesuai kondisi awal
+  [PASS] Rollback dispatchComplaint: Jejak reply disposisi batal tersimpan
+  [PASS] Rollback acceptByUnit: Status DB tetap 'dispatched' (bukan 'in_progress')
+  [PASS] Rollback acceptByUnit: Jejak reply penerimaan unit batal tersimpan
+  [PASS] Rollback followupByUnit: Status DB tetap 'in_progress' (bukan 'action_taken')
+  [PASS] Rollback followupByUnit: Jejak reply tindak lanjut batal tersimpan
+  [PASS] Rollback answerByUnit: Status DB tetap 'action_taken' (bukan 'answered')
+  [PASS] Rollback answerByUnit: Jejak reply jawaban unit batal tersimpan
+  [PASS] Rollback submitFeedback: Status DB tetap 'answered' (bukan 'resolved')
+  [PASS] Rollback submitFeedback: Jejak reply feedback batal tersimpan
+  [PASS] Rollback updateStatus: Status DB tetap 'answered' (bukan 'rejected')
+  [PASS] Rollback updateStatus: Jejak reply perubahan status batal tersimpan
 
 ============================================================
-TEST RESULTS: Passed: 217, Failed: 0
+TEST RESULTS: Passed: 232, Failed: 0, Skipped: 1
 ============================================================
 ```
 

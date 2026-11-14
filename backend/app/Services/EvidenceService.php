@@ -13,6 +13,18 @@ class EvidenceService
     public const MAX_FILE_SIZE_BYTES = 5242880; // 5 MB
 
     /**
+     * Batasan Proteksi ZIP Bomb pada Dokumen DOCX:
+     * - DOCX_MAX_TOTAL_UNCOMPRESSED_SIZE: 25 MB (5x dari batas upload 5MB, cukup untuk naskah skripsi/laporan ratusan halaman).
+     * - DOCX_MAX_ENTRY_UNCOMPRESSED_SIZE: 10 MB (dokumen XML Word document.xml atau media gambar jarang melebihi 10MB uncompressed).
+     * - DOCX_MAX_ENTRY_COUNT: 500 (struktur Word normal memuat 10-100 entri, batas 500 mencegah inode/descriptor exhaustion).
+     * - DOCX_MAX_COMPRESSION_RATIO: 100 (rasio dekompresi teks DEFLATE normal 5:1 hingga 30:1, rasio > 100:1 adalah indikator kuat bom arsip).
+     */
+    public const DOCX_MAX_TOTAL_UNCOMPRESSED_SIZE = 26214400; // 25 MB
+    public const DOCX_MAX_ENTRY_UNCOMPRESSED_SIZE = 10485760; // 10 MB
+    public const DOCX_MAX_ENTRY_COUNT = 500;                 // 500 entri file
+    public const DOCX_MAX_COMPRESSION_RATIO = 100;           // Rasio maksimum 100:1
+
+    /**
      * Pemetaan ekstensi ke MIME type yang sah (berdasarkan isi fisik file).
      */
     private const ALLOWED_MIME_TYPES = [
@@ -157,8 +169,17 @@ class EvidenceService
     }
 
     /**
-     * Validasi integritas struktur arsip dokumen DOCX (Office Open XML).
-     * Wajib berupa file zip yang memuat [Content_Types].xml dan word/document.xml.
+     * Validasi integritas struktur arsip dokumen DOCX (Office Open XML) dan proteksi ZIP Bomb:
+     * 1. Verifikasi kemampuan baca arsip via ZipArchive::RDONLY (fail-closed jika korup).
+     * 2. Batas jumlah entri arsip (maksimal 500 entri).
+     * 3. Pemeriksaan metadata setiap entri (tanpa mengekstrak ke filesystem & tanpa membaca payload ke RAM):
+     *    - Validasi nilai metadata (ukuran non-negatif).
+     *    - Tolak path traversal (../, ..\, /../, \..\) untuk mencegah Zip Slip.
+     *    - Tolak path absolut (dimulai dengan /, \, atau drive letter e.g. C:).
+     *    - Batas ukuran tidak terkompresi per entri (maksimal 10MB).
+     *    - Batas rasio kompresi per entri (maksimal 100:1 untuk entri > 1KB).
+     *    - Akumulasi total ukuran tidak terkompresi (maksimal 25MB).
+     * 4. Wajib memuat struktur wajib OpenXML Word: [Content_Types].xml dan word/document.xml.
      */
     public function isValidDocxArchive(string $filePath): bool
     {
@@ -172,8 +193,98 @@ class EvidenceService
             return false;
         }
 
-        $hasContentTypes = ($zip->locateName('[Content_Types].xml') !== false);
-        $hasWordDocument = ($zip->locateName('word/document.xml') !== false);
+        $numFiles = $zip->numFiles;
+        // Tolak arsip kosong atau melebihi batas jumlah entri
+        if ($numFiles <= 0 || $numFiles > self::DOCX_MAX_ENTRY_COUNT) {
+            $zip->close();
+            return false;
+        }
+
+        $hasContentTypes = false;
+        $hasWordDocument = false;
+        $totalUncompressed = 0;
+
+        for ($i = 0; $i < $numFiles; $i++) {
+            $stat = $zip->statIndex($i);
+            if ($stat === false || !isset($stat['name'], $stat['size'], $stat['comp_size'])) {
+                $zip->close();
+                return false;
+            }
+
+            $entryName = (string) $stat['name'];
+            $entrySize = (int) $stat['size'];
+            $compSize  = (int) $stat['comp_size'];
+
+            // 1. Validasi nilai metadata (harus bilangan non-negatif yang sah)
+            if ($entrySize < 0 || $compSize < 0) {
+                $zip->close();
+                return false;
+            }
+
+            // 2. Tolak null-byte pada nama entri
+            if (str_contains($entryName, "\0")) {
+                $zip->close();
+                return false;
+            }
+
+            // 3. Tolak path traversal (Zip Slip vulnerability)
+            if (
+                str_contains($entryName, '../') ||
+                str_contains($entryName, '..\\') ||
+                $entryName === '..' ||
+                str_ends_with($entryName, '/..') ||
+                str_ends_with($entryName, '\\..')
+            ) {
+                $zip->close();
+                return false;
+            }
+
+            // 4. Tolak path absolut (/..., \..., atau drive letter C:...)
+            if (
+                str_starts_with($entryName, '/') ||
+                str_starts_with($entryName, '\\') ||
+                preg_match('/^[a-zA-Z]:/i', $entryName)
+            ) {
+                $zip->close();
+                return false;
+            }
+
+            // 5. Batas ukuran uncompressed per entri (maksimal 10MB)
+            if ($entrySize > self::DOCX_MAX_ENTRY_UNCOMPRESSED_SIZE) {
+                $zip->close();
+                return false;
+            }
+
+            // 6. Batas rasio kompresi (ZIP bomb detection: rasio > 100:1)
+            // Hanya dievaluasi untuk ukuran > 1024 bytes untuk menghindari false positive pada entri sangat kecil
+            if ($entrySize > 1024) {
+                if ($compSize <= 0) {
+                    // Uncompressed size signifikan tetapi compressed size 0 = anomali / rasio tak terhingga
+                    $zip->close();
+                    return false;
+                }
+
+                $ratio = $entrySize / $compSize;
+                if ($ratio > self::DOCX_MAX_COMPRESSION_RATIO) {
+                    $zip->close();
+                    return false;
+                }
+            }
+
+            // 7. Akumulasi dan batas total uncompressed size (maksimal 25MB)
+            $totalUncompressed += $entrySize;
+            if ($totalUncompressed > self::DOCX_MAX_TOTAL_UNCOMPRESSED_SIZE) {
+                $zip->close();
+                return false;
+            }
+
+            if ($entryName === '[Content_Types].xml') {
+                $hasContentTypes = true;
+            }
+            if ($entryName === 'word/document.xml') {
+                $hasWordDocument = true;
+            }
+        }
 
         $zip->close();
 

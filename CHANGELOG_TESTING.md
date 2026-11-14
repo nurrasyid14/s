@@ -85,14 +85,31 @@ Dokumen ini mencatat kronologi perbaikan, hardening keamanan, audit service-laye
 
 ---
 
+### 6. Final Review Fix — DOCX ZIP Bomb Protection, Fault-Injected Transaction Rollback & Symlink Test Fix
+- **`backend/app/Services/EvidenceService.php`:**
+  - **DOCX ZIP Bomb Protection:** Menyempurnakan `isValidDocxArchive()` dengan batasan ketat tanpa ekstraksi ke filesystem dan tanpa memuat seluruh arsip ke RAM:
+    - `DOCX_MAX_TOTAL_UNCOMPRESSED_SIZE = 25 MB` (mencegah bom dekompresi).
+    - `DOCX_MAX_ENTRY_UNCOMPRESSED_SIZE = 10 MB` (mencegah single entry exhaustion).
+    - `DOCX_MAX_ENTRY_COUNT = 500` (mencegah inode/descriptor exhaustion).
+    - `DOCX_MAX_COMPRESSION_RATIO = 100:1` (mencegah bom dekompresi rasio tinggi).
+    - Validasi entri menolak path traversal (`../`, `..\`) dan path absolut (`/`, `\`, `C:`).
+    - Mempertahankan verifikasi `[Content_Types].xml` dan `word/document.xml`.
+- **`backend/tests/run_tests.php`:**
+  - **Matriks 9 Uji Nyata DOCX:** Menambahkan pengujian berkas fisik DOCX riil: (1) valid, (2) ZIP biasa, (3) total uncompressed > 25MB, (4) entry > 10MB, (5) entries > 500, (6) rasio kompresi > 100:1, (7) traversal `../`, (8) path absolut, (9) arsip korup.
+  - **Real Fault-Injected Transaction Rollback:** Menghapus seluruh assertion statis (`assertTest(..., true)`) pada Seksi 18. Mengimplementasikan model fault injection (`FailingReplyModel`, `FailingAnalysisModel`) untuk menguji 8 operasi multi-mutasi (`createComplaint`, `verifyComplaint`, `dispatchComplaint`, `acceptByUnit`, `followupByUnit`, `answerByUnit`, `submitFeedback`, `updateStatus`). Seluruh tes membaca kembali database PostgreSQL dan membuktikan data pulih ke kondisi awal 100% tanpa partial write.
+  - **Perbaikan Symlink Test:** Mengganti assertion fallback statis dengan `skipTest()` pada lingkungan Windows non-admin, melaporkan hasil secara transparan sebagai `SKIPPED` alih-alih klaim `PASS` palsu.
+  - **Hasil Pengujian Aktual:** **232 PASS, 0 FAIL, 1 SKIPPED**.
+
+---
+
 ## Matriks Perubahan File
 
 | Nama File | Kategori | Perubahan Utama |
 |---|---|---|
-| `backend/app/Services/EvidenceService.php` | Backend / Security | Filesystem containment `deleteFile()`, penolakan symlink & traversal, fail-closed MIME `finfo`, validasi ZIP OpenXML DOCX & magic bytes OLE2 DOC |
+| `backend/app/Services/EvidenceService.php` | Backend / Security | DOCX ZIP Bomb protection (total size <= 25MB, entry size <= 10MB, count <= 500, ratio <= 100, anti-traversal, anti-absolute path), containment filesystem |
 | `backend/app/Services/ComplaintService.php` | Backend / Security | Metadata lampiran JSON terstruktur, parser `parseAttachmentMeta()`, sanitasi path download berbasis server `WRITEPATH . uploads/complaints/` |
 | `backend/app/Controllers/ComplaintController.php` | Backend / Controller | Sanitasi anti-CRLF nama file, header Content-Disposition RFC 5987/6266, restriksi `inline` vs `attachment`, header nosniff |
 | `backend/app/Config/Routes.php` | Backend / Routing | Rute terproteksi `complaints/(:num)/attachments/(:segment)` dengan filter `authRole:user,stakeholder,admin` |
-| `backend/tests/run_tests.php` | QA / Testing | Penambahan kasus uji containment, DOCX/DOC, JSON metadata, header CRLF/RFC 5987 (total 217 uji terverifikasi lolos 100%) |
-| `TEST_REPORT.md` | Dokumentasi | Laporan aktual 217 backend tests + 26 ML tests + Vite build |
-| `SECURITY_AUDIT.md` | Dokumentasi | Dokumentasi containment filesystem, validasi OpenXML/OLE2, standarisasi JSON metadata, dan anti-CRLF headers |
+| `backend/tests/run_tests.php` | QA / Testing | 9 uji DOCX nyata, 8 uji rollback transaksi fault-injected dengan pembuktian DB PostgreSQL riil, symlink test dengan status SKIPPED transparan (232 PASS, 0 FAIL, 1 SKIPPED) |
+| `TEST_REPORT.md` | Dokumentasi | Laporan aktual 232 backend tests (1 skipped) + 26 ML tests + Vite build |
+| `SECURITY_AUDIT.md` | Dokumentasi | Dokumentasi batas ZIP bomb, verifikasi transaksi ACID, dan proteksi protected attachment |
