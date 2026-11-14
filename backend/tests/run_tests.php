@@ -1392,6 +1392,9 @@ echo "\n";
 // -----------------------------------------------------------------
 echo "[18] Testing Atomic Database Transaction Rollback on Mid-Operation Failure (Fault Injection)...\n";
 
+$expectedReplyExMsg = 'Fault Injection: Simulasi kegagalan database pada penyimpanan audit reply';
+$expectedAnalysisExMsg = 'Fault Injection: Simulasi kegagalan database pada penyimpanan analisis AI';
+
 if (!class_exists('FailingReplyModel')) {
     class FailingReplyModel extends \App\Models\ComplaintReplyModel
     {
@@ -1412,14 +1415,42 @@ if (!class_exists('FailingAnalysisModel')) {
     }
 }
 
-// 18.1 createComplaint Rollback: Kegagalan saat menyimpan analisis AI membatalkan baris pengaduan
+if (!class_exists('TrackingEvidenceService')) {
+    class TrackingEvidenceService extends \App\Services\EvidenceService
+    {
+        public array $storedPhysicalPaths = [];
+
+        public function storeAttachment(\CodeIgniter\HTTP\Files\UploadedFile $file, string $subfolder = 'complaints'): array
+        {
+            $result = parent::storeAttachment($file, $subfolder);
+            if (!empty($result['physical_path'])) {
+                $this->storedPhysicalPaths[] = $result['physical_path'];
+            }
+            return $result;
+        }
+    }
+}
+
+// 18.1 createComplaint Rollback: Kegagalan saat menyimpan analisis AI membatalkan baris pengaduan & membersihkan file fisik
 $initComplaintsCount = $db->table('complaints')->countAllResults();
 $initAnalysisCount   = $db->table('complaint_analysis')->countAllResults();
 $simDesc = 'Uji Rollback createComplaint ' . bin2hex(random_bytes(4));
 $simAttFile = createTestUploadedFile('fail_tx.jpg', $validJpgBytes, 'image/jpeg');
 
-$failAnalysisSvc = new \App\Services\ComplaintService(null, new FailingAnalysisModel());
-$createCompFailed = false;
+$trackingEvidenceSvc = new TrackingEvidenceService();
+$failAnalysisSvc = new \App\Services\ComplaintService(
+    null,
+    new FailingAnalysisModel(),
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    $trackingEvidenceSvc
+);
+
+$createExMsg = null;
 try {
     $failAnalysisSvc->createComplaint(
         ['type' => 'complaint', 'description' => $simDesc, 'category' => 'TIK/Sistem Informasi'],
@@ -1427,16 +1458,41 @@ try {
         ['attachments' => [$simAttFile]]
     );
 } catch (\Throwable $e) {
-    $createCompFailed = true;
+    $createExMsg = $e->getMessage();
 }
 
 $afterComplaintsCount = $db->table('complaints')->countAllResults();
 $afterAnalysisCount   = $db->table('complaint_analysis')->countAllResults();
 $foundComp = $db->table('complaints')->where('description', $simDesc)->get()->getRowArray();
 
-assertTest("Rollback createComplaint: Exception mid-operation tertangkap", $createCompFailed);
-assertTest("Rollback createComplaint: Baris pengaduan dibatalkan (zero partial insert)", $afterComplaintsCount === $initComplaintsCount && $foundComp === null);
-assertTest("Rollback createComplaint: Tabel analisis tidak bertambah record", $afterAnalysisCount === $initAnalysisCount);
+assertTest(
+    "Rollback createComplaint: Exception mid-operation tertangkap dengan pesan persis",
+    $createExMsg === $expectedAnalysisExMsg,
+    "Expected: '{$expectedAnalysisExMsg}', got: '{$createExMsg}'"
+);
+
+// Verifikasi pelacakan file fisik via TrackingEvidenceService
+$recordedFilesCount = count($trackingEvidenceSvc->storedPhysicalPaths);
+$trackedPhysicalPath = $trackingEvidenceSvc->storedPhysicalPaths[0] ?? null;
+assertTest(
+    "Rollback createComplaint: Tepat satu file fisik berhasil disimpan sebelum transaksi gagal",
+    $recordedFilesCount === 1 && is_string($trackedPhysicalPath) && $trackedPhysicalPath !== '',
+    "Jumlah file fisik tercatat: {$recordedFilesCount}"
+);
+assertTest(
+    "Rollback createComplaint: File fisik kompensasi terhapus tuntas dari disk (is_file false)",
+    $trackedPhysicalPath !== null && is_file($trackedPhysicalPath) === false,
+    "File masih ada di disk: {$trackedPhysicalPath}"
+);
+
+assertTest(
+    "Rollback createComplaint: Baris pengaduan dibatalkan (zero partial insert)",
+    $afterComplaintsCount === $initComplaintsCount && $foundComp === null
+);
+assertTest(
+    "Rollback createComplaint: Tabel analisis tidak bertambah record",
+    $afterAnalysisCount === $initAnalysisCount
+);
 
 // Siapkan satu tiket pengujian khusus alur mutasi status (18.2 - 18.8)
 $baseTxComp = $complaintService->createComplaint([
@@ -1450,15 +1506,19 @@ $failingReplySvc = new \App\Services\ComplaintService(null, null, null, new Fail
 
 // 18.2 verifyComplaint Rollback: Update status berhasil, tetapi gagal saat mencatat reply verifikasi
 $repCountInit = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
-$threwVerify = false;
+$caughtVerifyEx = null;
 try {
     $failingReplySvc->verifyComplaint($baseTxId, true, 'Verifikasi gagal reply', $adminUser);
 } catch (\Throwable $e) {
-    $threwVerify = true;
+    $caughtVerifyEx = $e->getMessage();
 }
 $recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
 $recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
-assertTest("Rollback verifyComplaint: Status DB tetap 'received' (bukan 'verified')", $threwVerify && $recheckedRow['status'] === 'received');
+assertTest(
+    "Rollback verifyComplaint: Status DB tetap 'received' (bukan 'verified')",
+    ($caughtVerifyEx === $expectedReplyExMsg) && $recheckedRow['status'] === 'received',
+    "Exception mismatch or status changed. Exception: '{$caughtVerifyEx}'"
+);
 assertTest("Rollback verifyComplaint: Jejak reply verifikasi batal tersimpan (zero orphan reply)", $recheckedReps === $repCountInit);
 
 // 18.3 dispatchComplaint Rollback: Update status & unit berhasil, tetapi gagal saat mencatat reply disposisi
@@ -1467,15 +1527,19 @@ $initRowBeforeDispatch = $db->table('complaints')->where('id', $baseTxId)->get()
 $initUnitBeforeDispatch = $initRowBeforeDispatch['assigned_unit'];
 $repCountBeforeDispatch = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
 
-$threwDispatch = false;
+$caughtDispatchEx = null;
 try {
     $failingReplySvc->dispatchComplaint($baseTxId, 'Sarana Prasarana dan Layanan Umum', 'Pak Budi', 'Disposisi gagal reply', null, $adminUser);
 } catch (\Throwable $e) {
-    $threwDispatch = true;
+    $caughtDispatchEx = $e->getMessage();
 }
 $recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
 $recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
-assertTest("Rollback dispatchComplaint: Status DB tetap 'verified' (bukan 'dispatched')", $threwDispatch && $recheckedRow['status'] === 'verified');
+assertTest(
+    "Rollback dispatchComplaint: Status DB tetap 'verified' (bukan 'dispatched')",
+    ($caughtDispatchEx === $expectedReplyExMsg) && $recheckedRow['status'] === 'verified',
+    "Exception mismatch or status changed. Exception: '{$caughtDispatchEx}'"
+);
 assertTest("Rollback dispatchComplaint: Assigned unit tetap NULL sesuai kondisi awal", $recheckedRow['assigned_unit'] === $initUnitBeforeDispatch);
 assertTest("Rollback dispatchComplaint: Jejak reply disposisi batal tersimpan", $recheckedReps === $repCountBeforeDispatch);
 
@@ -1483,74 +1547,94 @@ assertTest("Rollback dispatchComplaint: Jejak reply disposisi batal tersimpan", 
 $complaintService->dispatchComplaint($baseTxId, 'Sarana Prasarana dan Layanan Umum', 'Pak Budi', 'Disposisi sah', null, $adminUser);
 $repCountBeforeAccept = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
 
-$threwAccept = false;
+$caughtAcceptEx = null;
 try {
     $failingReplySvc->acceptByUnit($baseTxId, 'Pak Budi', 'Catatan terima tugas gagal reply', $sarprasStakeholder);
 } catch (\Throwable $e) {
-    $threwAccept = true;
+    $caughtAcceptEx = $e->getMessage();
 }
 $recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
 $recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
-assertTest("Rollback acceptByUnit: Status DB tetap 'dispatched' (bukan 'in_progress')", $threwAccept && $recheckedRow['status'] === 'dispatched');
+assertTest(
+    "Rollback acceptByUnit: Status DB tetap 'dispatched' (bukan 'in_progress')",
+    ($caughtAcceptEx === $expectedReplyExMsg) && $recheckedRow['status'] === 'dispatched',
+    "Exception mismatch or status changed. Exception: '{$caughtAcceptEx}'"
+);
 assertTest("Rollback acceptByUnit: Jejak reply penerimaan unit batal tersimpan", $recheckedReps === $repCountBeforeAccept);
 
 // 18.5 followupByUnit Rollback: Update status berhasil, tetapi gagal saat mencatat reply tindak lanjut
 $complaintService->acceptByUnit($baseTxId, 'Pak Budi', 'Penerimaan sah', $sarprasStakeholder);
 $repCountBeforeFollowup = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
 
-$threwFollowup = false;
+$caughtFollowupEx = null;
 try {
     $failingReplySvc->followupByUnit($baseTxId, 'Perbaikan', 'Tindak lanjut lapangan gagal reply', 'Joko Teknisi', null, $sarprasStakeholder);
 } catch (\Throwable $e) {
-    $threwFollowup = true;
+    $caughtFollowupEx = $e->getMessage();
 }
 $recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
 $recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
-assertTest("Rollback followupByUnit: Status DB tetap 'in_progress' (bukan 'action_taken')", $threwFollowup && $recheckedRow['status'] === 'in_progress');
+assertTest(
+    "Rollback followupByUnit: Status DB tetap 'in_progress' (bukan 'action_taken')",
+    ($caughtFollowupEx === $expectedReplyExMsg) && $recheckedRow['status'] === 'in_progress',
+    "Exception mismatch or status changed. Exception: '{$caughtFollowupEx}'"
+);
 assertTest("Rollback followupByUnit: Jejak reply tindak lanjut batal tersimpan", $recheckedReps === $repCountBeforeFollowup);
 
 // 18.6 answerByUnit Rollback: Update status berhasil, tetapi gagal saat mencatat reply jawaban resmi
 $complaintService->followupByUnit($baseTxId, 'Perbaikan', 'Tindak lanjut sah', 'Joko Teknisi', null, $sarprasStakeholder);
 $repCountBeforeAnswer = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
 
-$threwAnswer = false;
+$caughtAnswerEx = null;
 try {
     $failingReplySvc->answerByUnit($baseTxId, 'Jawaban resmi unit gagal reply', 'Kepala Sarpras', [], $sarprasStakeholder);
 } catch (\Throwable $e) {
-    $threwAnswer = true;
+    $caughtAnswerEx = $e->getMessage();
 }
 $recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
 $recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
-assertTest("Rollback answerByUnit: Status DB tetap 'action_taken' (bukan 'answered')", $threwAnswer && $recheckedRow['status'] === 'action_taken');
+assertTest(
+    "Rollback answerByUnit: Status DB tetap 'action_taken' (bukan 'answered')",
+    ($caughtAnswerEx === $expectedReplyExMsg) && $recheckedRow['status'] === 'action_taken',
+    "Exception mismatch or status changed. Exception: '{$caughtAnswerEx}'"
+);
 assertTest("Rollback answerByUnit: Jejak reply jawaban unit batal tersimpan", $recheckedReps === $repCountBeforeAnswer);
 
 // 18.7 submitFeedback Rollback: Update status berhasil, tetapi gagal saat mencatat reply feedback
 $complaintService->answerByUnit($baseTxId, 'Jawaban resmi sah', 'Kepala Sarpras', [], $sarprasStakeholder);
 $repCountBeforeFeedback = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
 
-$threwFeedback = false;
+$caughtFeedbackEx = null;
 try {
     $failingReplySvc->submitFeedback($baseTxId, ['rating' => 5, 'aspect_speed' => 5, 'aspect_clarity' => 5, 'aspect_solution' => 5, 'comment' => 'Puas'], $regularUser);
 } catch (\Throwable $e) {
-    $threwFeedback = true;
+    $caughtFeedbackEx = $e->getMessage();
 }
 $recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
 $recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
-assertTest("Rollback submitFeedback: Status DB tetap 'answered' (bukan 'resolved')", $threwFeedback && $recheckedRow['status'] === 'answered');
+assertTest(
+    "Rollback submitFeedback: Status DB tetap 'answered' (bukan 'resolved')",
+    ($caughtFeedbackEx === $expectedReplyExMsg) && $recheckedRow['status'] === 'answered',
+    "Exception mismatch or status changed. Exception: '{$caughtFeedbackEx}'"
+);
 assertTest("Rollback submitFeedback: Jejak reply feedback batal tersimpan", $recheckedReps === $repCountBeforeFeedback);
 
 // 18.8 updateStatus Rollback (Multi-Mutation Path): Update status berhasil, tetapi gagal saat mencatat reply riwayat
 $repCountBeforeUpdateStatus = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
 
-$threwUpdateStatus = false;
+$caughtUpdateStatusEx = null;
 try {
     $failingReplySvc->updateStatus($baseTxId, 'rejected', 'Alasan penolakan gagal reply', null, $adminUser);
 } catch (\Throwable $e) {
-    $threwUpdateStatus = true;
+    $caughtUpdateStatusEx = $e->getMessage();
 }
 $recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
 $recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
-assertTest("Rollback updateStatus: Status DB tetap 'answered' (bukan 'rejected')", $threwUpdateStatus && $recheckedRow['status'] === 'answered');
+assertTest(
+    "Rollback updateStatus: Status DB tetap 'answered' (bukan 'rejected')",
+    ($caughtUpdateStatusEx === $expectedReplyExMsg) && $recheckedRow['status'] === 'answered',
+    "Exception mismatch or status changed. Exception: '{$caughtUpdateStatusEx}'"
+);
 assertTest("Rollback updateStatus: Jejak reply perubahan status batal tersimpan", $recheckedReps === $repCountBeforeUpdateStatus);
 
 // Cleanup atomicity fixture
