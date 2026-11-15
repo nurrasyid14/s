@@ -69,4 +69,9 @@ $routes->group('api', function ($routes) {
         $routes->get('urgent', 'AnalyticsController::urgent');
         $routes->get('ai-summary', 'AnalyticsController::aiSummary');
     });
+
+    // Tangani preflight OPTIONS untuk seluruh API group agar CORS lolos 204
+    $routes->options('(:any)', static function () {
+        return service('response')->setStatusCode(204);
+    });
 });
