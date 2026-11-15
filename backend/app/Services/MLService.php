@@ -7,13 +7,15 @@ use Throwable;
 class MLService
 {
     private string $baseUrl;
+    private ?string $apiKey;
     private int $analyzeTimeout;
     private int $summaryTimeout;
 
-    public function __construct(?string $baseUrl = null, int $analyzeTimeout = 90, int $summaryTimeout = 45)
+    public function __construct(?string $baseUrl = null, ?string $apiKey = null, int $analyzeTimeout = 90, int $summaryTimeout = 45)
     {
         $url = $baseUrl ?? env('ML_SERVICE_URL', getenv('ML_SERVICE_URL') ?: 'http://127.0.0.1:8000');
         $this->baseUrl = rtrim((string) $url, '/');
+        $this->apiKey = $apiKey ?? env('ML_API_KEY', getenv('ML_API_KEY') ?: null);
         $this->analyzeTimeout = $analyzeTimeout;
         $this->summaryTimeout = $summaryTimeout;
     }
@@ -52,11 +54,16 @@ class MLService
         for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
             try {
                 $client = \Config\Services::curlrequest();
+                $headers = [
+                    'Content-Type' => 'application/json',
+                    'Accept'       => 'application/json',
+                ];
+                if (!empty($this->apiKey)) {
+                    $headers['X-API-Key'] = $this->apiKey;
+                }
+
                 $response = $client->post($endpoint, [
-                    'headers' => [
-                        'Content-Type' => 'application/json',
-                        'Accept'       => 'application/json',
-                    ],
+                    'headers' => $headers,
                     'body'    => $payload,
                     'timeout' => $this->analyzeTimeout,
                     'http_errors' => false,
@@ -121,11 +128,16 @@ class MLService
 
         try {
             $client = \Config\Services::curlrequest();
+            $headers = [
+                'Content-Type' => 'application/json',
+                'Accept'       => 'application/json',
+            ];
+            if (!empty($this->apiKey)) {
+                $headers['X-API-Key'] = $this->apiKey;
+            }
+
             $response = $client->post($endpoint, [
-                'headers' => [
-                    'Content-Type' => 'application/json',
-                    'Accept'       => 'application/json',
-                ],
+                'headers' => $headers,
                 'body'    => $payload,
                 'timeout' => $this->summaryTimeout,
                 'http_errors' => false,

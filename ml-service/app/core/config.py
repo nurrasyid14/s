@@ -40,7 +40,8 @@ class Settings:
     DEVICE: int = int(os.getenv("DEVICE", "-1"))  # -1 for CPU, 0 for GPU
     MAX_TEXT_LENGTH: int = int(os.getenv("MAX_TEXT_LENGTH", "1024"))
 
-    # ── Service Info ──────────────────────────────────────────────────────────
+    # ── Service Info & Security ───────────────────────────────────────────────
+    ML_API_KEY: str = os.getenv("ML_API_KEY", "").strip()
     SERVICE_NAME: str = "SuaraLens ML Service"
     SERVICE_VERSION: str = "2.0.0"
 

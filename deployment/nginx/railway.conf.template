@@ -1,0 +1,78 @@
+# ==============================================================================
+# SuaraLens Railway Unified Nginx Configuration Template
+# ==============================================================================
+
+map $http_x_forwarded_proto $fastcgi_https {
+    default off;
+    https on;
+}
+
+server {
+    listen ${PORT};
+    server_name _;
+
+    root /var/www/html/public;
+    index index.php index.html;
+
+    client_max_body_size 20M;
+    server_tokens off;
+
+    # --------------------------------------------------------------------------
+    # Security Headers
+    # --------------------------------------------------------------------------
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+    add_header Content-Security-Policy "default-src 'self'; frame-ancestors 'none'; object-src 'none';" always;
+
+    # --------------------------------------------------------------------------
+    # Routing & FastCGI PHP-FPM
+    # --------------------------------------------------------------------------
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_index index.php;
+
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME /var/www/html/public$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+        fastcgi_param CI_ENVIRONMENT production;
+
+        # Penerusan Header Proxy & Cloudflare Terpercaya
+        fastcgi_param HTTPS $fastcgi_https;
+        fastcgi_param HTTP_X_FORWARDED_PROTO $http_x_forwarded_proto;
+        fastcgi_param HTTP_X_FORWARDED_FOR $proxy_add_x_forwarded_for;
+        fastcgi_param HTTP_CF_CONNECTING_IP $http_cf_connecting_ip;
+
+        fastcgi_buffer_size 32k;
+        fastcgi_buffers 16 16k;
+        fastcgi_busy_buffers_size 64k;
+        fastcgi_temp_file_write_size 64k;
+        fastcgi_read_timeout 120s;
+        fastcgi_connect_timeout 10s;
+        fastcgi_send_timeout 60s;
+    }
+
+    # --------------------------------------------------------------------------
+    # Proteksi File Sensitif & Tersembunyi
+    # --------------------------------------------------------------------------
+    location ~* /(app|system|writable|vendor|tests)/ {
+        deny all;
+        return 404;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    access_log /dev/stdout combined;
+    error_log /dev/stderr warn;
+}
+
