@@ -8,6 +8,7 @@ use App\Models\ComplaintReplyModel;
 use App\Services\ComplaintService;
 use App\Services\MLService;
 use App\Services\EvidenceService;
+use App\Exceptions\ServiceBusyException;
 use CodeIgniter\RESTful\ResourceController;
 use InvalidArgumentException;
 use RuntimeException;
@@ -155,6 +156,11 @@ class ComplaintController extends ResourceController
             $files = $this->request->getFiles();
             $result = $this->complaintService->createComplaint($data, $user, $files);
             return $this->respondCreated($result);
+        } catch (ServiceBusyException $e) {
+            return $this->respond([
+                'status'  => false,
+                'message' => $e->getMessage(),
+            ], 503);
         } catch (InvalidArgumentException $e) {
             return $this->respond(['status' => false, 'message' => $e->getMessage()], 400);
         } catch (Throwable $e) {
@@ -489,6 +495,11 @@ class ComplaintController extends ResourceController
         try {
             $result = $this->complaintService->reanalyzeComplaint((int) $id, $user);
             return $this->respond($result);
+        } catch (ServiceBusyException $e) {
+            return $this->respond([
+                'status'  => false,
+                'message' => $e->getMessage(),
+            ], 503);
         } catch (InvalidArgumentException $e) {
             return $this->respond(['status' => false, 'message' => $e->getMessage()], 404);
         } catch (RuntimeException $e) {

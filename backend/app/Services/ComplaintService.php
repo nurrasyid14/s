@@ -6,6 +6,7 @@ use App\Models\ComplaintModel;
 use App\Models\ComplaintAnalysisModel;
 use App\Models\ComplaintReviewModel;
 use App\Models\ComplaintReplyModel;
+use App\Exceptions\ServiceBusyException;
 use DateTimeImmutable;
 use RuntimeException;
 use InvalidArgumentException;
@@ -62,8 +63,10 @@ class ComplaintService
             throw new InvalidArgumentException('Tipe pengajuan dan deskripsi wajib diisi.');
         }
 
-        // 1. Hubungi ML Service (FastAPI)
-        $mlResult = $this->mlService->analyzeComplaint(0, $description, $type);
+        // 1. Hubungi ML Service (FastAPI) dengan bounded file-lock mutex (concurrency 1)
+        $mlResult = $this->executeWithInferenceLock(function () use ($description, $type) {
+            return $this->mlService->analyzeComplaint(0, $description, $type);
+        });
 
         $analysis = null;
         $inferenceTime = $mlResult['inference_time_ms'];
@@ -697,12 +700,14 @@ class ComplaintService
         // Validasi otoritas (Admin & Stakeholder unit terkait)
         $this->assertComplaintAccess($complaint, $user, 'reanalyze');
 
-        // Jalankan inferensi ML Service
-        $mlRes = $this->mlService->analyzeComplaint(
-            (int) $complaint['id'],
-            (string) $complaint['description'],
-            (string) $complaint['type']
-        );
+        // Jalankan inferensi ML Service dengan bounded file-lock mutex (concurrency 1)
+        $mlRes = $this->executeWithInferenceLock(function () use ($complaint) {
+            return $this->mlService->analyzeComplaint(
+                (int) $complaint['id'],
+                (string) $complaint['description'],
+                (string) $complaint['type']
+            );
+        });
 
         $isFallback = false;
         $inferenceTime = $mlRes['inference_time_ms'];
@@ -1283,5 +1288,63 @@ class ComplaintService
         }
 
         return [$after, ''];
+    }
+
+    /**
+     * Menjalankan callable inferensi AI di dalam critical section mutex terbatas (bounded flock).
+     * Mencegah inferensi paralel yang dapat membebani VRAM dan RAM host secara bersamaan.
+     *
+     * @param callable $callback
+     * @param int $maxWaitSeconds Batas waktu antrean maksimal (default 30 detik)
+     * @return mixed
+     * @throws ServiceBusyException Jika antrean melebihi batas waktu
+     */
+    private function executeWithInferenceLock(callable $callback, int $maxWaitSeconds = 30)
+    {
+        $lockDir = WRITEPATH . 'locks';
+        if (!is_dir($lockDir)) {
+            @mkdir($lockDir, 0775, true);
+        }
+
+        $lockFile = $lockDir . DIRECTORY_SEPARATOR . 'ml_inference.lock';
+        $fp = @fopen($lockFile, 'c+');
+
+        if (!$fp) {
+            log_message('error', 'Gagal membuka berkas mutex inferensi AI: ' . $lockFile);
+            throw new ServiceBusyException('Layanan analisis pengaduan sedang sibuk, silakan coba beberapa saat lagi.');
+        }
+
+        $startTime = microtime(true);
+        $acquired = false;
+
+        try {
+            while ((microtime(true) - $startTime) < $maxWaitSeconds) {
+                if (flock($fp, LOCK_EX | LOCK_NB)) {
+                    $acquired = true;
+                    break;
+                }
+                // Tidur sejenak 100ms untuk menghindari busy-waiting
+                usleep(100000);
+            }
+
+            if (!$acquired) {
+                log_message('warning', sprintf(
+                    'AI inference lock timeout setelah %.2f detik (batas %d detik).',
+                    microtime(true) - $startTime,
+                    $maxWaitSeconds
+                ));
+                throw new ServiceBusyException('Layanan analisis pengaduan sedang sibuk memproses antrean lain. Silakan coba kembali dalam beberapa saat.');
+            }
+
+            // Eksekusi critical section inferensi AI
+            return $callback();
+        } finally {
+            if ($acquired) {
+                @flock($fp, LOCK_UN);
+            }
+            if (is_resource($fp)) {
+                @fclose($fp);
+            }
+        }
     }
 }
