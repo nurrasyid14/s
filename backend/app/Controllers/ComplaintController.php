@@ -8,6 +8,7 @@ use App\Models\ComplaintReplyModel;
 use App\Services\ComplaintService;
 use App\Services\MLService;
 use App\Services\EvidenceService;
+use App\Exceptions\ServiceBusyException;
 use CodeIgniter\RESTful\ResourceController;
 use InvalidArgumentException;
 use RuntimeException;
@@ -155,6 +156,11 @@ class ComplaintController extends ResourceController
             $files = $this->request->getFiles();
             $result = $this->complaintService->createComplaint($data, $user, $files);
             return $this->respondCreated($result);
+        } catch (ServiceBusyException $e) {
+            return $this->respond([
+                'status'  => false,
+                'message' => $e->getMessage(),
+            ], 503);
         } catch (InvalidArgumentException $e) {
             return $this->respond(['status' => false, 'message' => $e->getMessage()], 400);
         } catch (Throwable $e) {
@@ -489,6 +495,11 @@ class ComplaintController extends ResourceController
         try {
             $result = $this->complaintService->reanalyzeComplaint((int) $id, $user);
             return $this->respond($result);
+        } catch (ServiceBusyException $e) {
+            return $this->respond([
+                'status'  => false,
+                'message' => $e->getMessage(),
+            ], 503);
         } catch (InvalidArgumentException $e) {
             return $this->respond(['status' => false, 'message' => $e->getMessage()], 404);
         } catch (RuntimeException $e) {
@@ -539,6 +550,65 @@ class ComplaintController extends ResourceController
     }
 
     /**
+     * GET /api/complaints/{id}/attachments/{filename}
+     * Mengunduh/melihat file lampiran dengan proteksi otorisasi dan anti-traversal.
+     */
+    public function attachment($id = null, $filename = null)
+    {
+        if ($id === null || empty($filename)) {
+            return $this->respond(['status' => false, 'message' => 'ID pengaduan dan nama file wajib diisi.'], 400);
+        }
+
+        $user = $this->authenticatedUser();
+        if (!$user) {
+            return $this->respond(['status' => false, 'message' => 'Autentikasi diperlukan.'], 401);
+        }
+
+        try {
+            $att = $this->complaintService->getComplaintAttachment((int) $id, (string) $filename, $user);
+            $fileData = file_get_contents($att['physical_path']);
+            if ($fileData === false) {
+                return $this->respond(['status' => false, 'message' => 'Gagal membaca file fisik.'], 500);
+            }
+
+            // Sanitasi nama file untuk Content-Disposition (cegah CRLF injection / HTTP Response Splitting)
+            $rawName = (string) ($att['original_name'] ?? 'lampiran');
+            // Hapus karakter CRLF dan null-byte
+            $cleanName = str_replace(["\r", "\n", "\0"], '', $rawName);
+            $cleanName = trim($cleanName) !== '' ? trim($cleanName) : 'lampiran';
+
+            // ASCII fallback untuk atribut filename="..."
+            $asciiFallback = preg_replace('/[^a-zA-Z0-9._-]/', '_', $cleanName) ?: 'lampiran';
+            // RFC 5987 / RFC 6266 UTF-8 encoded untuk filename*=UTF-8''...
+            $rfc5987Encoded = rawurlencode($cleanName);
+
+            // Tentukan disposition: hanya gambar aman dan PDF yang diizinkan inline, dokumen lain dipaksa download (attachment)
+            $mime = strtolower((string) ($att['file_type'] ?? ''));
+            $inlineTypes = ['image/jpeg', 'image/png', 'image/pjpeg', 'application/pdf'];
+            $disposition = in_array($mime, $inlineTypes, true) ? 'inline' : 'attachment';
+
+            $contentDisposition = sprintf(
+                '%s; filename="%s"; filename*=UTF-8\'\'%s',
+                $disposition,
+                $asciiFallback,
+                $rfc5987Encoded
+            );
+
+            return $this->response
+                ->setHeader('Content-Type', $att['file_type'])
+                ->setHeader('Content-Length', (string) $att['file_size'])
+                ->setHeader('Content-Disposition', $contentDisposition)
+                ->setHeader('X-Content-Type-Options', 'nosniff')
+                ->setBody($fileData);
+        } catch (InvalidArgumentException $e) {
+            return $this->respond(['status' => false, 'message' => $e->getMessage()], 403);
+        } catch (Throwable $e) {
+            log_message('error', 'Gagal memuat lampiran: ' . $e->getMessage());
+            return $this->respond(['status' => false, 'message' => 'File lampiran tidak dapat diakses.'], 404);
+        }
+    }
+
+    /**
      * Query dasar join complaints + latest analysis + users.
      */
     private function complaintQuery()
@@ -560,7 +630,7 @@ class ComplaintController extends ResourceController
                 'u.user_role AS sender_role',
                 'c.assigned_unit AS unit',
             ])
-            ->select('(ca.urgency_score * 10) AS urgency_score', false)
+            ->select('ca.urgency_score', false)
             ->select('CASE WHEN c.is_anonymous THEN NULL ELSE u.name END AS sender_name', false)
             ->join($latest, 'latest_analysis.complaint_id = c.id', 'left', false)
             ->join('complaint_analysis ca', 'ca.id = latest_analysis.latest_id', 'left')

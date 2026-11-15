@@ -6,6 +6,7 @@ use App\Models\ComplaintModel;
 use App\Models\ComplaintAnalysisModel;
 use App\Models\ComplaintReviewModel;
 use App\Models\ComplaintReplyModel;
+use App\Exceptions\ServiceBusyException;
 use DateTimeImmutable;
 use RuntimeException;
 use InvalidArgumentException;
@@ -62,8 +63,10 @@ class ComplaintService
             throw new InvalidArgumentException('Tipe pengajuan dan deskripsi wajib diisi.');
         }
 
-        // 1. Hubungi ML Service (FastAPI)
-        $mlResult = $this->mlService->analyzeComplaint(0, $description, $type);
+        // 1. Hubungi ML Service (FastAPI) dengan bounded file-lock mutex (concurrency 1)
+        $mlResult = $this->executeWithInferenceLock(function () use ($description, $type) {
+            return $this->mlService->analyzeComplaint(0, $description, $type);
+        });
 
         $analysis = null;
         $inferenceTime = $mlResult['inference_time_ms'];
@@ -84,12 +87,44 @@ class ComplaintService
         // Ticket ID generator yang unik
         $ticketId = 'SL-' . date('YmdHis') . strtoupper(substr(bin2hex(random_bytes(3)), 0, 4));
 
-        // Transaksi database multi-tabel (Atomik)
+        // 2. Ekstraksi dan Validasi Seluruh Lampiran Fisik Terlebih Dahulu (Fail-Fast)
+        $validAttachmentFiles = [];
+        if (!empty($files['attachments'])) {
+            $rawList = is_array($files['attachments']) ? $files['attachments'] : [$files['attachments']];
+            foreach ($rawList as $f) {
+                if ($f instanceof \CodeIgniter\HTTP\Files\UploadedFile && $f->getError() !== UPLOAD_ERR_NO_FILE) {
+                    $val = $this->evidenceService->validateFile($f);
+                    if (!$val['valid']) {
+                        throw new InvalidArgumentException('Validasi lampiran gagal: ' . $val['error']);
+                    }
+                    $validAttachmentFiles[] = $f;
+                }
+            }
+        }
+
+        // 3. Simpan File Fisik ke Storage Aman (dengan pelacakan untuk kompensasi)
+        $storedAttachments = [];
+        $storedPathsToPurge = [];
+        if (!empty($validAttachmentFiles)) {
+            try {
+                foreach ($validAttachmentFiles as $f) {
+                    $stored = $this->evidenceService->storeAttachment($f, 'complaints');
+                    $storedAttachments[] = $stored;
+                    $storedPathsToPurge[] = $stored['physical_path'] ?? (WRITEPATH . $stored['file_path']);
+                }
+            } catch (Throwable $fileErr) {
+                // Kompensasi: Bersihkan file yang sudah terlanjur disimpan jika salah satu gagal
+                $this->evidenceService->purgeFiles($storedPathsToPurge);
+                throw new RuntimeException('Gagal memproses penyimpanan lampiran: ' . $fileErr->getMessage(), 0, $fileErr);
+            }
+        }
+
+        // 4. Transaksi database multi-tabel (Atomik)
         $db = \Config\Database::connect();
         $db->transBegin();
 
         try {
-            // 2. Simpan tiket pengaduan
+            // Simpan tiket pengaduan
             $complaintId = $this->complaintModel->insert([
                 'ticket_id'     => $ticketId,
                 'user_id'       => (int) $authenticatedUser['id'],
@@ -104,32 +139,27 @@ class ComplaintService
                 throw new RuntimeException('Gagal menyimpan data pengaduan: ' . json_encode($this->complaintModel->errors()));
             }
 
-            // Simpan lampiran fisik jika ada
-            if (!empty($files['attachments'])) {
-                $rawList = is_array($files['attachments']) ? $files['attachments'] : [$files['attachments']];
-                foreach ($rawList as $f) {
-                    if ($f instanceof \CodeIgniter\HTTP\Files\UploadedFile && $f->isValid() && !$f->hasMoved()) {
-                        try {
-                            $stored = $this->evidenceService->storeAttachment($f, 'complaints');
-                            $this->replyModel->insert([
-                                'complaint_id' => $complaintId,
-                                'user_id'      => (int) $authenticatedUser['id'],
-                                'reply'        => sprintf(
-                                    '[Lampiran Bukti] Nama: %s | Path: %s | Size: %d | Type: %s',
-                                    $stored['original_name'],
-                                    $stored['file_path'],
-                                    $stored['file_size'],
-                                    $stored['file_type']
-                                ),
-                            ]);
-                        } catch (Throwable $attErr) {
-                            log_message('warning', 'Gagal menyimpan lampiran pengaduan: ' . $attErr->getMessage());
-                        }
-                    }
+            // Simpan referensi lampiran ke tabel riwayat dalam format JSON terstruktur untuk mencegah delimiter injection
+            foreach ($storedAttachments as $stored) {
+                $metaPayload = [
+                    'name' => (string) ($stored['original_name'] ?? 'lampiran'),
+                    'path' => (string) ($stored['file_path'] ?? ''),
+                    'size' => (int) ($stored['file_size'] ?? 0),
+                    'type' => (string) ($stored['file_type'] ?? 'application/octet-stream'),
+                ];
+
+                $replyId = $this->replyModel->insert([
+                    'complaint_id' => $complaintId,
+                    'user_id'      => (int) $authenticatedUser['id'],
+                    'reply'        => '[Lampiran Bukti] ' . json_encode($metaPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                ]);
+
+                if (!$replyId) {
+                    throw new RuntimeException('Gagal mencatat referensi lampiran di database.');
                 }
             }
 
-            // 3. Simpan hasil analisis AI / Heuristik
+            // Simpan hasil analisis AI / Heuristik
             $analysisData = [
                 'complaint_id'        => (int) $complaintId,
                 'category'            => $analysis['category'] ?? null,
@@ -155,7 +185,7 @@ class ComplaintService
                 throw new RuntimeException('Gagal menyimpan hasil analisis pengaduan: ' . json_encode($this->analysisModel->errors()));
             }
 
-            // 4. Buat antrean peninjauan Human-in-the-Loop jika disyaratkan
+            // Buat antrean peninjauan Human-in-the-Loop jika disyaratkan
             $reviewId = null;
             if (!empty($analysis['requires_review'])) {
                 $reviewId = $this->reviewModel->insert([
@@ -170,7 +200,9 @@ class ComplaintService
             $db->transCommit();
         } catch (Throwable $e) {
             $db->transRollback();
-            log_message('error', 'Transaksi createComplaint gagal: ' . $e->getMessage());
+            // Kompensasi: Hapus file fisik yang terlanjur disimpan agar tidak menjadi file orphan di server
+            $this->evidenceService->purgeFiles($storedPathsToPurge);
+            log_message('error', 'Transaksi createComplaint gagal dan file lampiran dibersihkan: ' . $e->getMessage());
             throw $e;
         }
 
@@ -668,12 +700,14 @@ class ComplaintService
         // Validasi otoritas (Admin & Stakeholder unit terkait)
         $this->assertComplaintAccess($complaint, $user, 'reanalyze');
 
-        // Jalankan inferensi ML Service
-        $mlRes = $this->mlService->analyzeComplaint(
-            (int) $complaint['id'],
-            (string) $complaint['description'],
-            (string) $complaint['type']
-        );
+        // Jalankan inferensi ML Service dengan bounded file-lock mutex (concurrency 1)
+        $mlRes = $this->executeWithInferenceLock(function () use ($complaint) {
+            return $this->mlService->analyzeComplaint(
+                (int) $complaint['id'],
+                (string) $complaint['description'],
+                (string) $complaint['type']
+            );
+        });
 
         $isFallback = false;
         $inferenceTime = $mlRes['inference_time_ms'];
@@ -908,6 +942,112 @@ class ComplaintService
     }
 
     /**
+     * Parse metadata lampiran dari teks reply (mendukung format JSON terstruktur modern dan delimiter legacy).
+     */
+    public function parseAttachmentMeta(string $replyText): ?array
+    {
+        if (!str_starts_with($replyText, '[Lampiran Bukti]')) {
+            return null;
+        }
+
+        $body = trim(substr($replyText, strlen('[Lampiran Bukti]')));
+        if ($body === '') {
+            return null;
+        }
+
+        // 1. Coba parsing format JSON terstruktur
+        if (str_starts_with($body, '{') && str_ends_with($body, '}')) {
+            $data = json_decode($body, true);
+            if (is_array($data) && !empty($data['path'])) {
+                return [
+                    'original_name' => (string) ($data['name'] ?? basename((string) $data['path'])),
+                    'file_path'     => (string) $data['path'],
+                    'file_size'     => (int) ($data['size'] ?? 0),
+                    'file_type'     => (string) ($data['type'] ?? 'application/octet-stream'),
+                ];
+            }
+        }
+
+        // 2. Fallback format delimiter legacy: Nama: %s | Path: %s | Size: %d | Type: %s
+        if (preg_match('/Nama:\s*([^|]+)\s*\|\s*Path:\s*([^|]+)\s*\|\s*Size:\s*([0-9]+)\s*\|\s*Type:\s*(.*)$/s', $replyText, $m)) {
+            return [
+                'original_name' => trim($m[1]),
+                'file_path'     => trim($m[2]),
+                'file_size'     => (int) $m[3],
+                'file_type'     => trim($m[4]),
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * Mengambil file lampiran pengaduan secara terproteksi berdasarkan otorisasi RBAC & IDOR.
+     */
+    public function getComplaintAttachment(int $id, string $filename, array $user): array
+    {
+        $complaint = $this->complaintModel->find($id);
+        if (!$complaint) {
+            throw new InvalidArgumentException('Pengaduan tidak ditemukan.');
+        }
+
+        // Tegakkan validasi akses: pemilik aduan, unit penugasan, atau admin
+        $this->assertComplaintAccess($complaint, $user, 'view');
+
+        // Sanitasi filename untuk mencegah path traversal dan karakter berbahaya
+        $safeFilename = basename($filename);
+        if ($safeFilename === '' || $safeFilename !== $filename || str_contains($filename, '..') || str_contains($filename, '/') || str_contains($filename, "\\") || str_contains($filename, "\0")) {
+            throw new InvalidArgumentException('Nama file lampiran tidak valid.');
+        }
+
+        // Verifikasi bahwa file ini benar-benar terdaftar di database pengaduan ini
+        $replies = $this->replyModel
+            ->where('complaint_id', $id)
+            ->like('reply', '[Lampiran Bukti]')
+            ->findAll();
+
+        $found = false;
+        $attachmentMeta = null;
+        foreach ($replies as $r) {
+            $text = (string) ($r['reply'] ?? '');
+            $meta = $this->parseAttachmentMeta($text);
+            if ($meta !== null) {
+                $storedBase = basename($meta['file_path']);
+                if ($storedBase === $safeFilename) {
+                    $found = true;
+                    $attachmentMeta = $meta;
+                    break;
+                }
+            }
+        }
+
+        if (!$found || !$attachmentMeta) {
+            throw new InvalidArgumentException('File lampiran tidak terdaftar pada pengaduan ini.');
+        }
+
+        // Selalu bangun path fisik dari direktori upload complaints yang sah (tidak percaya path dari luar)
+        $complaintUploadDir = realpath(WRITEPATH . 'uploads/complaints');
+        if (!$complaintUploadDir) {
+            throw new RuntimeException('Direktori penyimpanan lampiran tidak ditemukan.');
+        }
+
+        $physicalPath = $complaintUploadDir . DIRECTORY_SEPARATOR . $safeFilename;
+        $realPhysical = realpath($physicalPath);
+
+        // Verifikasi containment ketat di dalam uploads/complaints dan pastikan file reguler
+        if (!$realPhysical || !str_starts_with($realPhysical, $complaintUploadDir . DIRECTORY_SEPARATOR) || !is_file($realPhysical)) {
+            throw new RuntimeException('File lampiran fisik tidak ditemukan di server.');
+        }
+
+        return [
+            'physical_path' => $realPhysical,
+            'original_name' => $attachmentMeta['original_name'],
+            'file_type'     => $attachmentMeta['file_type'],
+            'file_size'     => filesize($realPhysical) ?: $attachmentMeta['file_size'],
+        ];
+    }
+
+    /**
      * Pemeriksaan otoritas unit kerja untuk stakeholder.
      */
     private function assertUnitPermission(array $complaint, array $user): void
@@ -968,13 +1108,16 @@ class ComplaintService
             $rCreatedAt = $r['created_at'];
 
             if (str_starts_with($text, '[Lampiran Bukti]')) {
-                preg_match('/Nama:\s*([^|]+)\s*\|\s*Path:\s*([^|]+)\s*\|\s*Size:\s*([0-9]+)\s*\|\s*Type:\s*(.*)$/s', $text, $m);
-                $attachments[] = [
-                    'name' => !empty($m[1]) ? trim($m[1]) : 'Lampiran',
-                    'url'  => !empty($m[2]) ? base_url(trim($m[2])) : '#',
-                    'size' => !empty($m[3]) ? (int) $m[3] : 0,
-                    'type' => !empty($m[4]) ? trim($m[4]) : 'application/octet-stream',
-                ];
+                $meta = $this->parseAttachmentMeta($text);
+                if ($meta !== null) {
+                    $safeFilename = basename($meta['file_path']);
+                    $attachments[] = [
+                        'name' => $meta['original_name'] !== '' ? $meta['original_name'] : 'Lampiran',
+                        'url'  => $safeFilename !== '' ? base_url('api/complaints/' . $id . '/attachments/' . $safeFilename) : '#',
+                        'size' => (int) $meta['file_size'],
+                        'type' => $meta['file_type'] !== '' ? $meta['file_type'] : 'application/octet-stream',
+                    ];
+                }
                 continue;
             }
 
@@ -988,10 +1131,14 @@ class ComplaintService
                     'approved'    => $isApproved,
                 ];
             } elseif (str_starts_with($text, '[Disposisi ke ')) {
-                preg_match('/^\[Disposisi ke ([^\]]+)\](?:\s*PIC:\s*([^.]+)\.)?\s*(.*)$/s', $text, $m);
+                preg_match('/^\[Disposisi ke ([^\]]+)\]\s*(.*)$/s', $text, $m);
                 $u = !empty($m[1]) ? trim($m[1]) : $targetUnit;
-                $pic = !empty($m[2]) ? trim($m[2]) : "Koordinator {$u}";
-                $note = !empty($m[3]) ? trim($m[3]) : 'Mohon segera ditindaklanjuti sesuai SOP unit.';
+                $rest = !empty($m[2]) ? trim($m[2]) : '';
+                [$pic, $note] = $this->splitPrefixNameBody($rest, 'PIC:');
+                if ($pic === '') {
+                    $pic = "Koordinator {$u}";
+                    $note = $rest !== '' ? $rest : 'Mohon segera ditindaklanjuti sesuai SOP unit.';
+                }
                 $disposition = [
                     'target_unit'      => $u,
                     'assigned_pic'     => $pic,
@@ -1001,9 +1148,13 @@ class ComplaintService
                     'target_sla_date'  => date('c', strtotime($rCreatedAt . ' + 3 days')),
                 ];
             } elseif (str_starts_with($text, '[Jawaban Resmi Unit]')) {
-                preg_match('/^\[Jawaban Resmi Unit\](?:\s*Oleh:\s*([^.]+)\.)?\s*(.*)$/s', $text, $m);
-                $answeredBy = !empty($m[1]) ? trim($m[1]) : $byName;
-                $ans = !empty($m[2]) ? trim($m[2]) : $text;
+                preg_match('/^\[Jawaban Resmi Unit\]\s*(.*)$/s', $text, $m);
+                $rest = !empty($m[1]) ? trim($m[1]) : '';
+                [$answeredBy, $ans] = $this->splitPrefixNameBody($rest, 'Oleh:');
+                if ($answeredBy === '') {
+                    $answeredBy = $byName ?: 'Kepala / Koordinator Unit';
+                    $ans = $rest !== '' ? $rest : $text;
+                }
                 $unitAnswer = [
                     'answer'      => $ans,
                     'answered_by' => $answeredBy,
@@ -1054,6 +1205,9 @@ class ComplaintService
 
         $isAnonymous = !empty($row['is_anonymous']);
 
+        $rawUrgency = isset($row['urgency_score']) ? (float) $row['urgency_score'] : null;
+        $formattedUrgency = self::normalizeUrgencyScore($rawUrgency);
+
         return [
             'id'             => $id,
             'ticket_id'      => $row['ticket_id'] ?? "SL-{$id}",
@@ -1066,7 +1220,7 @@ class ComplaintService
             'sender_name'    => $isAnonymous ? null : ($row['sender_name'] ?? null),
             'sender_role'    => $row['sender_role'] ?? 'Mahasiswa',
             'status'         => $statusKey,
-            'urgency_score'  => isset($row['urgency_score']) ? round((float) $row['urgency_score'] * 10, 1) : 5.0,
+            'urgency_score'  => $formattedUrgency,
             'nlp_category'    => $row['category'] ?? $targetUnit,
             'nlp_confidence'  => isset($row['category_confidence']) ? round((float) $row['category_confidence'], 2) : null,
             'unit_confidence' => isset($row['unit_confidence']) ? round((float) $row['unit_confidence'], 2) : null,
@@ -1082,5 +1236,115 @@ class ComplaintService
             'created_at'     => $createdAt,
             'updated_at'     => $row['updated_at'] ?? $createdAt,
         ];
+    }
+
+    /**
+     * Menormalisasi skor urgensi dari database (skala 0.0–1.0) ke kontrak API (skala 0.0–10.0).
+     * Aturan deterministik tunggal:
+     * - Nilai database bernilai 0.0–1.0 dikalikan 10 dan dibulatkan 1 desimal.
+     * - Nilai yang sudah pada skala 0–10 dijaga maksimum 10.0 tanpa penggandaan ulang.
+     * - Nilai null mengembalikan default 5.0.
+     */
+    public static function normalizeUrgencyScore(?float $rawUrgency): float
+    {
+        if ($rawUrgency === null) {
+            return 5.0;
+        }
+        return $rawUrgency <= 1.0 ? round($rawUrgency * 10, 1) : min(10.0, round($rawUrgency, 1));
+    }
+
+    /**
+     * Memisahkan prefix nama (PIC:/Oleh:) dari isi catatan/jawaban dengan toleransi gelar akademis bertitik (Dr., Ir., Prof., S.T., dsb).
+     */
+    private function splitPrefixNameBody(string $text, string $prefix): array
+    {
+        if (!str_starts_with($text, $prefix)) {
+            return ['', $text];
+        }
+        $after = trim(substr($text, strlen($prefix)));
+
+        // Pola nama bergelar: gelar depan jamak, nama utama, dan gelar belakang (post-nominal)
+        $frontPattern = '(?:(?:Prof|Dr|Ir|Drs|Dra|apt|dr|drg|Ns|KH|Hj|H)\.\s*)*';
+        $coreNamePattern = '[A-Z][a-zA-Z\'\-]*(?:\s+[A-Z][a-zA-Z\'\-]*)*';
+        $backTitlePattern = '(?:\s*,\s*(?:[A-Z][a-zA-Z]*(?:\.[A-Z][a-zA-Z]*)*\.?|\bIPM\b|\bEng\b)(?:\s*,\s*(?:[A-Z][a-zA-Z]*(?:\.[A-Z][a-zA-Z]*)*\.?|\bIPM\b|\bEng\b))*)?';
+
+        $fullRegex = '/^(' . $frontPattern . $coreNamePattern . $backTitlePattern . ')(?:\.+|\s*)\s+(.+)$/s';
+
+        if (preg_match($fullRegex, $after, $m)) {
+            $name = trim($m[1]);
+            $body = trim($m[2]);
+
+            // Pertahankan titik penutup pada singkatan gelar belakang (misal S.T., M.Kom., Ph.D.)
+            if (preg_match('/,\s*[A-Z][a-zA-Z]*(?:\.[A-Z][a-zA-Z]*)*$/', $name) && !str_ends_with($name, '.')) {
+                $name .= '.';
+            }
+
+            return [$name, $body];
+        }
+
+        // Fallback: cari pembatas titik pertama diikuti spasi
+        if (preg_match('/^(.*?)\.\s+(.*)$/s', $after, $m)) {
+            return [trim($m[1]), trim($m[2])];
+        }
+
+        return [$after, ''];
+    }
+
+    /**
+     * Menjalankan callable inferensi AI di dalam critical section mutex terbatas (bounded flock).
+     * Mencegah inferensi paralel yang dapat membebani VRAM dan RAM host secara bersamaan.
+     *
+     * @param callable $callback
+     * @param int $maxWaitSeconds Batas waktu antrean maksimal (default 30 detik)
+     * @return mixed
+     * @throws ServiceBusyException Jika antrean melebihi batas waktu
+     */
+    private function executeWithInferenceLock(callable $callback, int $maxWaitSeconds = 30)
+    {
+        $lockDir = WRITEPATH . 'locks';
+        if (!is_dir($lockDir)) {
+            @mkdir($lockDir, 0775, true);
+        }
+
+        $lockFile = $lockDir . DIRECTORY_SEPARATOR . 'ml_inference.lock';
+        $fp = @fopen($lockFile, 'c+');
+
+        if (!$fp) {
+            log_message('error', 'Gagal membuka berkas mutex inferensi AI: ' . $lockFile);
+            throw new ServiceBusyException('Layanan analisis pengaduan sedang sibuk, silakan coba beberapa saat lagi.');
+        }
+
+        $startTime = microtime(true);
+        $acquired = false;
+
+        try {
+            while ((microtime(true) - $startTime) < $maxWaitSeconds) {
+                if (flock($fp, LOCK_EX | LOCK_NB)) {
+                    $acquired = true;
+                    break;
+                }
+                // Tidur sejenak 100ms untuk menghindari busy-waiting
+                usleep(100000);
+            }
+
+            if (!$acquired) {
+                log_message('warning', sprintf(
+                    'AI inference lock timeout setelah %.2f detik (batas %d detik).',
+                    microtime(true) - $startTime,
+                    $maxWaitSeconds
+                ));
+                throw new ServiceBusyException('Layanan analisis pengaduan sedang sibuk memproses antrean lain. Silakan coba kembali dalam beberapa saat.');
+            }
+
+            // Eksekusi critical section inferensi AI
+            return $callback();
+        } finally {
+            if ($acquired) {
+                @flock($fp, LOCK_UN);
+            }
+            if (is_resource($fp)) {
+                @fclose($fp);
+            }
+        }
     }
 }
