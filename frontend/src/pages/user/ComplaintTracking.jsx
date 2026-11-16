@@ -4,7 +4,10 @@ import useBilingual from '../../hooks/useBilingual.js'
 import { useComplaintLabels } from '../../utils/ComplaintLabels.js'
 import Navbar from '../../components/layout/Navbar.jsx'
 import { StatusBadge } from '../../components/ui/StatusBadge.jsx'
+import ProtectedImage from '../../components/ui/ProtectedImage.jsx'
+import ProtectedAttachmentLink from '../../components/ui/ProtectedAttachmentLink.jsx'
 import { getComplaint, submitStakeholderFeedback } from '../../services/complaintApi.js'
+import { downloadOrOpenAttachment } from '../../services/attachmentApi.js'
 import { formatDate, formatDateTime, WORKFLOW_STEPS, STREAMLINED_STEPS } from '../../utils/formatter.js'
 import {
   ArrowLeft, ShieldCheck, CheckCircle2, Clock, AlertTriangle,
@@ -244,26 +247,35 @@ export default function ComplaintTracking() {
                     {data.attachments.map((a, i) => {
                       const fileUrl = typeof a === 'string' ? a : a?.url
                       const fileName = typeof a === 'string' ? a : a?.name || `${tx('Lampiran', 'Attachment')} ${i + 1}`
+                      const fileSize = typeof a === 'object' ? a?.size : null
                       const isImg = fileUrl && (fileUrl.match(/\.(jpg|jpeg|png|webp|gif)$/i) || fileUrl.startsWith('data:image') || fileUrl.startsWith('blob:'))
 
-                      return (
-                        <div key={i} className="inline-flex items-center gap-2 border border-[var(--color-border)] p-2 rounded-xl bg-[var(--color-bg-secondary)] text-xs">
-                          {isImg ? (
-                            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-[var(--color-border)] hover:border-[var(--color-primary)]">
-                              <img src={fileUrl} alt={fileName} className="h-14 w-20 object-cover rounded-md" />
-                            </a>
-                          ) : fileUrl ? (
-                            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[var(--color-primary)] hover:underline font-medium p-1">
-                              <Paperclip size={14} className="text-[var(--color-text-muted)]" />
-                              <span>{fileName}</span>
-                            </a>
-                          ) : (
-                            <div className="inline-flex items-center gap-1.5 p-1 text-[var(--color-text)] font-medium">
-                              <Paperclip size={14} className="text-[var(--color-text-muted)]" />
-                              <span>{fileName}</span>
+                      if (isImg) {
+                        return (
+                          <div key={i} className="inline-flex items-center gap-2 border border-[var(--color-border)] p-2 rounded-xl bg-[var(--color-bg-secondary)] text-xs">
+                            <button
+                              type="button"
+                              onClick={() => downloadOrOpenAttachment(fileUrl, fileName, { isInline: true })}
+                              className="block overflow-hidden rounded-lg border border-[var(--color-border)] hover:border-[var(--color-primary)] cursor-pointer"
+                              title={`Buka ${fileName}`}
+                            >
+                              <ProtectedImage src={fileUrl} alt={fileName} className="h-14 w-20 object-cover rounded-md" />
+                            </button>
+                            <div className="flex flex-col pr-1">
+                              <span className="font-medium text-[var(--color-text)] truncate max-w-[120px]" title={fileName}>{fileName}</span>
+                              {fileSize ? <span className="text-[10px] text-[var(--color-text-muted)] font-mono">{(fileSize / 1024).toFixed(0)} KB</span> : null}
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <ProtectedAttachmentLink
+                          key={i}
+                          url={fileUrl}
+                          name={fileName}
+                          size={fileSize}
+                        />
                       )
                     })}
                   </div>

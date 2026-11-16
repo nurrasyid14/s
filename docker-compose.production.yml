@@ -1,0 +1,154 @@
+# ==============================================================================
+# SuaraLens Production Docker Compose Configuration
+# ==============================================================================
+# Arsitektur:
+# - Frontend: Cloudflare Pages (Static Build terpisah)
+# - Reverse Proxy Ingress: Nginx (port lokal host untuk Cloudflare Tunnel)
+# - Backend: CodeIgniter 4 via PHP 8.2-FPM (internal network)
+# - ML Service: FastAPI + PyTorch CPU (internal network)
+# - Database: PostgreSQL 16 (internal network, tanpa port publik)
+# - LLM: Ollama Native Windows via host.docker.internal:11434 (Qwen 3.5 4B)
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Database Service (PostgreSQL 16)
+  # ----------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: suaralens-prod-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      # Menggunakan volume database eksisting yang dipertahankan
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - suaralens-prod-net
+    # Port host sengaja TIDAK dipublikasikan demi keamanan (least privilege)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ----------------------------------------------------------------------------
+  # 2. Machine Learning Service (FastAPI)
+  # ----------------------------------------------------------------------------
+  ml-service:
+    build:
+      context: .
+      dockerfile: ml-service/Dockerfile
+    container_name: suaralens-prod-ml
+    restart: unless-stopped
+    environment:
+      PYTHONPATH: /app/ml-service:/app
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3.5:4b}
+      OLLAMA_REASONING_EFFORT: ${OLLAMA_REASONING_EFFORT:-none}
+      HF_HOME: /root/.cache/huggingface
+      PORT: 8000
+    extra_hosts:
+      # Memungkinkan komunikasi dari Docker container ke Ollama di Windows Host
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Cache model Hugging Face eksisting dipertahankan (tanpa bind mount source code)
+      - hf_cache:/root/.cache/huggingface
+    networks:
+      - suaralens-prod-net
+    # Port host TIDAK dipublikasikan; hanya diakses backend via internal Docker network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+
+  # ----------------------------------------------------------------------------
+  # 3. Backend Service (CodeIgniter 4 + PHP-FPM)
+  # ----------------------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.production
+    container_name: suaralens-prod-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      ml-service:
+        condition: service_healthy
+    environment:
+      CI_ENVIRONMENT: production
+      app.baseURL: "${APP_BASE_URL}"
+      app.indexPage: ""
+      CORS_ALLOWED_ORIGIN: "${CORS_ALLOWED_ORIGIN}"
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: "${POSTGRES_USER}"
+      DB_PASS: "${POSTGRES_PASSWORD}"
+      DB_NAME: "${POSTGRES_DB}"
+      database.default.hostname: db
+      database.default.database: "${POSTGRES_DB}"
+      database.default.username: "${POSTGRES_USER}"
+      database.default.password: "${POSTGRES_PASSWORD}"
+      database.default.DBDriver: Postgre
+      database.default.port: 5432
+      database.default.DBDebug: "false"
+      ML_SERVICE_URL: http://ml-service:8000
+      WEEKLY_ANALYTICS_OUTPUT_DIR: /var/www/data/output/weekly_analytics
+      ANALYTICS_DATA_LAYER_DIR: /var/www/data/output/extracted_analytics
+    volumes:
+      # Persistensi data upload fisik dan analytical data layer (tanpa bind mount source code)
+      - ./backend/writable/uploads:/var/www/html/writable/uploads
+      - ./data:/var/www/data
+    networks:
+      - suaralens-prod-net
+    # Port 9000 internal FastCGI hanya dapat diakses oleh Nginx
+
+  # ----------------------------------------------------------------------------
+  # 4. Ingress Reverse Proxy (Nginx)
+  # ----------------------------------------------------------------------------
+  nginx:
+    build:
+      context: .
+      dockerfile: deployment/nginx/Dockerfile
+    container_name: suaralens-prod-nginx
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      # Satu-satunya port lokal yang diekspos ke host untuk diarahkan ke Cloudflare Tunnel
+      - "${NGINX_PORT_BINDING:-127.0.0.1:8090}:80"
+    networks:
+      - suaralens-prod-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+# ------------------------------------------------------------------------------
+# Networks
+# ------------------------------------------------------------------------------
+networks:
+  suaralens-prod-net:
+    driver: bridge
+
+# ------------------------------------------------------------------------------
+# Persistent Volumes (External)
+# ------------------------------------------------------------------------------
+# Wajib menggunakan nama eksplisit volume eksisting agar data tidak terinisialisasi ulang
+volumes:
+  postgres_data:
+    name: s_postgres_data
+    external: true
+  hf_cache:
+    name: s_hf_cache
+    external: true
+

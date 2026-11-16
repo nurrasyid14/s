@@ -5,6 +5,8 @@ from .config import settings
 logger = logging.getLogger("suaralens.model_loader")
 
 _sentiment_pipeline: Optional[Any] = None
+_indonesian_ner_pipeline: Optional[Any] = None
+
 _presidio_analyzer: Optional[Any] = None
 _presidio_anonymizer: Optional[Any] = None
 
@@ -46,58 +48,193 @@ def get_sentiment_pipeline():
     """Dapatkan instance sentiment pipeline yang sudah dimuat."""
     return _sentiment_pipeline
 
+def load_indonesian_ner(force_reload: bool = False):
+    """
+    Memuat model NER bahasa Indonesia untuk mendeteksi nama orang.
+    Model menggunakan Hugging Face Transformers.
+    """
+    global _indonesian_ner_pipeline
+
+    if _indonesian_ner_pipeline is None or force_reload:
+        try:
+            from transformers import (
+                AutoTokenizer,
+                AutoModelForTokenClassification,
+                pipeline as hf_pipeline,
+            )
+
+            model_name = "cahya/bert-base-indonesian-NER"
+
+            logger.info(
+                "Loading Indonesian NER model: %s ...",
+                model_name
+            )
+
+            try:
+                tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=True)
+                model = AutoModelForTokenClassification.from_pretrained(model_name, local_files_only=True)
+                _indonesian_ner_pipeline = hf_pipeline(
+                    task="token-classification",
+                    model=model,
+                    tokenizer=tokenizer,
+                    aggregation_strategy="simple",
+                    device=settings.DEVICE,
+                )
+            except Exception:
+                import os
+                if os.getenv("TRANSFORMERS_OFFLINE") == "1" or os.getenv("HF_HUB_OFFLINE") == "1":
+                    logger.info("Indonesian NER model not cached locally, skipping in offline mode.")
+                    _indonesian_ner_pipeline = None
+                    return None
+
+                _indonesian_ner_pipeline = hf_pipeline(
+                    task="token-classification",
+                    model=model_name,
+                    tokenizer=model_name,
+                    aggregation_strategy="simple",
+                    device=settings.DEVICE,
+                )
+
+            logger.info(
+                "Indonesian NER model successfully loaded."
+            )
+
+        except Exception as e:
+            logger.exception(
+                "Failed to load Indonesian NER model: %s", e
+            )
+            _indonesian_ner_pipeline = None
+
+    return _indonesian_ner_pipeline
+
+
+def get_indonesian_ner():
+    """Mengambil model NER yang sudah dimuat."""
+    return _indonesian_ner_pipeline
+
 
 def is_sentiment_ready() -> bool:
     """Periksa kesiapan inferensi model sentimen."""
     return _sentiment_pipeline is not None
 
 
+
 def init_presidio(force_reload: bool = False):
-    """Inisialisasi Presidio Analyzer & Anonymizer engine (Singleton)."""
+    """Inisialisasi Presidio untuk deteksi PII berbasis pola."""
     global _presidio_analyzer, _presidio_anonymizer
-    if _presidio_analyzer is None or force_reload:
+
+    if (
+        _presidio_analyzer is None
+        or _presidio_anonymizer is None
+        or force_reload
+    ):
         try:
-            from presidio_analyzer import AnalyzerEngine, PatternRecognizer, Pattern
+            from presidio_analyzer import (
+                AnalyzerEngine,
+                PatternRecognizer,
+                Pattern,
+            )
             from presidio_analyzer.nlp_engine import NlpEngineProvider
             from presidio_anonymizer import AnonymizerEngine
 
+            # NLP engine tetap menggunakan model yang tersedia.
+            # Namun recognizer PERSON tidak digunakan untuk teks Indonesia.
             configuration = {
                 "nlp_engine_name": "spacy",
-                "models": [{"lang_code": "en", "model_name": settings.SPACY_MODEL_NAME}],
+                "models": [
+                    {
+                        "lang_code": "en",
+                        "model_name": settings.SPACY_MODEL_NAME,
+                    }
+                ],
             }
-            provider = NlpEngineProvider(nlp_configuration=configuration)
+
+            provider = NlpEngineProvider(
+                nlp_configuration=configuration
+            )
             nlp_engine = provider.create_engine()
 
-            analyzer = AnalyzerEngine(nlp_engine=nlp_engine, supported_languages=["en"])
-
-            # ── Custom Recognizer Pola Indonesia ──
-            # 1. NIM PENS (10 digit diawali 332)
-            nim_pattern = Pattern(name="NIM_PENS", regex=r"\b332\d{7}\b", score=0.95)
-            analyzer.registry.add_recognizer(
-                PatternRecognizer(supported_entity="NIM", patterns=[nim_pattern], name="NimPensRecognizer")
+            analyzer = AnalyzerEngine(
+                nlp_engine=nlp_engine,
+                supported_languages=["en"],
             )
 
-            # 2. HP Indonesia (08, +62, 62)
-            hp_pattern = Pattern(name="HP_INDONESIA", regex=r"(?:\+62|62|0)8[1-9]\d{1,2}[\s\-]?\d{3,4}[\s\-]?\d{3,5}\b", score=0.92)
+            # 1. NIM PENS: 10 digit, diawali 332
+            nim_pattern = Pattern(
+                name="NIM_PENS",
+                regex=r"\b332\d{7}\b",
+                score=0.99,
+            )
+
             analyzer.registry.add_recognizer(
-                PatternRecognizer(supported_entity="PHONE_NUMBER", patterns=[hp_pattern], name="HpIndonesiaRecognizer")
+                PatternRecognizer(
+                    supported_entity="NIM",
+                    patterns=[nim_pattern],
+                    name="NimPensRecognizer",
+                )
+            )
+
+            # 2. Nomor HP Indonesia
+            hp_pattern = Pattern(
+                name="HP_INDONESIA",
+                regex=r"\b(?:\+62|62|0)8[1-9]\d{1,2}[\s-]?\d{3,4}[\s-]?\d{3,5}\b",
+                score=0.99,
+            )
+
+            analyzer.registry.add_recognizer(
+                PatternRecognizer(
+                    supported_entity="PHONE_NUMBER",
+                    patterns=[hp_pattern],
+                    name="HpIndonesiaRecognizer",
+                )
             )
 
             # 3. Email
-            email_pattern = Pattern(name="EMAIL_ID", regex=r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}", score=0.95)
+            email_pattern = Pattern(
+                name="EMAIL_INDONESIA",
+                regex=r"\b[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}\b",
+                score=0.99,
+            )
+
             analyzer.registry.add_recognizer(
-                PatternRecognizer(supported_entity="EMAIL_ADDRESS", patterns=[email_pattern], name="EmailRecognizer")
+                PatternRecognizer(
+                    supported_entity="EMAIL_ADDRESS",
+                    patterns=[email_pattern],
+                    name="EmailRecognizer",
+                )
+            )
+
+            # 4. URL
+            url_pattern = Pattern(
+                name="URL_PATTERN",
+                regex=r"https?://[^\s<>]+|www\.[^\s<>]+",
+                score=0.95,
+            )
+
+            analyzer.registry.add_recognizer(
+                PatternRecognizer(
+                    supported_entity="URL",
+                    patterns=[url_pattern],
+                    name="UrlRecognizer",
+                )
             )
 
             _presidio_analyzer = analyzer
             _presidio_anonymizer = AnonymizerEngine()
-            logger.info("Presidio Anonymization Engine successfully initialized.")
+
+            logger.info(
+                "Presidio successfully initialized with PII pattern recognizers."
+            )
+
         except Exception as e:
-            logger.warning("Gagal inisialisasi Presidio engine: %s", e)
+            logger.warning(
+                "Gagal inisialisasi Presidio engine: %s", e
+            )
             _presidio_analyzer = None
             _presidio_anonymizer = None
 
     return _presidio_analyzer, _presidio_anonymizer
+
 
 
 def get_presidio_engines():

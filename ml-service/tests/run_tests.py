@@ -8,6 +8,10 @@ import sys
 import os
 from pathlib import Path
 
+# Pastikan offline mode aktif agar HuggingFace tidak freeze saat network offline/restricted
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
+os.environ["HF_HUB_OFFLINE"] = "1"
+
 # Set PYTHONPATH ke ml-service agar modul app dapat diimport
 ML_SERVICE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ML_SERVICE_DIR))

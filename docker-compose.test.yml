@@ -1,0 +1,90 @@
+# ==============================================================================
+# SuaraLens Production Isolated Test Docker Compose Configuration
+# ==============================================================================
+# Tujuan:
+# Menguji stack production (PHP-FPM s-backend:latest dan Nginx s-nginx:latest)
+# secara terisolasi tanpa menyentuh container development maupun volume s_postgres_data.
+#
+# Ketentuan Arsitektur:
+# 1. Database: Menggunakan container pengujian eksisting 'suaralens-test-db'
+#    (volume suaralens_test_postgres_data, role suaralens_prod_user).
+# 2. Ingress Nginx: Mengikat ke host port 127.0.0.1:8095 (menghindari dev port 8090).
+# 3. Backend: Image s-backend:latest, mode production, tanpa bind mount dev source.
+# 4. ML Service: Terhubung melalui host gateway / bridge network ke ML Service aktif.
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Backend Service (CodeIgniter 4 + PHP-FPM)
+  # ----------------------------------------------------------------------------
+  backend:
+    image: s-backend:latest
+    container_name: suaralens-test-backend
+    restart: "no"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      CI_ENVIRONMENT: production
+      app.baseURL: "${TEST_APP_BASE_URL:-http://127.0.0.1:8095/}"
+      app.indexPage: ""
+      CORS_ALLOWED_ORIGIN: "${TEST_CORS_ALLOWED_ORIGIN:-http://localhost:5173}"
+      DB_HOST: "${TEST_DB_HOST:-suaralens-test-db}"
+      DB_PORT: 5432
+      DB_USER: "${TEST_DB_USER:-suaralens_prod_user}"
+      DB_PASS: "${TEST_DB_PASSWORD}"
+      DB_NAME: "${TEST_DB_NAME:-suaralens}"
+      database.default.hostname: "${TEST_DB_HOST:-suaralens-test-db}"
+      database.default.database: "${TEST_DB_NAME:-suaralens}"
+      database.default.username: "${TEST_DB_USER:-suaralens_prod_user}"
+      database.default.password: "${TEST_DB_PASSWORD}"
+      database.default.DBDriver: Postgre
+      database.default.port: 5432
+      database.default.DBDebug: "false"
+      ML_SERVICE_URL: "${TEST_ML_SERVICE_URL:-http://host.docker.internal:8000}"
+      WEEKLY_ANALYTICS_OUTPUT_DIR: /var/www/data/output/weekly_analytics
+      ANALYTICS_DATA_LAYER_DIR: /var/www/data/output/extracted_analytics
+    volumes:
+      # Writable dan output direktori pengujian terisolasi
+      - test_backend_uploads:/var/www/html/writable/uploads
+      - test_backend_data:/var/www/data
+    networks:
+      - suaralens-test-net
+
+  # ----------------------------------------------------------------------------
+  # 2. Ingress Reverse Proxy (Nginx)
+  # ----------------------------------------------------------------------------
+  nginx:
+    image: s-nginx:latest
+    container_name: suaralens-test-nginx
+    restart: "no"
+    depends_on:
+      - backend
+    ports:
+      # Port host pengujian terisolasi (127.0.0.1:8095)
+      - "127.0.0.1:8095:80"
+    networks:
+      - suaralens-test-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+# ------------------------------------------------------------------------------
+# Networks
+# ------------------------------------------------------------------------------
+networks:
+  suaralens-test-net:
+    name: suaralens-test-net
+    external: true
+
+# ------------------------------------------------------------------------------
+# Volumes (Pengujian Terisolasi)
+# ------------------------------------------------------------------------------
+volumes:
+  test_backend_uploads:
+    name: suaralens_test_backend_uploads
+  test_backend_data:
+    name: suaralens_test_backend_data
+

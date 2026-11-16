@@ -1,6 +1,8 @@
 import logging
+import secrets
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .core.model_loader import load_sentiment_model, init_presidio
@@ -36,6 +38,30 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Autentikasi API Key Middleware untuk Tailscale Funnel / Remote Access
+@app.middleware("http")
+async def verify_api_key(request: Request, call_next):
+    # Endpoint health publik tanpa membocorkan informasi sensitif
+    if request.url.path == "/health":
+        return await call_next(request)
+
+    # Fail-closed: jika ML_API_KEY belum dikonfigurasi di server, tolak request untuk mencegah akses tidak terproteksi
+    if not settings.ML_API_KEY:
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Service Unavailable: ML_API_KEY wajib dikonfigurasi pada server sebelum menerima request publik."}
+        )
+
+    client_key = request.headers.get("X-API-Key", "").strip()
+    # Constant-time comparison untuk mencegah timing attack
+    if not client_key or not secrets.compare_digest(client_key, settings.ML_API_KEY):
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "Unauthorized: API Key tidak valid atau belum disertakan pada header X-API-Key."}
+        )
+
+    return await call_next(request)
+
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
@@ -47,4 +73,5 @@ app.add_middleware(
 
 # Daftarkan Router API
 app.include_router(router)
+
 

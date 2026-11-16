@@ -5,13 +5,13 @@ namespace App\Controllers;
 use App\Libraries\ApiTokenService;
 use App\Models\ComplaintModel;
 use App\Models\ComplaintReplyModel;
-use App\Models\ComplaintAnalysisModel;
-use App\Models\ComplaintReviewModel;
 use App\Services\ComplaintService;
 use App\Services\MLService;
 use App\Services\EvidenceService;
+use App\Exceptions\ServiceBusyException;
 use CodeIgniter\RESTful\ResourceController;
 use InvalidArgumentException;
+use RuntimeException;
 use Throwable;
 
 class ComplaintController extends ResourceController
@@ -19,17 +19,17 @@ class ComplaintController extends ResourceController
     protected $format = 'json';
 
     private ComplaintService $complaintService;
-    private MLService $mlService;
-    private EvidenceService $evidenceService;
+    private ComplaintModel $complaintModel;
+    private ComplaintReplyModel $replyModel;
 
     public function __construct(
         ?ComplaintService $complaintService = null,
-        ?MLService $mlService = null,
-        ?EvidenceService $evidenceService = null
+        ?ComplaintModel $complaintModel = null,
+        ?ComplaintReplyModel $replyModel = null
     ) {
         $this->complaintService = $complaintService ?? new ComplaintService();
-        $this->mlService        = $mlService ?? new MLService();
-        $this->evidenceService  = $evidenceService ?? new EvidenceService();
+        $this->complaintModel   = $complaintModel ?? new ComplaintModel();
+        $this->replyModel       = $replyModel ?? new ComplaintReplyModel();
     }
 
     /**
@@ -109,7 +109,7 @@ class ComplaintController extends ResourceController
 
     /**
      * GET /api/complaints/{id}
-     * Mengambil detail satu pengaduan lengkap dengan jejak workflow.
+     * Mengambil detail satu pengaduan lengkap dengan jejak workflow dan analisis terbaru.
      */
     public function show($id = null)
     {
@@ -156,6 +156,11 @@ class ComplaintController extends ResourceController
             $files = $this->request->getFiles();
             $result = $this->complaintService->createComplaint($data, $user, $files);
             return $this->respondCreated($result);
+        } catch (ServiceBusyException $e) {
+            return $this->respond([
+                'status'  => false,
+                'message' => $e->getMessage(),
+            ], 503);
         } catch (InvalidArgumentException $e) {
             return $this->respond(['status' => false, 'message' => $e->getMessage()], 400);
         } catch (Throwable $e) {
@@ -211,8 +216,8 @@ class ComplaintController extends ResourceController
         }
 
         $user = $this->authenticatedUser();
-        if (!$user || !in_array($user['role'], ['admin', 'stakeholder'], true)) {
-            return $this->respond(['status' => false, 'message' => 'Otoritas verifikasi diperlukan.'], 403);
+        if (!$user || $user['role'] !== 'admin') {
+            return $this->respond(['status' => false, 'message' => 'Otoritas verifikasi diperlukan (Hanya Admin Sentral).'], 403);
         }
 
         $data = $this->getRequestData();
@@ -223,7 +228,9 @@ class ComplaintController extends ResourceController
             $res = $this->complaintService->verifyComplaint((int) $id, $verified, $note, $user);
             return $this->respond($res);
         } catch (InvalidArgumentException $e) {
-            return $this->respond(['status' => false, 'message' => $e->getMessage()], 404);
+            $msg = $e->getMessage();
+            $code = str_contains($msg, 'tidak ditemukan') ? 404 : 403;
+            return $this->respond(['status' => false, 'message' => $msg], $code);
         } catch (Throwable $e) {
             log_message('error', 'Gagal verifikasi: ' . $e->getMessage());
             return $this->respond(['status' => false, 'message' => 'Gagal memproses verifikasi aduan.'], 500);
@@ -241,8 +248,8 @@ class ComplaintController extends ResourceController
         }
 
         $user = $this->authenticatedUser();
-        if (!$user || !in_array($user['role'], ['admin', 'stakeholder'], true)) {
-            return $this->respond(['status' => false, 'message' => 'Otoritas disposisi diperlukan.'], 403);
+        if (!$user || $user['role'] !== 'admin') {
+            return $this->respond(['status' => false, 'message' => 'Otoritas disposisi diperlukan (Hanya Admin Sentral).'], 403);
         }
 
         $data = $this->getRequestData();
@@ -259,7 +266,9 @@ class ComplaintController extends ResourceController
             $res = $this->complaintService->dispatchComplaint((int) $id, $targetUnit, $pic, $note, $slaDate, $user);
             return $this->respond($res);
         } catch (InvalidArgumentException $e) {
-            return $this->respond(['status' => false, 'message' => $e->getMessage()], 400);
+            $msg = $e->getMessage();
+            $code = str_contains($msg, 'tidak ditemukan') ? 404 : (str_contains($msg, 'Akses ditolak') ? 403 : 400);
+            return $this->respond(['status' => false, 'message' => $msg], $code);
         } catch (Throwable $e) {
             log_message('error', 'Gagal disposisi: ' . $e->getMessage());
             return $this->respond(['status' => false, 'message' => 'Gagal memproses disposisi aduan.'], 500);
@@ -413,37 +422,17 @@ class ComplaintController extends ResourceController
             return $this->respond(['status' => false, 'message' => 'Isi tanggapan tidak boleh kosong.'], 400);
         }
 
-        $complaintModel = new ComplaintModel();
-        $complaint = $complaintModel->find($id);
-        if (!$complaint) {
-            return $this->respond(['status' => false, 'message' => 'Pengaduan tidak ditemukan.'], 404);
+        try {
+            $result = $this->complaintService->addReply((int) $id, $replyText, $user);
+            return $this->respondCreated($result);
+        } catch (InvalidArgumentException $e) {
+            $msg = $e->getMessage();
+            $statusCode = str_contains($msg, 'tidak ditemukan') ? 404 : 403;
+            return $this->respond(['status' => false, 'message' => $msg], $statusCode);
+        } catch (Throwable $e) {
+            log_message('error', 'Gagal menyimpan tanggapan: ' . $e->getMessage());
+            return $this->respond(['status' => false, 'message' => 'Gagal menyimpan tanggapan.'], 500);
         }
-
-        $replyModel = new ComplaintReplyModel();
-        $replyId = $replyModel->insert([
-            'complaint_id' => (int) $id,
-            'user_id'      => (int) $user['id'],
-            'reply'        => $replyText,
-        ]);
-
-        if (!$replyId) {
-            return $this->respond([
-                'status'  => false,
-                'message' => 'Gagal menyimpan tanggapan.',
-                'errors'  => $replyModel->errors(),
-            ], 500);
-        }
-
-        return $this->respondCreated([
-            'status'  => true,
-            'message' => 'Tanggapan berhasil ditambahkan.',
-            'data'    => [
-                'id'           => $replyId,
-                'complaint_id' => (int) $id,
-                'user_id'      => (int) $user['id'],
-                'reply'        => $replyText,
-            ],
-        ]);
     }
 
     /**
@@ -456,109 +445,167 @@ class ComplaintController extends ResourceController
             return $this->respond(['status' => false, 'message' => 'ID pengaduan wajib diisi.'], 400);
         }
 
-        $complaintModel = new ComplaintModel();
-        if (!$complaintModel->find($id)) {
-            return $this->respond(['status' => false, 'message' => 'Pengaduan tidak ditemukan.'], 404);
+        $user = $this->authenticatedUser();
+        if (!$user) {
+            return $this->respond(['status' => false, 'message' => 'Autentikasi diperlukan.'], 401);
         }
 
-        $replyModel = new ComplaintReplyModel();
-        $replies = $replyModel
-            ->select('complaint_replies.id, complaint_replies.reply, complaint_replies.created_at, users.name AS by')
-            ->join('users', 'users.id = complaint_replies.user_id', 'left')
-            ->where('complaint_replies.complaint_id', (int) $id)
-            ->orderBy('complaint_replies.created_at', 'ASC')
-            ->findAll();
-
-        return $this->respond([
-            'status' => true,
-            'count'  => count($replies),
-            'data'   => $replies,
-        ]);
+        try {
+            $replies = $this->complaintService->getReplies((int) $id, $user);
+            return $this->respond([
+                'status' => true,
+                'count'  => count($replies),
+                'data'   => $replies,
+            ]);
+        } catch (InvalidArgumentException $e) {
+            $msg = $e->getMessage();
+            $statusCode = str_contains($msg, 'tidak ditemukan') ? 404 : 403;
+            return $this->respond(['status' => false, 'message' => $msg], $statusCode);
+        } catch (Throwable $e) {
+            log_message('error', 'Gagal mengambil daftar balasan: ' . $e->getMessage());
+            return $this->respond(['status' => false, 'message' => 'Gagal mengambil balasan pengaduan.'], 500);
+        }
     }
 
     /**
      * POST /api/complaints/{id}/analyze
-     * Memicu analisis ulang pengaduan via ML Service.
+     * Memicu analisis ulang pengaduan via ML Service dan menyimpannya sebagai rekaman riwayat baru.
+     * Analisis sebelumnya tidak ditimpa (immutable audit trail).
      */
     public function analyze($id = null)
     {
         set_time_limit(180);
 
         if ($id === null) {
-            return $this->respond(['status' => false, 'message' => 'ID pengaduan wajib diisi.'], 400);
-        }
-
-        $complaintModel = new ComplaintModel();
-        $complaint = $complaintModel->find($id);
-        if (!$complaint) {
-            return $this->respond(['status' => false, 'message' => 'Pengaduan tidak ditemukan.'], 404);
-        }
-
-        $mlRes = $this->mlService->analyzeComplaint((int) $complaint['id'], (string) $complaint['description'], (string) $complaint['type']);
-        if (!$mlRes['success'] || empty($mlRes['data'])) {
             return $this->respond([
                 'status'  => false,
-                'message' => 'ML Service tidak dapat menyelesaikan analisis: ' . ($mlRes['error'] ?? 'Unknown error'),
+                'message' => 'ID pengaduan wajib diisi.',
+            ], 400);
+        }
+
+        $user = $this->authenticatedUser();
+        if (!$user) {
+            return $this->respond(['status' => false, 'message' => 'Autentikasi diperlukan.'], 401);
+        }
+
+        if (!in_array($user['role'], ['admin', 'stakeholder'], true)) {
+            return $this->respond(['status' => false, 'message' => 'Otoritas analisis diperlukan.'], 403);
+        }
+
+        try {
+            $result = $this->complaintService->reanalyzeComplaint((int) $id, $user);
+            return $this->respond($result);
+        } catch (ServiceBusyException $e) {
+            return $this->respond([
+                'status'  => false,
+                'message' => $e->getMessage(),
+            ], 503);
+        } catch (InvalidArgumentException $e) {
+            return $this->respond(['status' => false, 'message' => $e->getMessage()], 404);
+        } catch (RuntimeException $e) {
+            log_message('error', 'Gagal analisis ulang ML: ' . $e->getMessage());
+            return $this->respond([
+                'status'  => false,
+                'message' => $e->getMessage(),
             ], 502);
+        } catch (Throwable $e) {
+            log_message('error', 'Gagal memproses analisis ulang: ' . $e->getMessage());
+            return $this->respond([
+                'status'  => false,
+                'message' => 'Terjadi kesalahan sistem saat memproses analisis ulang.',
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/complaints/{id}/analysis-history
+     * Mengambil seluruh riwayat analisis ML dari satu pengaduan (terbaru hingga terlama).
+     */
+    public function analysisHistory($id = null)
+    {
+        if ($id === null) {
+            return $this->respond([
+                'status'  => false,
+                'message' => 'ID pengaduan wajib diisi.',
+            ], 400);
         }
 
-        $analysis = $mlRes['data'];
-        $analysisModel = new ComplaintAnalysisModel();
-        $existing = $analysisModel->where('complaint_id', $complaint['id'])->orderBy('id', 'DESC')->first();
-
-        $analysisData = [
-            'complaint_id'        => (int) $complaint['id'],
-            'category'            => $analysis['category'] ?? null,
-            'category_confidence' => $analysis['category_confidence'] ?? null,
-            'urgency_label'       => $analysis['urgency_label'] ?? null,
-            'urgency_score'       => $analysis['urgency_score'] ?? null,
-            'urgency_reason'      => $analysis['urgency_reason'] ?? null,
-            'sentiment'           => $analysis['sentiment'] ?? null,
-            'sentiment_score'     => $analysis['sentiment_score'] ?? null,
-            'sentiment_scores'    => isset($analysis['sentiment_scores']) ? json_encode($analysis['sentiment_scores']) : null,
-            'submission_type'     => $analysis['submission_type'] ?? null,
-            'requires_review'     => !empty($analysis['requires_review']),
-            'model_version'       => 'qwen3.5:4b + indonesian-roberta',
-            'inference_time_ms'   => $mlRes['inference_time_ms'],
-        ];
-
-        if ($existing) {
-            $analysisId = $existing['id'];
-            $analysisModel->update($analysisId, $analysisData);
-        } else {
-            $analysisId = $analysisModel->insert($analysisData);
+        $user = $this->authenticatedUser();
+        if (!$user) {
+            return $this->respond(['status' => false, 'message' => 'Autentikasi diperlukan.'], 401);
         }
 
-        $reviewModel = new ComplaintReviewModel();
-        $review = $reviewModel->where('complaint_analysis_id', $analysisId)->first();
-        $reviewId = $review['id'] ?? null;
+        try {
+            $result = $this->complaintService->getAnalysisHistory((int) $id, $user);
+            return $this->respond($result);
+        } catch (InvalidArgumentException $e) {
+            return $this->respond(['status' => false, 'message' => $e->getMessage()], 404);
+        } catch (Throwable $e) {
+            log_message('error', 'Gagal mengambil riwayat analisis: ' . $e->getMessage());
+            return $this->respond([
+                'status'  => false,
+                'message' => 'Gagal mengambil riwayat analisis pengaduan.',
+            ], 500);
+        }
+    }
 
-        if (!empty($analysis['requires_review']) && !$review) {
-            $reviewId = $reviewModel->insert([
-                'complaint_analysis_id' => $analysisId,
-                'review_status'         => 'pending',
-            ]);
+    /**
+     * GET /api/complaints/{id}/attachments/{filename}
+     * Mengunduh/melihat file lampiran dengan proteksi otorisasi dan anti-traversal.
+     */
+    public function attachment($id = null, $filename = null)
+    {
+        if ($id === null || empty($filename)) {
+            return $this->respond(['status' => false, 'message' => 'ID pengaduan dan nama file wajib diisi.'], 400);
         }
 
-        return $this->respond([
-            'status'  => true,
-            'message' => 'Pengaduan berhasil dianalisis ulang dan hasilnya diperbarui.',
-            'data'    => [
-                'analysis_id'         => (int) $analysisId,
-                'review_id'           => $reviewId ? (int) $reviewId : null,
-                'complaint_id'        => (int) $complaint['id'],
-                'category'            => $analysis['category'] ?? null,
-                'category_confidence' => $analysis['category_confidence'] ?? null,
-                'urgency_label'       => $analysis['urgency_label'] ?? null,
-                'urgency_score'       => $analysis['urgency_score'] ?? null,
-                'urgency_reason'      => $analysis['urgency_reason'] ?? null,
-                'sentiment'           => $analysis['sentiment'] ?? null,
-                'sentiment_score'     => $analysis['sentiment_score'] ?? null,
-                'submission_type'     => $analysis['submission_type'] ?? null,
-                'requires_review'     => !empty($analysis['requires_review']),
-                'inference_time_ms'   => $mlRes['inference_time_ms'],
-            ],
-        ]);
+        $user = $this->authenticatedUser();
+        if (!$user) {
+            return $this->respond(['status' => false, 'message' => 'Autentikasi diperlukan.'], 401);
+        }
+
+        try {
+            $att = $this->complaintService->getComplaintAttachment((int) $id, (string) $filename, $user);
+            $fileData = file_get_contents($att['physical_path']);
+            if ($fileData === false) {
+                return $this->respond(['status' => false, 'message' => 'Gagal membaca file fisik.'], 500);
+            }
+
+            // Sanitasi nama file untuk Content-Disposition (cegah CRLF injection / HTTP Response Splitting)
+            $rawName = (string) ($att['original_name'] ?? 'lampiran');
+            // Hapus karakter CRLF dan null-byte
+            $cleanName = str_replace(["\r", "\n", "\0"], '', $rawName);
+            $cleanName = trim($cleanName) !== '' ? trim($cleanName) : 'lampiran';
+
+            // ASCII fallback untuk atribut filename="..."
+            $asciiFallback = preg_replace('/[^a-zA-Z0-9._-]/', '_', $cleanName) ?: 'lampiran';
+            // RFC 5987 / RFC 6266 UTF-8 encoded untuk filename*=UTF-8''...
+            $rfc5987Encoded = rawurlencode($cleanName);
+
+            // Tentukan disposition: hanya gambar aman dan PDF yang diizinkan inline, dokumen lain dipaksa download (attachment)
+            $mime = strtolower((string) ($att['file_type'] ?? ''));
+            $inlineTypes = ['image/jpeg', 'image/png', 'image/pjpeg', 'application/pdf'];
+            $disposition = in_array($mime, $inlineTypes, true) ? 'inline' : 'attachment';
+
+            $contentDisposition = sprintf(
+                '%s; filename="%s"; filename*=UTF-8\'\'%s',
+                $disposition,
+                $asciiFallback,
+                $rfc5987Encoded
+            );
+
+            return $this->response
+                ->setHeader('Content-Type', $att['file_type'])
+                ->setHeader('Content-Length', (string) $att['file_size'])
+                ->setHeader('Content-Disposition', $contentDisposition)
+                ->setHeader('X-Content-Type-Options', 'nosniff')
+                ->setBody($fileData);
+        } catch (InvalidArgumentException $e) {
+            return $this->respond(['status' => false, 'message' => $e->getMessage()], 403);
+        } catch (Throwable $e) {
+            log_message('error', 'Gagal memuat lampiran: ' . $e->getMessage());
+            return $this->respond(['status' => false, 'message' => 'File lampiran tidak dapat diakses.'], 404);
+        }
     }
 
     /**
@@ -568,12 +615,14 @@ class ComplaintController extends ResourceController
     {
         $latest = '(SELECT complaint_id, MAX(id) AS latest_id FROM complaint_analysis GROUP BY complaint_id) latest_analysis';
 
-        return \Config\Database::connect()->table('complaints c')
+        return \Config\Database::connect('default')->table('complaints c')
             ->select([
                 'c.*',
                 'ca.category',
                 'ca.category AS nlp_category',
                 'ca.category_confidence AS nlp_confidence',
+                'ca.unit_confidence',
+                'ca.unit_reason',
                 'ca.sentiment',
                 'ca.sentiment_scores',
                 'ca.submission_type',
@@ -581,7 +630,7 @@ class ComplaintController extends ResourceController
                 'u.user_role AS sender_role',
                 'c.assigned_unit AS unit',
             ])
-            ->select('(ca.urgency_score * 10) AS urgency_score', false)
+            ->select('ca.urgency_score', false)
             ->select('CASE WHEN c.is_anonymous THEN NULL ELSE u.name END AS sender_name', false)
             ->join($latest, 'latest_analysis.complaint_id = c.id', 'left', false)
             ->join('complaint_analysis ca', 'ca.id = latest_analysis.latest_id', 'left')

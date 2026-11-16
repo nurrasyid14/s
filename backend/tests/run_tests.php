@@ -24,6 +24,7 @@ use App\Services\WeeklyAnalyticsService;
 
 $passed = 0;
 $failed = 0;
+$skipped = 0;
 
 function assertTest(string $name, bool $condition, string $detail = '') {
     global $passed, $failed;
@@ -34,6 +35,12 @@ function assertTest(string $name, bool $condition, string $detail = '') {
         echo "  [FAIL] {$name} - {$detail}\n";
         $failed++;
     }
+}
+
+function skipTest(string $name, string $reason = '') {
+    global $skipped;
+    echo "  [SKIPPED] {$name} ({$reason})\n";
+    $skipped++;
 }
 
 echo "============================================================\n";
@@ -64,6 +71,14 @@ assertTest("Urgency: Skor tinggi >= 0.8", $evalUrgent['urgency_score'] >= 0.8);
 $lowText = "Mohon info jadwal pendaftaran seminar nasional pekan depan.";
 $evalLow = $priorityService->evaluateUrgency($lowText);
 assertTest("Urgency: Deteksi status Rendah", $evalLow['urgency_label'] === 'Rendah' && $evalLow['is_urgent'] === false);
+
+// 1.2.1 Urgency Score Scaling Contract (DB 0.0-1.0 to API 0.0-10.0)
+assertTest("Urgency Score: 0.15 dikonversi tepat ke 1.5", \App\Services\ComplaintService::normalizeUrgencyScore(0.15) === 1.5);
+assertTest("Urgency Score: 0.45 dikonversi tepat ke 4.5", \App\Services\ComplaintService::normalizeUrgencyScore(0.45) === 4.5);
+assertTest("Urgency Score: 0.70 dikonversi tepat ke 7.0", \App\Services\ComplaintService::normalizeUrgencyScore(0.70) === 7.0);
+assertTest("Urgency Score: 1.00 dikonversi tepat ke 10.0", \App\Services\ComplaintService::normalizeUrgencyScore(1.00) === 10.0);
+assertTest("Urgency Score: Nilai skala 0-10 tidak dikalikan ulang", \App\Services\ComplaintService::normalizeUrgencyScore(4.5) === 4.5);
+assertTest("Urgency Score: Nilai null menghasilkan default 5.0", \App\Services\ComplaintService::normalizeUrgencyScore(null) === 5.0);
 
 // 1.3 Category/Unit Fallback Mapping
 $catIT = $priorityService->classifyUnitFallback("Koneksi WiFi di gedung pascasarjana sering putus dan RTO.");
@@ -339,6 +354,298 @@ assertTest("Evidence: Batas ukuran maksimum tepat 5MB (5242880 bytes)", $refMaxS
 assertTest("Evidence: Ekstensi berbahaya (.php, .exe, .sh) ditolak", 
     !in_array('php', $refAllowed) && !in_array('exe', $refAllowed) && !in_array('sh', $refAllowed));
 
+// Helper membuat UploadedFile uji
+if (!function_exists('createTestUploadedFile')) {
+    function createTestUploadedFile(string $filename, string $content, ?string $clientMime = null, int $error = UPLOAD_ERR_OK): \CodeIgniter\HTTP\Files\UploadedFile {
+        $tempDir = WRITEPATH . 'temp_tests';
+        if (!is_dir($tempDir)) {
+            @mkdir($tempDir, 0755, true);
+        }
+        $tempFile = $tempDir . DIRECTORY_SEPARATOR . 'test_' . bin2hex(random_bytes(4)) . '_' . $filename;
+        file_put_contents($tempFile, $content);
+        return new \CodeIgniter\HTTP\Files\UploadedFile($tempFile, $filename, $clientMime, strlen($content), $error, true);
+    }
+}
+
+// 8.1 Validasi Upload File Nyata (Magic Bytes & MIME Type)
+$validJpgBytes = "\xFF\xD8\xFF\xE0\x00\x10JFIF\x00\x01\x01\x01\x00\x60\x00\x60\x00\x00\xFF\xDB\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\t\t\x08\n\x0C\x14\r\x0C\x0B\x0B\x0C\x19\x12\x13\x0F\x14\x1D\x1A\x1F\x1E\x1D\x1A\x1C\x1C $.' \",#\x1C\x1C(7),01444\x1F'9=82<.342\xFF\xC0\x00\x0B\x08\x00\x01\x00\x01\x01\x01\x11\x00\xFF\xDA\x00\x08\x01\x01\x00\x00?\x00\xBF\x00\xFF\xD9";
+$validPngBytes = "\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82";
+$validPdfBytes = "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R >>\nendobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \ntrailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n165\n%%EOF";
+
+// Test Upload file JPG valid
+$jpgFile = createTestUploadedFile('foto_kerusakan.jpg', $validJpgBytes, 'image/jpeg');
+$valJpg = $evidenceService->validateFile($jpgFile);
+assertTest("Upload Security: File JPG valid diterima", $valJpg['valid'] === true);
+
+// Test Upload file PNG valid
+$pngFile = createTestUploadedFile('bukti_lapangan.png', $validPngBytes, 'image/png');
+$valPng = $evidenceService->validateFile($pngFile);
+assertTest("Upload Security: File PNG valid diterima", $valPng['valid'] === true);
+
+// Test Upload file PDF valid
+$pdfFile = createTestUploadedFile('dokumen_keluhan.pdf', $validPdfBytes, 'application/pdf');
+$valPdf = $evidenceService->validateFile($pdfFile);
+assertTest("Upload Security: File PDF valid diterima", $valPdf['valid'] === true);
+
+// Test Upload file ekstensi PHP ditolak
+$phpFile = createTestUploadedFile('webshell.php', '<?php echo "evil"; ?>', 'application/x-php');
+$valPhp = $evidenceService->validateFile($phpFile);
+assertTest("Upload Security: File dengan ekstensi PHP ditolak", $valPhp['valid'] === false && str_contains($valPhp['error'], 'Ekstensi file tidak diizinkan'));
+
+// Test Upload file ekstensi EXE ditolak
+$exeFile = createTestUploadedFile('malware.exe', "MZ\x90\x00\x03\x00\x00\x00\x04\x00", 'application/octet-stream');
+$valExe = $evidenceService->validateFile($exeFile);
+assertTest("Upload Security: File dengan ekstensi EXE ditolak", $valExe['valid'] === false && str_contains($valExe['error'], 'Ekstensi file tidak diizinkan'));
+
+// Test MIME type tidak sesuai ekstensi ditolak (PHP script disamarkan sebagai JPG)
+$fakeJpgFile = createTestUploadedFile('script_samaran.jpg', '<?php phpinfo(); ?>', 'image/jpeg');
+$valFakeJpg = $evidenceService->validateFile($fakeJpgFile);
+assertTest("Upload Security: MIME type tidak sesuai ekstensi ditolak", $valFakeJpg['valid'] === false && str_contains($valFakeJpg['error'], 'tidak sesuai dengan ekstensi'));
+
+// Test MIME fail-closed: MIME tidak terdeteksi dianggap tidak valid
+$undetectedMimeFile = createTestUploadedFile('corrupt_binary.jpg', "\x00\x01\x02\x03\x04\x05", 'application/octet-stream');
+$valUndetected = $evidenceService->validateFile($undetectedMimeFile);
+assertTest("Upload Security: MIME type tidak terdeteksi / tidak cocok ditolak (Fail-Closed)", $valUndetected['valid'] === false);
+
+// Test Validasi Struktur Dokumen DOCX (Office Open XML) & Proteksi ZIP Bomb
+$tempTestsDir = WRITEPATH . 'temp_tests';
+if (!is_dir($tempTestsDir)) {
+    @mkdir($tempTestsDir, 0755, true);
+}
+
+// 1. DOCX Valid (ZIP memuat [Content_Types].xml dan word/document.xml, ukuran normal, ratio aman)
+$validDocxPath = $tempTestsDir . DIRECTORY_SEPARATOR . 'valid_doc_' . uniqid() . '.docx';
+$zipValid = new \ZipArchive();
+$docxCreated = false;
+if ($zipValid->open($validDocxPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+    $zipValid->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>');
+    $zipValid->addFromString('word/document.xml', '<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"></w:document>');
+    $zipValid->close();
+    $docxCreated = true;
+}
+$validDocxUploaded = new \CodeIgniter\HTTP\Files\UploadedFile($validDocxPath, 'laporan_resmi.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', filesize($validDocxPath), UPLOAD_ERR_OK, true);
+$valDocxValid = $evidenceService->validateFile($validDocxUploaded);
+assertTest("DOCX Security [1/9]: Dokumen DOCX valid dengan struktur OpenXML diterima", $docxCreated && $valDocxValid['valid'] === true);
+@unlink($validDocxPath);
+
+// 2. ZIP Biasa di-rename menjadi DOCX (tanpa [Content_Types].xml atau word/document.xml)
+$fakeDocxPath = $tempTestsDir . DIRECTORY_SEPARATOR . 'fake_doc_' . uniqid() . '.docx';
+$zipFake = new \ZipArchive();
+$fakeZipCreated = false;
+if ($zipFake->open($fakeDocxPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+    $zipFake->addFromString('arbitrary.txt', 'Hanya file teks di dalam zip.');
+    $zipFake->close();
+    $fakeZipCreated = true;
+}
+$valFakeDocx = $evidenceService->isValidDocxArchive($fakeDocxPath);
+assertTest("DOCX Security [2/9]: File ZIP biasa di-rename menjadi DOCX ditolak", $fakeZipCreated && $valFakeDocx === false);
+@unlink($fakeDocxPath);
+
+// 3. DOCX dengan total uncompressed size melebihi batas (> 25MB)
+$oversizeTotalDocx = $tempTestsDir . DIRECTORY_SEPARATOR . 'oversize_total_' . uniqid() . '.docx';
+$zipTotal = new \ZipArchive();
+$oversizeTotalCreated = false;
+if ($zipTotal->open($oversizeTotalDocx, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+    $zipTotal->addFromString('[Content_Types].xml', '<?xml version="1.0"?><Types/>');
+    $zipTotal->addFromString('word/document.xml', '<?xml version="1.0"?><w:doc/>');
+    // 3 entri masing-masing 9.2MB (total 27.6MB > 25MB limit) dengan rasio wajar (~15:1)
+    $line = str_repeat("SuaraLens PENS Kampus Terpadu Surabaya 2026 ", 2); // 88 bytes
+    $part9mb = str_repeat($line, 105000); // ~9.2 MB per entri
+    $zipTotal->addFromString('word/part1.xml', $part9mb);
+    $zipTotal->addFromString('word/part2.xml', $part9mb);
+    $zipTotal->addFromString('word/part3.xml', $part9mb);
+    $zipTotal->close();
+    unset($part9mb);
+    $oversizeTotalCreated = true;
+}
+$valOversizeTotal = $evidenceService->isValidDocxArchive($oversizeTotalDocx);
+assertTest("DOCX Security [3/9]: Total uncompressed size melebihi batas (27.6MB > 25MB) ditolak", $oversizeTotalCreated && $valOversizeTotal === false);
+@unlink($oversizeTotalDocx);
+
+// 4. DOCX dengan entry individual melebihi batas (> 10MB)
+$oversizeEntryDocx = $tempTestsDir . DIRECTORY_SEPARATOR . 'oversize_entry_' . uniqid() . '.docx';
+$zipEntry = new \ZipArchive();
+$oversizeEntryCreated = false;
+if ($zipEntry->open($oversizeEntryDocx, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+    $zipEntry->addFromString('[Content_Types].xml', '<?xml version="1.0"?><Types/>');
+    $zipEntry->addFromString('word/document.xml', '<?xml version="1.0"?><w:doc/>');
+    // Satu entri 11.4MB (> 10MB entry limit)
+    $line = str_repeat("SuaraLens PENS Kampus Terpadu Surabaya 2026 ", 2);
+    $part11mb = str_repeat($line, 130000); // ~11.4 MB
+    $zipEntry->addFromString('word/large_data.xml', $part11mb);
+    $zipEntry->close();
+    unset($part11mb);
+    $oversizeEntryCreated = true;
+}
+$valOversizeEntry = $evidenceService->isValidDocxArchive($oversizeEntryDocx);
+assertTest("DOCX Security [4/9]: Entry individual melebihi batas (11.4MB > 10MB) ditolak", $oversizeEntryCreated && $valOversizeEntry === false);
+@unlink($oversizeEntryDocx);
+
+// 5. DOCX dengan jumlah entry melebihi batas (> 500 entries)
+$maxEntriesDocx = $tempTestsDir . DIRECTORY_SEPARATOR . 'max_entries_' . uniqid() . '.docx';
+$zipEntries = new \ZipArchive();
+$maxEntriesCreated = false;
+if ($zipEntries->open($maxEntriesDocx, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+    $zipEntries->addFromString('[Content_Types].xml', '<?xml version="1.0"?><Types/>');
+    $zipEntries->addFromString('word/document.xml', '<?xml version="1.0"?><w:doc/>');
+    // Tambah 503 entri kecil (total 505 entri > 500 limit)
+    for ($e = 1; $e <= 503; $e++) {
+        $zipEntries->addFromString("word/item_{$e}.xml", "<item id='{$e}'/>");
+    }
+    $zipEntries->close();
+    $maxEntriesCreated = true;
+}
+$valMaxEntries = $evidenceService->isValidDocxArchive($maxEntriesDocx);
+assertTest("DOCX Security [5/9]: Jumlah entry arsip melebihi batas (505 > 500) ditolak", $maxEntriesCreated && $valMaxEntries === false);
+@unlink($maxEntriesDocx);
+
+// 6. DOCX dengan rasio kompresi tidak wajar (ZIP bomb rasio > 100:1)
+$highRatioDocx = $tempTestsDir . DIRECTORY_SEPARATOR . 'high_ratio_' . uniqid() . '.docx';
+$zipRatio = new \ZipArchive();
+$highRatioCreated = false;
+if ($zipRatio->open($highRatioDocx, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+    $zipRatio->addFromString('[Content_Types].xml', '<?xml version="1.0"?><Types/>');
+    $zipRatio->addFromString('word/document.xml', '<?xml version="1.0"?><w:doc/>');
+    // 500.000 byte nol terkompresi DEFLATE menjadi ~500 byte (rasio ~1000:1 > 100:1 limit)
+    $zipRatio->addFromString('word/bomb.xml', str_repeat("0", 500000));
+    $zipRatio->close();
+    $highRatioCreated = true;
+}
+$valHighRatio = $evidenceService->isValidDocxArchive($highRatioDocx);
+assertTest("DOCX Security [6/9]: Rasio kompresi tidak wajar (~1000:1 > 100:1) ditolak", $highRatioCreated && $valHighRatio === false);
+@unlink($highRatioDocx);
+
+// 7. DOCX dengan entri path traversal (../ atau Zip Slip)
+$traversalDocx = $tempTestsDir . DIRECTORY_SEPARATOR . 'traversal_' . uniqid() . '.docx';
+$zipTrav = new \ZipArchive();
+$travCreated = false;
+if ($zipTrav->open($traversalDocx, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+    $zipTrav->addFromString('[Content_Types].xml', '<?xml version="1.0"?><Types/>');
+    $zipTrav->addFromString('word/document.xml', '<?xml version="1.0"?><w:doc/>');
+    $zipTrav->addFromString('word/../../etc/passwd', 'malicious path');
+    $zipTrav->close();
+    $travCreated = true;
+}
+$valTrav = $evidenceService->isValidDocxArchive($traversalDocx);
+assertTest("DOCX Security [7/9]: Entry dengan path traversal (../) ditolak", $travCreated && $valTrav === false);
+@unlink($traversalDocx);
+
+// 8. DOCX dengan entri path absolut (/etc/... atau C:\...)
+$absoluteDocx = $tempTestsDir . DIRECTORY_SEPARATOR . 'absolute_' . uniqid() . '.docx';
+$zipAbs = new \ZipArchive();
+$absCreated = false;
+if ($zipAbs->open($absoluteDocx, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+    $zipAbs->addFromString('[Content_Types].xml', '<?xml version="1.0"?><Types/>');
+    $zipAbs->addFromString('word/document.xml', '<?xml version="1.0"?><w:doc/>');
+    $zipAbs->addFromString('/etc/shadow', 'malicious absolute path');
+    $zipAbs->close();
+    $absCreated = true;
+}
+$valAbs = $evidenceService->isValidDocxArchive($absoluteDocx);
+assertTest("DOCX Security [8/9]: Entry dengan path absolut (/etc/shadow) ditolak", $absCreated && $valAbs === false);
+@unlink($absoluteDocx);
+
+// 9. DOCX arsip rusak / tidak dapat dibaca
+$corruptDocx = $tempTestsDir . DIRECTORY_SEPARATOR . 'corrupt_' . uniqid() . '.docx';
+file_put_contents($corruptDocx, "PK\x03\x04\x00\x00CORRUPT_PAYLOAD_GARBAGE_BYTES");
+$valCorrupt = $evidenceService->isValidDocxArchive($corruptDocx);
+assertTest("DOCX Security [9/9]: Arsip DOCX rusak atau tidak dapat dibaca ditolak", $valCorrupt === false);
+@unlink($corruptDocx);
+
+// 3. Dokumen DOC Valid (OLE2 Compound Document Header)
+$validDocBytes = "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1" . str_repeat("\x00", 504);
+$validDocFile = createTestUploadedFile('dokumen_lama.doc', $validDocBytes, 'application/msword');
+$valDoc = $evidenceService->validateFile($validDocFile);
+assertTest("Upload Security: Dokumen DOC valid dengan magic bytes OLE2 diterima", $valDoc['valid'] === true);
+
+// 4. DOC Palsu: File teks di-rename menjadi .doc
+$fakeDocFile = createTestUploadedFile('fake_doc.doc', 'Ini teks biasa pura-pura DOC.', 'application/msword');
+$valFakeDoc = $evidenceService->validateFile($fakeDocFile);
+assertTest("Upload Security: File teks disamarkan menjadi DOC ditolak", $valFakeDoc['valid'] === false);
+
+// Test File melebihi batas ukuran 5MB ditolak
+$oversizeFile = createTestUploadedFile('file_raksasa.pdf', str_repeat('A', 5242880 + 2048), 'application/pdf');
+$valOversize = $evidenceService->validateFile($oversizeFile);
+assertTest("Upload Security: File melebihi batas 5MB ditolak", $valOversize['valid'] === false && str_contains($valOversize['error'], 'melebihi batas maksimum 5MB'));
+
+// Test File kosong (0 byte) ditolak
+$emptyFile = createTestUploadedFile('kosong.png', '', 'image/png');
+$valEmpty = $evidenceService->validateFile($emptyFile);
+assertTest("Upload Security: File kosong (0 byte) ditolak", $valEmpty['valid'] === false && str_contains($valEmpty['error'], 'tidak boleh kosong'));
+
+// Test File error upload ditolak
+$errUploadFile = createTestUploadedFile('corrupt.jpg', $validJpgBytes, 'image/jpeg', UPLOAD_ERR_PARTIAL);
+$valErrUpload = $evidenceService->validateFile($errUploadFile);
+assertTest("Upload Security: File gagal upload/parsial ditolak", $valErrUpload['valid'] === false);
+
+// 8.2 Penyimpanan Fisik & Kompensasi Pembersihan File (Zero Orphan Files)
+$storageTestFile = createTestUploadedFile('test_storage.jpg', $validJpgBytes, 'image/jpeg');
+$storedMeta = $evidenceService->storeAttachment($storageTestFile, 'complaints');
+$physicalPath = $storedMeta['physical_path'];
+
+assertTest("Storage Security: File fisik berhasil disimpan di direktori terisolasi", is_file($physicalPath));
+assertTest("Storage Security: Nama file penyimpanan acak unik (bukan nama asli)", $storedMeta['file_name'] !== 'test_storage.jpg');
+assertTest("Storage Security: Direktori uploads dilindungi file .htaccess non-executable", is_file(WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . '.htaccess'));
+
+// Kompensasi penghapusan file fisik valid di dalam direktori upload
+$deleted = $evidenceService->deleteFile($physicalPath);
+assertTest("Compensation: File valid di dalam direktori upload berhasil dihapus via deleteFile()", $deleted === true && !is_file($physicalPath));
+
+// Purge files batch
+$fileA = createTestUploadedFile('batch_a.png', $validPngBytes, 'image/png');
+$fileB = createTestUploadedFile('batch_b.png', $validPngBytes, 'image/png');
+$storedA = $evidenceService->storeAttachment($fileA, 'complaints');
+$storedB = $evidenceService->storeAttachment($fileB, 'complaints');
+assertTest("Compensation: Batch file fisik tersimpan sebelum simulasi kegagalan", is_file($storedA['physical_path']) && is_file($storedB['physical_path']));
+
+$evidenceService->purgeFiles([$storedA['physical_path'], $storedB['physical_path']]);
+assertTest("Compensation: purgeFiles() membersihkan seluruh file secara tuntas (Zero Orphan)", !is_file($storedA['physical_path']) && !is_file($storedB['physical_path']));
+
+// 8.3 Pengujian Ketat EvidenceService::deleteFile() Containment
+// 1. Menghapus file di luar WRITEPATH ditolak
+$outsideTarget = dirname(HOMEPATH) . DIRECTORY_SEPARATOR . 'sensitive_file.txt';
+$blockedOutsideDelete = $evidenceService->deleteFile($outsideTarget);
+assertTest("Storage Security: deleteFile() menolak menghapus file di luar WRITEPATH", $blockedOutsideDelete === false);
+
+// 2. Menghapus file di dalam WRITEPATH tetapi di luar direktori upload (misal logs) ditolak
+$logDir = WRITEPATH . 'logs';
+if (!is_dir($logDir)) {
+    @mkdir($logDir, 0755, true);
+}
+$logFile = $logDir . DIRECTORY_SEPARATOR . 'test_system.log';
+file_put_contents($logFile, 'system log line');
+$blockedLogDelete = $evidenceService->deleteFile($logFile);
+assertTest("Storage Security: deleteFile() menolak menghapus file di luar direktori upload (misal logs)", $blockedLogDelete === false && is_file($logFile));
+@unlink($logFile);
+
+// 3. Path traversal ditolak
+$traversalTarget = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR . 'test.log';
+$blockedTraversalDelete = $evidenceService->deleteFile($traversalTarget);
+assertTest("Storage Security: deleteFile() menolak path traversal", $blockedTraversalDelete === false);
+
+// 4. File dengan null-byte ditolak
+$nullByteTarget = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . "complaints" . DIRECTORY_SEPARATOR . "file.jpg\0.png";
+$blockedNullByteDelete = $evidenceService->deleteFile($nullByteTarget);
+assertTest("Storage Security: deleteFile() menolak path dengan null-byte", $blockedNullByteDelete === false);
+
+// 5. File yang tidak ada ditangani dengan aman (return false tanpa exception)
+$missingFileTarget = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'complaints' . DIRECTORY_SEPARATOR . 'non_existent_' . uniqid() . '.jpg';
+$missingHandledSafely = ($evidenceService->deleteFile($missingFileTarget) === false);
+assertTest("Storage Security: deleteFile() menangani file tidak ada dengan aman (return false)", $missingHandledSafely);
+
+// 6. Symlink keluar direktori upload ditolak
+$symlinkTarget = dirname(HOMEPATH) . DIRECTORY_SEPARATOR . 'composer.json';
+$symlinkFile = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'complaints' . DIRECTORY_SEPARATOR . 'symlink_escape_' . uniqid() . '.txt';
+$canTestSymlink = @symlink($symlinkTarget, $symlinkFile);
+if ($canTestSymlink && is_link($symlinkFile)) {
+    $blockedSymlink = $evidenceService->deleteFile($symlinkFile);
+    $targetStillExists = is_file($symlinkTarget);
+    assertTest("Storage Security: deleteFile() menolak symbolic link dan tidak menghapus target", $blockedSymlink === false && $targetStillExists);
+    @unlink($symlinkFile);
+} else {
+    skipTest("Storage Security: deleteFile() symbolic link test", "OS/lingkungan Windows tidak mengizinkan pembuatan symlink tanpa hak akses Administrator");
+}
+
 echo "\n";
 
 // -----------------------------------------------------------------
@@ -362,28 +669,995 @@ assertTest("ML Integration Fallback: Teks urgensi tinggi memicu flag review HITL
 echo "\n";
 
 // -----------------------------------------------------------------
-// 10. TEST STUDENT DASHBOARD REAL-TIME AGGREGATION
+// 10. TEST STUDENT DASHBOARD REAL-TIME AGGREGATION & ACCESS CONTROL
 // -----------------------------------------------------------------
-echo "[10] Testing Student Dashboard Aggregation Endpoint...\n";
-$dashboardCtrl = new \App\Controllers\DashboardController();
-$dashboardCtrl->initController(service('request'), service('response'), service('logger'));
-$studentDashResponse = $dashboardCtrl->studentDashboard();
+echo "[10] Testing Student Dashboard Aggregation & Security Protection...\n";
+
+// Ambil user aktual dari database untuk pengujian autentikasi & RBAC
+$adminRow = $db->table('users')->where('role', 'admin')->get()->getRowArray();
+$userRow = $db->table('users')->where('role', 'user')->get()->getRowArray();
+$otherRow = $db->table('users')->where('role', 'user')->where('id !=', (int) ($userRow['id'] ?? 17))->get()->getRowArray();
+$stakeholderRow = $db->table('users')->where('role', 'stakeholder')->get()->getRowArray()
+    ?? $db->table('users')->where('id !=', (int) ($adminRow['id'] ?? 15))->where('id !=', (int) ($userRow['id'] ?? 17))->get()->getRowArray();
+
+$adminUser = ['id' => (int) ($adminRow['id'] ?? 15), 'email' => $adminRow['email'] ?? 'admin@pens.ac.id', 'role' => 'admin', 'name' => $adminRow['name'] ?? 'Admin PENS'];
+$regularUser = ['id' => (int) ($userRow['id'] ?? 17), 'email' => $userRow['email'] ?? 'budi@student.pens.ac.id', 'role' => 'user', 'name' => $userRow['name'] ?? 'Budi Mahasiswa'];
+$otherUser = ['id' => (int) ($otherRow['id'] ?? 14), 'email' => $otherRow['email'] ?? 'other@student.pens.ac.id', 'role' => 'user', 'name' => $otherRow['name'] ?? 'Other Mahasiswa'];
+
+$stakeholderId = (int) ($stakeholderRow['id'] ?? 16);
+$matchingStakeholder = ['id' => $stakeholderId, 'role' => 'stakeholder', 'unit' => 'Sarana Prasarana dan Layanan Umum', 'name' => $stakeholderRow['name'] ?? 'Petugas Sarpras'];
+$diffStakeholder     = ['id' => $stakeholderId, 'role' => 'stakeholder', 'unit' => 'TIK/Sistem Informasi', 'name' => 'Petugas TIK'];
+
+// Siapkan token autentikasi
+$dashTokenService = new \App\Libraries\ApiTokenService();
+$dashAdminToken = $dashTokenService->issue($adminUser['id']);
+$dashUserToken  = $dashTokenService->issue($regularUser['id']);
+$dashStkToken   = $dashTokenService->issue($stakeholderId);
+
+// 10.1 Request tanpa autentikasi ditolak (HTTP 401)
+$reqUnauth = service('request');
+$reqUnauth->setHeader('Authorization', '');
+$dashboardCtrlUnauth = new \App\Controllers\DashboardController();
+$dashboardCtrlUnauth->initController($reqUnauth, service('response'), service('logger'));
+$unauthResp = $dashboardCtrlUnauth->studentDashboard();
+assertTest("Student Dashboard: Request tanpa autentikasi ditolak (HTTP 401)", $unauthResp->getStatusCode() === 401);
+
+// 10.2 Request dengan role stakeholder ditolak (HTTP 403)
+$reqStk = service('request');
+$reqStk->setHeader('Authorization', 'Bearer ' . $dashStkToken);
+$dashboardCtrlStk = new \App\Controllers\DashboardController();
+$dashboardCtrlStk->initController($reqStk, service('response'), service('logger'));
+$stkResp = $dashboardCtrlStk->studentDashboard();
+assertTest("Student Dashboard: Role stakeholder ditolak mengakses dashboard mahasiswa (HTTP 403)", $stkResp->getStatusCode() === 403);
+
+// 10.3 Request dengan role mahasiswa (user) berhasil (HTTP 200)
+$reqUser = service('request');
+$reqUser->setHeader('Authorization', 'Bearer ' . $dashUserToken);
+$dashboardCtrlUser = new \App\Controllers\DashboardController();
+$dashboardCtrlUser->initController($reqUser, service('response'), service('logger'));
+$studentDashResponse = $dashboardCtrlUser->studentDashboard();
 $studentDashJson = json_decode($studentDashResponse->getBody(), true);
 
-assertTest("Student Dashboard: Status respon berhasil (status=true)", !empty($studentDashJson['status']));
+assertTest("Student Dashboard: Mahasiswa berhasil mengakses dashboard (HTTP 200)", $studentDashResponse->getStatusCode() === 200 && !empty($studentDashJson['status']));
 assertTest("Student Dashboard: Memuat objek ringkasan (summary)", isset($studentDashJson['summary']['total']));
 assertTest("Student Dashboard: Memuat 14 unit kerja resmi", count($studentDashJson['units']) === 14);
 assertTest("Student Dashboard: Memuat 7 alur tahapan aduan", count($studentDashJson['globalStages']) === 7);
 assertTest("Student Dashboard: Memuat 3 breakdown tipe pengajuan (complaint, feedback, suggestion)", count($studentDashJson['typesBreakdown']) === 3);
 assertTest("Student Dashboard: Memuat daftar distribusi unit", count($studentDashJson['distribution']) === 14);
 
+// 10.4 Request dengan role admin berhasil (HTTP 200)
+$reqAdmin = service('request');
+$reqAdmin->setHeader('Authorization', 'Bearer ' . $dashAdminToken);
+$dashboardCtrlAdmin = new \App\Controllers\DashboardController();
+$dashboardCtrlAdmin->initController($reqAdmin, service('response'), service('logger'));
+$adminDashResponse = $dashboardCtrlAdmin->studentDashboard();
+assertTest("Student Dashboard: Admin berwenang memantau dashboard mahasiswa (HTTP 200)", $adminDashResponse->getStatusCode() === 200);
+
+// Cleanup token uji dashboard
+$db->table('api_tokens')->whereIn('user_id', [$adminUser['id'], $regularUser['id'], $stakeholderId])->delete();
+
 echo "\n";
 
 // -----------------------------------------------------------------
-// 10. SUMMARY
+// 11. TEST COMPLAINT RE-ANALYSIS & ANALYSIS HISTORY
+// -----------------------------------------------------------------
+echo "[11] Testing Complaint Re-Analysis & Analysis History (Immutable Trail)...\n";
+$fastML = new \App\Services\MLService('http://127.0.0.1:59999', 1, 1);
+$complaintService = new \App\Services\ComplaintService(null, null, null, null, $fastML);
+
+// 11.1 Create test complaint
+$testComplaintData = [
+    'type' => 'complaint',
+    'description' => 'AC di ruang lab 301 mati dan suhu sangat panas mengganggu praktikum.',
+    'category' => 'Sarana Prasarana dan Layanan Umum'
+];
+$createdComp = $complaintService->createComplaint($testComplaintData, $regularUser);
+$testCompId = (int) $createdComp['id'];
+$firstAnalysisId = (int) $createdComp['data']['analysis_id'];
+
+assertTest("Complaint Lifecycle: Berhasil membuat pengaduan uji", $testCompId > 0 && $firstAnalysisId > 0);
+assertTest("Complaint Analysis: Menyimpan unit_confidence dan unit_reason", 
+    array_key_exists('unit_confidence', $createdComp['data']) && array_key_exists('unit_reason', $createdComp['data']));
+
+// 11.2 Trigger Re-analysis
+$reanalyzeRes = $complaintService->reanalyzeComplaint($testCompId, $adminUser);
+$secondAnalysisId = (int) $reanalyzeRes['data']['analysis_id'];
+
+assertTest("Re-analysis: Menghasilkan ID analisis baru yang berbeda", $secondAnalysisId > 0 && $secondAnalysisId !== $firstAnalysisId);
+assertTest("Re-analysis: Menyertakan unit_confidence dan unit_reason", 
+    array_key_exists('unit_confidence', $reanalyzeRes['data']) && array_key_exists('unit_reason', $reanalyzeRes['data']));
+
+// 11.3 Retrieve Analysis History
+$historyRes = $complaintService->getAnalysisHistory($testCompId, $regularUser);
+assertTest("Analysis History: Total riwayat minimal 2 record", $historyRes['data']['total'] >= 2);
+assertTest("Analysis History: Record pertama adalah analisis terbaru (ID descending)", 
+    $historyRes['data']['history'][0]['analysis_id'] === $secondAnalysisId);
+assertTest("Analysis History: Record kedua adalah analisis pertama (tidak ditimpa)", 
+    $historyRes['data']['history'][1]['analysis_id'] === $firstAnalysisId);
+
+// 11.4 IDOR Protection Test on History
+$idorBlocked = false;
+try {
+    $complaintService->getAnalysisHistory($testCompId, $otherUser);
+} catch (InvalidArgumentException $e) {
+    $idorBlocked = true;
+}
+assertTest("Security IDOR: User lain dilarang mengakses riwayat analisis orang lain", $idorBlocked);
+
+// 11.5 Detail Complaint uses LATEST Analysis
+$detailComp = $complaintService->getComplaintDetail($testCompId, $regularUser);
+assertTest("Detail Complaint: Menggunakan analisis terbaru", $detailComp['id'] === $testCompId);
+assertTest("Detail Complaint: Memuat unit_confidence dan unit_reason", 
+    array_key_exists('unit_confidence', $detailComp) && array_key_exists('unit_reason', $detailComp));
+
+// Cleanup test fixtures
+$db->table('complaint_reviews')->where('complaint_analysis_id', $secondAnalysisId)->delete();
+$db->table('complaint_reviews')->where('complaint_analysis_id', $firstAnalysisId)->delete();
+$db->table('complaint_analysis')->where('complaint_id', $testCompId)->delete();
+$db->table('complaints')->where('id', $testCompId)->delete();
+
+echo "\n";
+
+// -----------------------------------------------------------------
+// 12. TEST COMPLAINT CONTROLLER ENDPOINTS
+// -----------------------------------------------------------------
+echo "[12] Testing ComplaintController HTTP Endpoints...\n";
+$controller = new \App\Controllers\ComplaintController($complaintService);
+$controller->initController(service('request'), service('response'), service('logger'));
+
+// 12.1 index()
+$indexResp = $controller->index();
+$indexData = json_decode($indexResp->getBody(), true);
+assertTest("Controller: index() mengembalikan status=true", !empty($indexData['status']));
+assertTest("Controller: index() memuat array items", isset($indexData['items']) && is_array($indexData['items']));
+assertTest("Controller: index() memuat total dan pagination", isset($indexData['total']) && isset($indexData['page']));
+
+// 12.2 Validasi ID null
+$showNull = $controller->show(null);
+assertTest("Controller: show(null) mengembalikan 400 Bad Request", $showNull->getStatusCode() === 400);
+
+$updateNull = $controller->updateStatus(null);
+assertTest("Controller: updateStatus(null) mengembalikan 400 Bad Request", $updateNull->getStatusCode() === 400);
+
+$analyzeNull = $controller->analyze(null);
+assertTest("Controller: analyze(null) mengembalikan 400 Bad Request", $analyzeNull->getStatusCode() === 400);
+
+$historyNull = $controller->analysisHistory(null);
+assertTest("Controller: analysisHistory(null) mengembalikan 400 Bad Request", $historyNull->getStatusCode() === 400);
+
+$replyNull = $controller->reply(null);
+assertTest("Controller: reply(null) mengembalikan 400 Bad Request", $replyNull->getStatusCode() === 400);
+
+$repliesNull = $controller->replies(null);
+assertTest("Controller: replies(null) mengembalikan 400 Bad Request", $repliesNull->getStatusCode() === 400);
+
+// 12.3 Proteksi Autentikasi
+$showUnauth = $controller->show(1);
+assertTest("Controller: show() tanpa token mengembalikan 401 Unauthorized", $showUnauth->getStatusCode() === 401);
+
+$myUnauth = $controller->my();
+assertTest("Controller: my() tanpa token mengembalikan 401 Unauthorized", $myUnauth->getStatusCode() === 401);
+
+$createUnauth = $controller->create();
+assertTest("Controller: create() tanpa token mengembalikan 401 Unauthorized", $createUnauth->getStatusCode() === 401);
+
+echo "\n";
+
+// -----------------------------------------------------------------
+// 13. TEST AUTHENTICATION & API TOKEN LIFECYCLE
+// -----------------------------------------------------------------
+echo "[13] Testing Authentication & API Token Lifecycle...\n";
+$tokenService = new \App\Libraries\ApiTokenService();
+
+// 13.1 Token Issue
+$issuedToken = $tokenService->issue((int) $regularUser['id']);
+assertTest("Auth: Token berhasil diterbitkan", !empty($issuedToken) && strlen($issuedToken) >= 40);
+
+// 13.2 Authenticate via Bearer header
+$authUser = $tokenService->userFromAuthorization("Bearer {$issuedToken}");
+assertTest("Auth: Autentikasi valid dengan Bearer token", $authUser !== null && (int) $authUser['id'] === (int) $regularUser['id']);
+assertTest("Auth: Hash password disembunyikan dari profil pengguna", !isset($authUser['password_hash']));
+
+// 13.3 Invalid & Malformed Token Handling
+assertTest("Auth: Tolak token kosong / null", $tokenService->userFromAuthorization(null) === null);
+assertTest("Auth: Tolak format token tidak valid", $tokenService->userFromAuthorization("Basic abcdef123456") === null);
+assertTest("Auth: Tolak token palsu yang tidak ada di database", $tokenService->userFromAuthorization("Bearer " . str_repeat("a", 50)) === null);
+
+// 13.4 Token Revocation (Logout)
+$revoked = $tokenService->revokeAuthorization("Bearer {$issuedToken}");
+assertTest("Auth: Revoke token (logout) berhasil", $revoked === true);
+assertTest("Auth: Token yang telah di-revoke tidak dapat digunakan kembali", $tokenService->userFromAuthorization("Bearer {$issuedToken}") === null);
+
+echo "\n";
+
+// -----------------------------------------------------------------
+// 14. TEST SERVICE-LAYER RBAC & UNKNOWN ROLE REJECTION
+// -----------------------------------------------------------------
+echo "[14] Testing Service-Layer RBAC & Unknown Role Rejection...\n";
+$mockComplaint = [
+    'id'            => 8888,
+    'user_id'       => (int) $regularUser['id'],
+    'assigned_unit' => 'Sarana Prasarana dan Layanan Umum',
+];
+
+// 14.1 Admin has full access
+$adminAccessOk = true;
+try {
+    $complaintService->assertComplaintAccess($mockComplaint, $adminUser, 'view');
+    $complaintService->assertComplaintAccess($mockComplaint, $adminUser, 'reanalyze');
+    $complaintService->assertComplaintAccess($mockComplaint, $adminUser, 'reply');
+} catch (Throwable $e) {
+    $adminAccessOk = false;
+}
+assertTest("RBAC: Admin memiliki akses ke seluruh tindakan pengaduan", $adminAccessOk);
+
+// 14.2 Stakeholder Unit Matching
+
+$stakeholderMatchOk = true;
+try {
+    $complaintService->assertComplaintAccess($mockComplaint, $matchingStakeholder, 'view');
+    $complaintService->assertComplaintAccess($mockComplaint, $matchingStakeholder, 'reanalyze');
+    $complaintService->assertComplaintAccess($mockComplaint, $matchingStakeholder, 'reply');
+} catch (Throwable $e) {
+    $stakeholderMatchOk = false;
+}
+assertTest("RBAC: Stakeholder dapat mengakses pengaduan unitnya", $stakeholderMatchOk);
+
+$diffStakeholderBlocked = false;
+try {
+    $complaintService->assertComplaintAccess($mockComplaint, $diffStakeholder, 'view');
+} catch (InvalidArgumentException $e) {
+    $diffStakeholderBlocked = true;
+}
+assertTest("RBAC: Stakeholder dilarang mengakses pengaduan unit lain", $diffStakeholderBlocked);
+
+// 14.3 User Permission Boundaries
+$userActionBlocked = false;
+try {
+    $complaintService->assertComplaintAccess($mockComplaint, $regularUser, 'reanalyze');
+} catch (InvalidArgumentException $e) {
+    $userActionBlocked = true;
+}
+assertTest("RBAC: User biasa dilarang melakukan analisis ulang", $userActionBlocked);
+
+// 14.4 Unknown Role Default Deny
+$unknownRoleUser = ['id' => 999, 'role' => 'guest'];
+$unknownRoleBlocked = false;
+try {
+    $complaintService->assertComplaintAccess($mockComplaint, $unknownRoleUser, 'view');
+} catch (InvalidArgumentException $e) {
+    $unknownRoleBlocked = true;
+}
+assertTest("RBAC: Role tidak dikenal ditolak secara default", $unknownRoleBlocked);
+
+// 14.5 Real Data Mutation & Non-Mutation Defense Tests
+$rbacTestComp = $complaintService->createComplaint([
+    'type'        => 'complaint',
+    'description' => 'Uji ketahanan RBAC dan verifikasi non-mutasi database saat akses ditolak.',
+    'category'    => 'Sarana Prasarana dan Layanan Umum',
+], $regularUser);
+$rbacCompId = (int) $rbacTestComp['id'];
+$initialCompRow = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+
+// Test verifyComplaint() - Stakeholder ditolak & data tidak berubah
+$stkVerifyBlocked = false;
+try {
+    $complaintService->verifyComplaint($rbacCompId, true, "Verifikasi ilegal oleh stakeholder", $matchingStakeholder);
+} catch (InvalidArgumentException $e) {
+    $stkVerifyBlocked = true;
+}
+$rowAfterStkVerify = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Stakeholder ditolak saat memverifikasi aduan", $stkVerifyBlocked);
+assertTest("RBAC Integrity: Status database tidak berubah setelah penolakan stakeholder", $rowAfterStkVerify['status'] === $initialCompRow['status']);
+
+// Test verifyComplaint() - User ditolak & data tidak berubah
+$userVerifyBlocked = false;
+try {
+    $complaintService->verifyComplaint($rbacCompId, true, "Verifikasi ilegal oleh user", $regularUser);
+} catch (InvalidArgumentException $e) {
+    $userVerifyBlocked = true;
+}
+$rowAfterUserVerify = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: User ditolak saat memverifikasi aduan", $userVerifyBlocked);
+assertTest("RBAC Integrity: Status database tidak berubah setelah penolakan user", $rowAfterUserVerify['status'] === $initialCompRow['status']);
+
+// Test verifyComplaint() - Unknown Role ditolak & data tidak berubah
+$unknownVerifyBlocked = false;
+try {
+    $complaintService->verifyComplaint($rbacCompId, true, "Verifikasi oleh role asing", $unknownRoleUser);
+} catch (InvalidArgumentException $e) {
+    $unknownVerifyBlocked = true;
+}
+assertTest("RBAC Mutate: Role tidak dikenal ditolak saat memverifikasi aduan", $unknownVerifyBlocked);
+
+// Test verifyComplaint() - Admin berhasil & data berubah
+$adminVerifyRes = $complaintService->verifyComplaint($rbacCompId, true, "Verifikasi sah oleh Admin Sentral", $adminUser);
+$rowAfterAdminVerify = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Admin berhasil melakukan verifikasi aduan", $adminVerifyRes['status'] === true && $rowAfterAdminVerify['status'] === 'verified');
+
+// Test dispatchComplaint() - Stakeholder ditolak & unit tidak berubah
+$stkDispatchBlocked = false;
+try {
+    $complaintService->dispatchComplaint($rbacCompId, 'Akademik', 'PIC', 'Disposisi ilegal', null, $matchingStakeholder);
+} catch (InvalidArgumentException $e) {
+    $stkDispatchBlocked = true;
+}
+$rowAfterStkDispatch = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Stakeholder ditolak saat melakukan disposisi aduan", $stkDispatchBlocked);
+assertTest("RBAC Integrity: Unit penugasan tidak berubah saat disposisi stakeholder ditolak", $rowAfterStkDispatch['assigned_unit'] === $rowAfterAdminVerify['assigned_unit']);
+
+// Test dispatchComplaint() - User ditolak & unit tidak berubah
+$userDispatchBlocked = false;
+try {
+    $complaintService->dispatchComplaint($rbacCompId, 'Akademik', 'PIC', 'Disposisi user ilegal', null, $regularUser);
+} catch (InvalidArgumentException $e) {
+    $userDispatchBlocked = true;
+}
+$rowAfterUserDispatch = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: User ditolak saat melakukan disposisi aduan", $userDispatchBlocked);
+assertTest("RBAC Integrity: Unit penugasan tidak berubah saat disposisi user ditolak", $rowAfterUserDispatch['assigned_unit'] === $rowAfterAdminVerify['assigned_unit']);
+
+// Test dispatchComplaint() - Role tidak dikenal ditolak & unit tidak berubah
+$unknownDispatchBlocked = false;
+try {
+    $complaintService->dispatchComplaint($rbacCompId, 'Sarana Prasarana dan Layanan Umum', 'PIC', 'Disposisi role asing', null, $unknownRoleUser);
+} catch (InvalidArgumentException $e) {
+    $unknownDispatchBlocked = true;
+}
+$rowAfterUnknownDispatch = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Role tidak dikenal ditolak saat melakukan disposisi aduan", $unknownDispatchBlocked);
+assertTest("RBAC Integrity: Unit penugasan tidak berubah saat disposisi role tidak dikenal ditolak", $rowAfterUnknownDispatch['assigned_unit'] === $rowAfterAdminVerify['assigned_unit']);
+
+// Test dispatchComplaint() - Admin berhasil & unit terdisposisi
+$adminDispatchRes = $complaintService->dispatchComplaint($rbacCompId, 'Sarana Prasarana dan Layanan Umum', 'Pak Budi', 'Disposisi resmi admin', null, $adminUser);
+$rowAfterAdminDispatch = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Admin berhasil melakukan disposisi pengaduan", $adminDispatchRes['status'] === true && $rowAfterAdminDispatch['status'] === 'dispatched');
+
+// 14.6 Security Audit: updateStatus() Stakeholder & User Boundaries
+// Status tiket saat ini: 'dispatched', unit: 'Sarana Prasarana dan Layanan Umum'
+
+// Stakeholder dilarang mengubah status menjadi 'resolved'
+$stkResolveBlocked = false;
+try {
+    $complaintService->updateStatus($rbacCompId, 'resolved', 'Stakeholder menyelesaikan tiket secara sepihak', null, $matchingStakeholder);
+} catch (InvalidArgumentException $e) {
+    $stkResolveBlocked = true;
+}
+$rowAfterStkResolve = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Stakeholder dilarang mengubah status menjadi resolved", $stkResolveBlocked);
+assertTest("RBAC Integrity: Status database tidak berubah setelah percobaan stakeholder set resolved", $rowAfterStkResolve['status'] === 'dispatched');
+
+// Stakeholder dilarang mengubah status sentral ('verified', 'dispatched', 'rejected')
+foreach (['verified', 'dispatched', 'rejected'] as $centralSt) {
+    $stkCentralBlocked = false;
+    try {
+        $complaintService->updateStatus($rbacCompId, $centralSt, "Stakeholder coba set {$centralSt}", null, $matchingStakeholder);
+    } catch (InvalidArgumentException $e) {
+        $stkCentralBlocked = true;
+    }
+    $rowCheck = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+    assertTest("RBAC Mutate: Stakeholder dilarang mengubah status menjadi {$centralSt}", $stkCentralBlocked);
+    assertTest("RBAC Integrity: Status database tidak berubah ke {$centralSt}", $rowCheck['status'] === 'dispatched');
+}
+
+// Stakeholder dilarang mengubah unit penugasan (assigned_unit)
+$stkUnitBlocked = false;
+try {
+    $complaintService->updateStatus($rbacCompId, 'in_progress', 'Ubah unit penugasan', 'TIK/Sistem Informasi', $matchingStakeholder);
+} catch (InvalidArgumentException $e) {
+    $stkUnitBlocked = true;
+}
+$rowAfterStkUnit = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Stakeholder dilarang mengubah unit penugasan", $stkUnitBlocked);
+assertTest("RBAC Integrity: Unit penugasan tidak berubah setelah penolakan ganti unit", $rowAfterStkUnit['assigned_unit'] === 'Sarana Prasarana dan Layanan Umum');
+
+// User dilarang mengubah status pengaduan via updateStatus()
+$userUpdateBlocked = false;
+try {
+    $complaintService->updateStatus($rbacCompId, 'in_progress', 'User coba ubah status', null, $regularUser);
+} catch (InvalidArgumentException $e) {
+    $userUpdateBlocked = true;
+}
+$rowAfterUserUpdate = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: User dilarang mengubah status via updateStatus()", $userUpdateBlocked);
+assertTest("RBAC Integrity: Status database tidak berubah saat update status user ditolak", $rowAfterUserUpdate['status'] === 'dispatched');
+
+// Role tidak dikenal dilarang mengubah status via updateStatus()
+$unknownUpdateBlocked = false;
+try {
+    $complaintService->updateStatus($rbacCompId, 'in_progress', 'Unknown coba update', null, $unknownRoleUser);
+} catch (InvalidArgumentException $e) {
+    $unknownUpdateBlocked = true;
+}
+$rowAfterUnknownUpdate = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Role tidak dikenal dilarang mengubah status via updateStatus()", $unknownUpdateBlocked);
+assertTest("RBAC Integrity: Status database tidak berubah saat update status role asing ditolak", $rowAfterUnknownUpdate['status'] === 'dispatched');
+
+// Stakeholder berhasil mengubah ke status operasional (in_progress)
+$stkProgressRes = $complaintService->updateStatus($rbacCompId, 'in_progress', 'Unit Sarpras mulai proses pengerjaan', null, $matchingStakeholder);
+$rowAfterStkProgress = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Stakeholder berhasil mengubah status ke operasional (in_progress)", $stkProgressRes['status'] === true && $rowAfterStkProgress['status'] === 'in_progress');
+
+// Stakeholder dilarang memberikan feedback kepuasan (submitFeedback)
+$stkFeedbackBlocked = false;
+try {
+    $complaintService->submitFeedback($rbacCompId, ['rating' => 5, 'aspect_speed' => 5, 'aspect_clarity' => 5, 'aspect_solution' => 5, 'comment' => 'Feedback stakeholder palsu'], $matchingStakeholder);
+} catch (InvalidArgumentException $e) {
+    $stkFeedbackBlocked = true;
+}
+$rowAfterStkFb = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: Stakeholder dilarang memberikan feedback kepuasan", $stkFeedbackBlocked);
+assertTest("RBAC Integrity: Status database tidak berubah menjadi resolved oleh stakeholder", $rowAfterStkFb['status'] === 'in_progress');
+
+// User lain dilarang memberikan feedback kepuasan untuk tiket milik orang lain
+$otherFeedbackBlocked = false;
+try {
+    $complaintService->submitFeedback($rbacCompId, ['rating' => 5, 'aspect_speed' => 5, 'aspect_clarity' => 5, 'aspect_solution' => 5, 'comment' => 'Feedback orang asing'], $otherUser);
+} catch (InvalidArgumentException $e) {
+    $otherFeedbackBlocked = true;
+}
+$rowAfterOtherFb = $db->table('complaints')->where('id', $rbacCompId)->get()->getRowArray();
+assertTest("RBAC Mutate: User lain dilarang memberikan feedback untuk tiket orang lain", $otherFeedbackBlocked);
+assertTest("RBAC Integrity: Status database tidak berubah oleh feedback user lain", $rowAfterOtherFb['status'] === 'in_progress');
+
+// Cleanup RBAC test fixtures
+$db->table('complaint_reviews')->where('complaint_analysis_id', (int) $rbacTestComp['data']['analysis_id'])->delete();
+$db->table('complaint_replies')->where('complaint_id', $rbacCompId)->delete();
+$db->table('complaint_analysis')->where('complaint_id', $rbacCompId)->delete();
+$db->table('complaints')->where('id', $rbacCompId)->delete();
+
+echo "\n";
+
+// -----------------------------------------------------------------
+// 15. COMPREHENSIVE IDOR & SERVICE-LAYER CROSS-USER MATRIX
+// -----------------------------------------------------------------
+echo "[15] Testing Comprehensive IDOR & Cross-User Isolation...\n";
+
+// Buat tiket uji khusus isolasi IDOR
+$idorComplaintData = [
+    'type'        => 'complaint',
+    'description' => 'Kerusakan fasilitas proyektor di ruang teater B.',
+    'category'    => 'Sarana Prasarana dan Layanan Umum',
+];
+$createdIdor = $complaintService->createComplaint($idorComplaintData, $regularUser);
+$idorId = (int) $createdIdor['id'];
+
+// 15.1 User lain dilarang melihat detail (IDOR Prevention)
+$idorDetailOther = $complaintService->getComplaintDetail($idorId, $otherUser);
+assertTest("IDOR: User lain tidak dapat membaca detail pengaduan (returns null/404)", $idorDetailOther === null);
+
+// 15.2 User pemilik sah dapat membaca detail
+$idorDetailOwner = $complaintService->getComplaintDetail($idorId, $regularUser);
+assertTest("IDOR: Pemilik sah dapat membaca detail pengaduannya", $idorDetailOwner !== null && (int) $idorDetailOwner['id'] === $idorId);
+
+// 15.3 User lain dilarang membalas pengaduan orang lain
+$otherReplyBlocked = false;
+try {
+    $complaintService->addReply($idorId, "Komentar ilegal dari hacker", $otherUser);
+} catch (InvalidArgumentException $e) {
+    $otherReplyBlocked = true;
+}
+assertTest("IDOR: User lain dilarang menambahkan tanggapan pada pengaduan orang lain", $otherReplyBlocked);
+
+// 15.4 Pemilik sah berhasil menambahkan tanggapan
+$ownerReply = $complaintService->addReply($idorId, "Mohon konfirmasi estimasi waktu perbaikan.", $regularUser);
+assertTest("IDOR: Pemilik sah dapat menambahkan tanggapan", !empty($ownerReply['data']['id']));
+
+// 15.5 Stakeholder unit lain dilarang membalas
+$wrongUnitReplyBlocked = false;
+try {
+    $complaintService->addReply($idorId, "Balasan dari unit lain", $diffStakeholder);
+} catch (InvalidArgumentException $e) {
+    $wrongUnitReplyBlocked = true;
+}
+assertTest("IDOR: Stakeholder divisi berbeda dilarang menambahkan tanggapan", $wrongUnitReplyBlocked);
+
+// 15.6 Stakeholder divisi yang ditugaskan dapat membalas
+$assignedUnitReply = $complaintService->addReply($idorId, "Teknisi Sarpras sedang meluncur ke lokasi.", $matchingStakeholder);
+assertTest("IDOR: Stakeholder divisi yang ditugaskan dapat menambahkan tanggapan", !empty($assignedUnitReply['data']['id']));
+
+// 15.7 User lain dilarang melihat daftar tanggapan
+$otherGetRepliesBlocked = false;
+try {
+    $complaintService->getReplies($idorId, $otherUser);
+} catch (InvalidArgumentException $e) {
+    $otherGetRepliesBlocked = true;
+}
+assertTest("IDOR: User lain dilarang membaca daftar tanggapan", $otherGetRepliesBlocked);
+
+// 15.8 Pemilik sah dapat melihat riwayat tanggapan
+$ownerReplies = $complaintService->getReplies($idorId, $regularUser);
+assertTest("IDOR: Pemilik sah dapat membaca seluruh percakapan pengaduannya", count($ownerReplies) >= 2);
+
+// Cleanup IDOR test data
+$db->table('complaint_reviews')->where('complaint_analysis_id', (int) $createdIdor['data']['analysis_id'])->delete();
+$db->table('complaint_replies')->where('complaint_id', $idorId)->delete();
+$db->table('complaint_analysis')->where('complaint_id', $idorId)->delete();
+$db->table('complaints')->where('id', $idorId)->delete();
+
+echo "\n";
+
+// -----------------------------------------------------------------
+// 16. END-TO-END WORKFLOW INTEGRATION TEST
+// -----------------------------------------------------------------
+echo "[16] Testing End-to-End Workflow Integration Lifecycle...\n";
+
+// Step 1: Mahasiswa mengajukan keluhan
+$lifecycleComp = $complaintService->createComplaint([
+    'type'        => 'complaint',
+    'description' => 'Lampu sorot lapangan basket mati, berbahaya untuk latihan malam.',
+    'category'    => 'Sarana Prasarana dan Layanan Umum',
+], $regularUser);
+$lcId = (int) $lifecycleComp['id'];
+assertTest("Lifecycle: Step 1 - Aduan berhasil dibuat (status received)", (int) $lifecycleComp['id'] > 0);
+
+// Step 2: Admin melakukan verifikasi
+$verifyRes = $complaintService->verifyComplaint($lcId, true, "Validasi fisik sarpras selesai.", $adminUser);
+assertTest("Lifecycle: Step 2 - Admin verifikasi pengaduan", $verifyRes['status'] === true);
+
+// Step 3: Admin mendisposisikan ke unit Sarpras
+$dispatchRes = $complaintService->dispatchComplaint($lcId, 'Sarana Prasarana dan Layanan Umum', 'Pak Joko', 'Segera ganti bohlam.', null, $adminUser);
+assertTest("Lifecycle: Step 3 - Disposisi ke Sarana Prasarana", $dispatchRes['status'] === true);
+
+// Step 4: Unit Sarpras menerima penugasan
+$acceptRes = $complaintService->acceptByUnit($lcId, 'Pak Joko', 'Tugas diterima dan dijadwalkan.', $matchingStakeholder);
+assertTest("Lifecycle: Step 4 - Unit menerima tugas (in_progress)", $acceptRes['status'] === true);
+
+// Step 5: Unit melakukan tindak lanjut teknis
+$followupRes = $complaintService->followupByUnit($lcId, 'perbaikan', 'Penggantian 2 unit bohlam LED 100W.', 'Tim Sarpras', null, $matchingStakeholder);
+assertTest("Lifecycle: Step 5 - Tindak lanjut teknis dicatat", $followupRes['status'] === true);
+
+// Step 6: Unit menerbitkan jawaban resmi
+$answerRes = $complaintService->answerByUnit($lcId, 'Lampu sorot telah diganti dan lapangan sudah terang.', 'Pak Joko', [], $matchingStakeholder);
+assertTest("Lifecycle: Step 6 - Jawaban resmi unit diterbitkan", $answerRes['status'] === true);
+
+// Step 7: Mahasiswa memberikan feedback kepuasan
+$feedbackRes = $complaintService->submitFeedback($lcId, [
+    'rating'          => 5,
+    'aspect_speed'    => 5,
+    'aspect_clarity'  => 5,
+    'aspect_solution' => 5,
+    'comment'         => 'Penanganan sangat cepat dan lapangan sudah terang kembali.',
+], $regularUser);
+assertTest("Lifecycle: Step 7 - Mahasiswa memberikan feedback (status resolved)", $feedbackRes['status'] === true);
+
+// Verifikasi integritas detail akhir pengaduan
+$finalDetail = $complaintService->getComplaintDetail($lcId, $regularUser);
+assertTest("Lifecycle: Verifikasi status akhir adalah resolved", $finalDetail['status'] === 'resolved');
+assertTest("Lifecycle: Verifikasi jejak verifikasi ada", !empty($finalDetail['verification']['approved']));
+assertTest("Lifecycle: Verifikasi jejak disposisi ada", !empty($finalDetail['disposition']['target_unit']));
+assertTest("Lifecycle: Verifikasi jawaban resmi unit ada", !empty($finalDetail['unit_answer']['answer']));
+assertTest("Lifecycle: Verifikasi feedback rating 5 bintang tercatat", $finalDetail['feedback']['rating'] === 5);
+
+// Cleanup lifecycle test data
+$db->table('complaint_reviews')->where('complaint_analysis_id', (int) $lifecycleComp['data']['analysis_id'])->delete();
+$db->table('complaint_replies')->where('complaint_id', $lcId)->delete();
+$db->table('complaint_analysis')->where('complaint_id', $lcId)->delete();
+$db->table('complaints')->where('id', $lcId)->delete();
+
+echo "\n";
+
+// -----------------------------------------------------------------
+// 17. ATTACHMENT INTEGRATION, ZERO ORPHAN COMPENSATION & PROTECTED SERVING
+// -----------------------------------------------------------------
+echo "[17] Testing Attachment Lifecycle, Compensation & Protected Serving...\n";
+
+// 17.1 Pembuatan aduan dengan lampiran valid
+$attValidFile = createTestUploadedFile('bukti_kerusakan_lab.jpg', $validJpgBytes, 'image/jpeg');
+$compWithAtt = $complaintService->createComplaint([
+    'type'        => 'complaint',
+    'description' => 'Kerusakan kabel proyektor di lab komputer 204.',
+    'category'    => 'TIK/Sistem Informasi',
+], $regularUser, ['attachments' => [$attValidFile]]);
+$attCompId = (int) $compWithAtt['id'];
+
+assertTest("Attachment Lifecycle: Aduan dengan lampiran valid berhasil dibuat", $attCompId > 0);
+
+// Verifikasi referensi lampiran di database
+$attDetail = $complaintService->getComplaintDetail($attCompId, $regularUser);
+assertTest("Attachment Lifecycle: Detail memuat array lampiran", !empty($attDetail['attachments']));
+$firstAtt = $attDetail['attachments'][0] ?? [];
+$attUrl = $firstAtt['url'] ?? '';
+$savedFilename = basename($attUrl);
+assertTest("Attachment Lifecycle: URL lampiran mengarah ke endpoint terproteksi", str_contains($attUrl, "/attachments/{$savedFilename}"));
+
+// 17.2 Protected Attachment Serving & IDOR Check
+// Pemilik sah dapat mengakses lampiran
+$ownerAtt = $complaintService->getComplaintAttachment($attCompId, $savedFilename, $regularUser);
+assertTest("Protected Attachment: Pemilik sah dapat mengakses file fisik", is_file($ownerAtt['physical_path']));
+assertTest("Protected Attachment: MIME type lampiran valid", $ownerAtt['file_type'] === 'image/jpeg');
+
+// Pengguna lain (IDOR) ditolak
+$otherAttBlocked = false;
+try {
+    $complaintService->getComplaintAttachment($attCompId, $savedFilename, $otherUser);
+} catch (InvalidArgumentException $e) {
+    $otherAttBlocked = true;
+}
+assertTest("Protected Attachment: Pengguna lain dilarang mengakses file lampiran (IDOR)", $otherAttBlocked);
+
+// Stakeholder divisi berbeda ditolak
+$diffStkAttBlocked = false;
+try {
+    $complaintService->getComplaintAttachment($attCompId, $savedFilename, $matchingStakeholder); // Unit Sarpras vs TIK
+} catch (InvalidArgumentException $e) {
+    $diffStkAttBlocked = true;
+}
+assertTest("Protected Attachment: Stakeholder divisi berbeda dilarang mengakses file lampiran", $diffStkAttBlocked);
+
+// Stakeholder unit terkait dapat mengakses lampiran
+$tikStakeholder = ['id' => $stakeholderId, 'role' => 'stakeholder', 'unit' => 'TIK/Sistem Informasi', 'name' => 'Petugas TIK'];
+$tikStkAtt = $complaintService->getComplaintAttachment($attCompId, $savedFilename, $tikStakeholder);
+assertTest("Protected Attachment: Stakeholder divisi terkait berwenang mengakses file lampiran", is_file($tikStkAtt['physical_path']));
+
+// Admin dapat mengakses lampiran
+$adminAtt = $complaintService->getComplaintAttachment($attCompId, $savedFilename, $adminUser);
+assertTest("Protected Attachment: Admin sentral berwenang mengakses file lampiran", is_file($adminAtt['physical_path']));
+
+// Percobaan Path Traversal nama file ditolak
+$traversalBlocked = false;
+try {
+    $complaintService->getComplaintAttachment($attCompId, '../../config/app.php', $regularUser);
+} catch (InvalidArgumentException $e) {
+    $traversalBlocked = true;
+}
+assertTest("Protected Attachment: Percobaan path traversal ditolak secara mutlak", $traversalBlocked);
+
+// 17.3 Pembuatan aduan dengan lampiran ilegal ditolak (Fail-Fast & Zero Orphan)
+$initialCompCount = $db->table('complaints')->countAllResults();
+$illegalFile = createTestUploadedFile('evil_shell.php', '<?php phpinfo(); ?>', 'application/x-php');
+$illegalCompBlocked = false;
+try {
+    $complaintService->createComplaint([
+        'type'        => 'complaint',
+        'description' => 'Mencoba mengunggah backdoor tersembunyi.',
+        'category'    => 'TIK/Sistem Informasi',
+    ], $regularUser, ['attachments' => [$illegalFile]]);
+} catch (InvalidArgumentException $e) {
+    $illegalCompBlocked = true;
+}
+$finalCompCount = $db->table('complaints')->countAllResults();
+assertTest("Attachment Security: Pembuatan aduan dengan lampiran PHP ditolak (Fail-Fast)", $illegalCompBlocked);
+assertTest("Attachment Security: Database tidak menambah baris aduan saat upload ditolak", $finalCompCount === $initialCompCount);
+
+// 17.4 Simulasi Kegagalan Database & Kompensasi Pembersihan File Fisik (Zero Orphan)
+$orphanSimFile = createTestUploadedFile('orphan_test.jpg', $validJpgBytes, 'image/jpeg');
+$storedOrphan = $evidenceService->storeAttachment($orphanSimFile, 'complaints');
+$orphanPhysicalPath = $storedOrphan['physical_path'];
+assertTest("Zero Orphan: File fisik uji berhasil tersimpan sementara", is_file($orphanPhysicalPath));
+
+// Simulasikan kegagalan transaksi DB dan jalankan kompensasi purgeFiles
+$evidenceService->purgeFiles([$orphanPhysicalPath]);
+assertTest("Zero Orphan: File fisik dibersihkan saat transaksi gagal (Zero Orphan Guaranteed)", !is_file($orphanPhysicalPath));
+
+// Cleanup attachment test complaint
+$physicalToClean = $ownerAtt['physical_path'];
+$db->table('complaint_reviews')->where('complaint_analysis_id', (int) $compWithAtt['data']['analysis_id'])->delete();
+$db->table('complaint_replies')->where('complaint_id', $attCompId)->delete();
+$db->table('complaint_analysis')->where('complaint_id', $attCompId)->delete();
+$db->table('complaints')->where('id', $attCompId)->delete();
+$evidenceService->deleteFile($physicalToClean);
+
+// 17.5 Standarisasi Metadata Lampiran (JSON terstruktur & format legacy)
+$jsonMetaReply = '[Lampiran Bukti] ' . json_encode([
+    'name' => 'laporan survey kampus 2026.pdf',
+    'path' => 'complaints/complaint_test_abc123.pdf',
+    'size' => 1048576,
+    'type' => 'application/pdf',
+]);
+$parsedJson = $complaintService->parseAttachmentMeta($jsonMetaReply);
+assertTest("Metadata Lampiran: Parsing format JSON terstruktur berhasil", $parsedJson !== null && $parsedJson['original_name'] === 'laporan survey kampus 2026.pdf' && $parsedJson['file_size'] === 1048576);
+
+// Uji karakter khusus (pipa, tanda petik, spasi) dalam format JSON aman dari delimiter injection
+$specialNameMetaReply = '[Lampiran Bukti] ' . json_encode([
+    'name' => 'laporan | lab komputer | revisi "final".pdf',
+    'path' => 'complaints/complaint_special.pdf',
+    'size' => 2048,
+    'type' => 'application/pdf',
+]);
+$parsedSpecial = $complaintService->parseAttachmentMeta($specialNameMetaReply);
+assertTest("Metadata Lampiran: Nama file dengan karakter khusus (| dan tanda petik) tidak korup", $parsedSpecial !== null && $parsedSpecial['original_name'] === 'laporan | lab komputer | revisi "final".pdf');
+
+// Uji backward compatibility dengan format legacy delimiter
+$legacyMetaReply = '[Lampiran Bukti] Nama: arsip_lama.png | Path: complaints/complaint_old_999.png | Size: 3456 | Type: image/png';
+$parsedLegacy = $complaintService->parseAttachmentMeta($legacyMetaReply);
+assertTest("Metadata Lampiran: Format legacy delimiter tetap kompatibel", $parsedLegacy !== null && $parsedLegacy['original_name'] === 'arsip_lama.png' && $parsedLegacy['file_type'] === 'image/png');
+
+// 17.6 Protected Attachment Download Headers (Content-Disposition & CRLF Sanitization)
+// Simulasi pembentukan header seperti di ComplaintController::attachment
+$rawMaliciousName = "laporan_keuangan\r\nSet-Cookie: evil_session=1337\r\n.pdf";
+$cleanName = str_replace(["\r", "\n", "\0"], '', $rawMaliciousName);
+$cleanName = trim($cleanName) !== '' ? trim($cleanName) : 'lampiran';
+$asciiFallback = preg_replace('/[^a-zA-Z0-9._-]/', '_', $cleanName) ?: 'lampiran';
+$rfc5987Encoded = rawurlencode($cleanName);
+
+assertTest("Header Security: Sanitasi nama file menghilangkan karakter CRLF dan null-byte", !str_contains($cleanName, "\r") && !str_contains($cleanName, "\n") && !str_contains($cleanName, "\0"));
+assertTest("Header Security: Content-Disposition fallback ASCII valid", !preg_match('/[\r\n\t"\']/', $asciiFallback));
+assertTest("Header Security: Content-Disposition memuat RFC 5987 encoding", str_contains($rfc5987Encoded, '%20') || str_contains($rfc5987Encoded, 'laporan_keuanganSet-Cookie'));
+
+// Uji penentuan inline vs attachment berdasarkan MIME type
+$safeMimes = ['image/jpeg', 'image/png', 'application/pdf'];
+$docMimes = ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/octet-stream'];
+
+$allSafeInline = true;
+foreach ($safeMimes as $m) {
+    $disp = in_array($m, ['image/jpeg', 'image/png', 'image/pjpeg', 'application/pdf'], true) ? 'inline' : 'attachment';
+    if ($disp !== 'inline') { $allSafeInline = false; }
+}
+assertTest("Header Security: File gambar dan PDF mendapatkan header 'inline'", $allSafeInline);
+
+$allDocAttachment = true;
+foreach ($docMimes as $m) {
+    $disp = in_array($m, ['image/jpeg', 'image/png', 'image/pjpeg', 'application/pdf'], true) ? 'inline' : 'attachment';
+    if ($disp !== 'attachment') { $allDocAttachment = false; }
+}
+assertTest("Header Security: Dokumen DOC, DOCX, dan file binary mendapatkan header 'attachment'", $allDocAttachment);
+
+echo "\n";
+
+// -----------------------------------------------------------------
+// 18. ATOMIC DATABASE TRANSACTION INTEGRITY & FAULT-INJECTED ROLLBACK
+// -----------------------------------------------------------------
+echo "[18] Testing Atomic Database Transaction Rollback on Mid-Operation Failure (Fault Injection)...\n";
+
+$expectedReplyExMsg = 'Fault Injection: Simulasi kegagalan database pada penyimpanan audit reply';
+$expectedAnalysisExMsg = 'Fault Injection: Simulasi kegagalan database pada penyimpanan analisis AI';
+
+if (!class_exists('FailingReplyModel')) {
+    class FailingReplyModel extends \App\Models\ComplaintReplyModel
+    {
+        public function insert($data = null, bool $returnID = true)
+        {
+            throw new \RuntimeException('Fault Injection: Simulasi kegagalan database pada penyimpanan audit reply');
+        }
+    }
+}
+
+if (!class_exists('FailingAnalysisModel')) {
+    class FailingAnalysisModel extends \App\Models\ComplaintAnalysisModel
+    {
+        public function insert($data = null, bool $returnID = true)
+        {
+            throw new \RuntimeException('Fault Injection: Simulasi kegagalan database pada penyimpanan analisis AI');
+        }
+    }
+}
+
+if (!class_exists('TrackingEvidenceService')) {
+    class TrackingEvidenceService extends \App\Services\EvidenceService
+    {
+        public array $storedPhysicalPaths = [];
+
+        public function storeAttachment(\CodeIgniter\HTTP\Files\UploadedFile $file, string $subfolder = 'complaints'): array
+        {
+            $result = parent::storeAttachment($file, $subfolder);
+            if (!empty($result['physical_path'])) {
+                $this->storedPhysicalPaths[] = $result['physical_path'];
+            }
+            return $result;
+        }
+    }
+}
+
+// 18.1 createComplaint Rollback: Kegagalan saat menyimpan analisis AI membatalkan baris pengaduan & membersihkan file fisik
+$initComplaintsCount = $db->table('complaints')->countAllResults();
+$initAnalysisCount   = $db->table('complaint_analysis')->countAllResults();
+$simDesc = 'Uji Rollback createComplaint ' . bin2hex(random_bytes(4));
+$simAttFile = createTestUploadedFile('fail_tx.jpg', $validJpgBytes, 'image/jpeg');
+
+$trackingEvidenceSvc = new TrackingEvidenceService();
+$failAnalysisSvc = new \App\Services\ComplaintService(
+    null,
+    new FailingAnalysisModel(),
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    $trackingEvidenceSvc
+);
+
+$createExMsg = null;
+try {
+    $failAnalysisSvc->createComplaint(
+        ['type' => 'complaint', 'description' => $simDesc, 'category' => 'TIK/Sistem Informasi'],
+        $regularUser,
+        ['attachments' => [$simAttFile]]
+    );
+} catch (\Throwable $e) {
+    $createExMsg = $e->getMessage();
+}
+
+$afterComplaintsCount = $db->table('complaints')->countAllResults();
+$afterAnalysisCount   = $db->table('complaint_analysis')->countAllResults();
+$foundComp = $db->table('complaints')->where('description', $simDesc)->get()->getRowArray();
+
+assertTest(
+    "Rollback createComplaint: Exception mid-operation tertangkap dengan pesan persis",
+    $createExMsg === $expectedAnalysisExMsg,
+    "Expected: '{$expectedAnalysisExMsg}', got: '{$createExMsg}'"
+);
+
+// Verifikasi pelacakan file fisik via TrackingEvidenceService
+$recordedFilesCount = count($trackingEvidenceSvc->storedPhysicalPaths);
+$trackedPhysicalPath = $trackingEvidenceSvc->storedPhysicalPaths[0] ?? null;
+assertTest(
+    "Rollback createComplaint: Tepat satu file fisik berhasil disimpan sebelum transaksi gagal",
+    $recordedFilesCount === 1 && is_string($trackedPhysicalPath) && $trackedPhysicalPath !== '',
+    "Jumlah file fisik tercatat: {$recordedFilesCount}"
+);
+assertTest(
+    "Rollback createComplaint: File fisik kompensasi terhapus tuntas dari disk (is_file false)",
+    $trackedPhysicalPath !== null && is_file($trackedPhysicalPath) === false,
+    "File masih ada di disk: {$trackedPhysicalPath}"
+);
+
+assertTest(
+    "Rollback createComplaint: Baris pengaduan dibatalkan (zero partial insert)",
+    $afterComplaintsCount === $initComplaintsCount && $foundComp === null
+);
+assertTest(
+    "Rollback createComplaint: Tabel analisis tidak bertambah record",
+    $afterAnalysisCount === $initAnalysisCount
+);
+
+// Siapkan satu tiket pengujian khusus alur mutasi status (18.2 - 18.8)
+$baseTxComp = $complaintService->createComplaint([
+    'type'        => 'complaint',
+    'description' => 'Tiket Uji Nyata Rollback Transaksi Multi-Mutasi.',
+    'category'    => 'Sarana Prasarana dan Layanan Umum',
+], $regularUser);
+$baseTxId = (int) $baseTxComp['id'];
+$sarprasStakeholder = ['id' => $stakeholderId, 'role' => 'stakeholder', 'unit' => 'Sarana Prasarana dan Layanan Umum', 'name' => 'Petugas Sarpras'];
+$failingReplySvc = new \App\Services\ComplaintService(null, null, null, new FailingReplyModel());
+
+// 18.2 verifyComplaint Rollback: Update status berhasil, tetapi gagal saat mencatat reply verifikasi
+$repCountInit = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+$caughtVerifyEx = null;
+try {
+    $failingReplySvc->verifyComplaint($baseTxId, true, 'Verifikasi gagal reply', $adminUser);
+} catch (\Throwable $e) {
+    $caughtVerifyEx = $e->getMessage();
+}
+$recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
+$recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+assertTest(
+    "Rollback verifyComplaint: Status DB tetap 'received' (bukan 'verified')",
+    ($caughtVerifyEx === $expectedReplyExMsg) && $recheckedRow['status'] === 'received',
+    "Exception mismatch or status changed. Exception: '{$caughtVerifyEx}'"
+);
+assertTest("Rollback verifyComplaint: Jejak reply verifikasi batal tersimpan (zero orphan reply)", $recheckedReps === $repCountInit);
+
+// 18.3 dispatchComplaint Rollback: Update status & unit berhasil, tetapi gagal saat mencatat reply disposisi
+$complaintService->verifyComplaint($baseTxId, true, 'Verifikasi sah sebelum uji disposisi', $adminUser);
+$initRowBeforeDispatch = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
+$initUnitBeforeDispatch = $initRowBeforeDispatch['assigned_unit'];
+$repCountBeforeDispatch = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+
+$caughtDispatchEx = null;
+try {
+    $failingReplySvc->dispatchComplaint($baseTxId, 'Sarana Prasarana dan Layanan Umum', 'Pak Budi', 'Disposisi gagal reply', null, $adminUser);
+} catch (\Throwable $e) {
+    $caughtDispatchEx = $e->getMessage();
+}
+$recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
+$recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+assertTest(
+    "Rollback dispatchComplaint: Status DB tetap 'verified' (bukan 'dispatched')",
+    ($caughtDispatchEx === $expectedReplyExMsg) && $recheckedRow['status'] === 'verified',
+    "Exception mismatch or status changed. Exception: '{$caughtDispatchEx}'"
+);
+assertTest("Rollback dispatchComplaint: Assigned unit tetap NULL sesuai kondisi awal", $recheckedRow['assigned_unit'] === $initUnitBeforeDispatch);
+assertTest("Rollback dispatchComplaint: Jejak reply disposisi batal tersimpan", $recheckedReps === $repCountBeforeDispatch);
+
+// 18.4 acceptByUnit Rollback: Update status berhasil, tetapi gagal saat mencatat reply penerimaan
+$complaintService->dispatchComplaint($baseTxId, 'Sarana Prasarana dan Layanan Umum', 'Pak Budi', 'Disposisi sah', null, $adminUser);
+$repCountBeforeAccept = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+
+$caughtAcceptEx = null;
+try {
+    $failingReplySvc->acceptByUnit($baseTxId, 'Pak Budi', 'Catatan terima tugas gagal reply', $sarprasStakeholder);
+} catch (\Throwable $e) {
+    $caughtAcceptEx = $e->getMessage();
+}
+$recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
+$recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+assertTest(
+    "Rollback acceptByUnit: Status DB tetap 'dispatched' (bukan 'in_progress')",
+    ($caughtAcceptEx === $expectedReplyExMsg) && $recheckedRow['status'] === 'dispatched',
+    "Exception mismatch or status changed. Exception: '{$caughtAcceptEx}'"
+);
+assertTest("Rollback acceptByUnit: Jejak reply penerimaan unit batal tersimpan", $recheckedReps === $repCountBeforeAccept);
+
+// 18.5 followupByUnit Rollback: Update status berhasil, tetapi gagal saat mencatat reply tindak lanjut
+$complaintService->acceptByUnit($baseTxId, 'Pak Budi', 'Penerimaan sah', $sarprasStakeholder);
+$repCountBeforeFollowup = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+
+$caughtFollowupEx = null;
+try {
+    $failingReplySvc->followupByUnit($baseTxId, 'Perbaikan', 'Tindak lanjut lapangan gagal reply', 'Joko Teknisi', null, $sarprasStakeholder);
+} catch (\Throwable $e) {
+    $caughtFollowupEx = $e->getMessage();
+}
+$recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
+$recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+assertTest(
+    "Rollback followupByUnit: Status DB tetap 'in_progress' (bukan 'action_taken')",
+    ($caughtFollowupEx === $expectedReplyExMsg) && $recheckedRow['status'] === 'in_progress',
+    "Exception mismatch or status changed. Exception: '{$caughtFollowupEx}'"
+);
+assertTest("Rollback followupByUnit: Jejak reply tindak lanjut batal tersimpan", $recheckedReps === $repCountBeforeFollowup);
+
+// 18.6 answerByUnit Rollback: Update status berhasil, tetapi gagal saat mencatat reply jawaban resmi
+$complaintService->followupByUnit($baseTxId, 'Perbaikan', 'Tindak lanjut sah', 'Joko Teknisi', null, $sarprasStakeholder);
+$repCountBeforeAnswer = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+
+$caughtAnswerEx = null;
+try {
+    $failingReplySvc->answerByUnit($baseTxId, 'Jawaban resmi unit gagal reply', 'Kepala Sarpras', [], $sarprasStakeholder);
+} catch (\Throwable $e) {
+    $caughtAnswerEx = $e->getMessage();
+}
+$recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
+$recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+assertTest(
+    "Rollback answerByUnit: Status DB tetap 'action_taken' (bukan 'answered')",
+    ($caughtAnswerEx === $expectedReplyExMsg) && $recheckedRow['status'] === 'action_taken',
+    "Exception mismatch or status changed. Exception: '{$caughtAnswerEx}'"
+);
+assertTest("Rollback answerByUnit: Jejak reply jawaban unit batal tersimpan", $recheckedReps === $repCountBeforeAnswer);
+
+// 18.7 submitFeedback Rollback: Update status berhasil, tetapi gagal saat mencatat reply feedback
+$complaintService->answerByUnit($baseTxId, 'Jawaban resmi sah', 'Kepala Sarpras', [], $sarprasStakeholder);
+$repCountBeforeFeedback = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+
+$caughtFeedbackEx = null;
+try {
+    $failingReplySvc->submitFeedback($baseTxId, ['rating' => 5, 'aspect_speed' => 5, 'aspect_clarity' => 5, 'aspect_solution' => 5, 'comment' => 'Puas'], $regularUser);
+} catch (\Throwable $e) {
+    $caughtFeedbackEx = $e->getMessage();
+}
+$recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
+$recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+assertTest(
+    "Rollback submitFeedback: Status DB tetap 'answered' (bukan 'resolved')",
+    ($caughtFeedbackEx === $expectedReplyExMsg) && $recheckedRow['status'] === 'answered',
+    "Exception mismatch or status changed. Exception: '{$caughtFeedbackEx}'"
+);
+assertTest("Rollback submitFeedback: Jejak reply feedback batal tersimpan", $recheckedReps === $repCountBeforeFeedback);
+
+// 18.8 updateStatus Rollback (Multi-Mutation Path): Update status berhasil, tetapi gagal saat mencatat reply riwayat
+$repCountBeforeUpdateStatus = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+
+$caughtUpdateStatusEx = null;
+try {
+    $failingReplySvc->updateStatus($baseTxId, 'rejected', 'Alasan penolakan gagal reply', null, $adminUser);
+} catch (\Throwable $e) {
+    $caughtUpdateStatusEx = $e->getMessage();
+}
+$recheckedRow = $db->table('complaints')->where('id', $baseTxId)->get()->getRowArray();
+$recheckedReps = $db->table('complaint_replies')->where('complaint_id', $baseTxId)->countAllResults();
+assertTest(
+    "Rollback updateStatus: Status DB tetap 'answered' (bukan 'rejected')",
+    ($caughtUpdateStatusEx === $expectedReplyExMsg) && $recheckedRow['status'] === 'answered',
+    "Exception mismatch or status changed. Exception: '{$caughtUpdateStatusEx}'"
+);
+assertTest("Rollback updateStatus: Jejak reply perubahan status batal tersimpan", $recheckedReps === $repCountBeforeUpdateStatus);
+
+// Cleanup atomicity fixture
+$db->table('complaint_reviews')->where('complaint_analysis_id', (int) $baseTxComp['data']['analysis_id'])->delete();
+$db->table('complaint_replies')->where('complaint_id', $baseTxId)->delete();
+$db->table('complaint_analysis')->where('complaint_id', $baseTxId)->delete();
+$db->table('complaints')->where('id', $baseTxId)->delete();
+
+echo "\n";
+
+// -----------------------------------------------------------------
+// SUMMARY
 // -----------------------------------------------------------------
 echo "============================================================\n";
-echo "TEST RESULTS: Passed: {$passed}, Failed: {$failed}\n";
+echo "TEST RESULTS: Passed: {$passed}, Failed: {$failed}, Skipped: {$skipped}\n";
 echo "============================================================\n";
 
 if ($failed > 0) {

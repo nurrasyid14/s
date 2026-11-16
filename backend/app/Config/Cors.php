@@ -37,7 +37,7 @@ class Cors extends BaseConfig
         'allowedOrigins' => [
             'http://localhost:5173',
             'http://127.0.0.1:5173',
-            'https://suaralens.vercel.app',
+            'https://suaralens.pages.dev',
         ],
 
         /**
@@ -52,8 +52,7 @@ class Cors extends BaseConfig
          *   - ['https://\w+\.example\.com']
          */
         'allowedOriginsPatterns' => [
-            'https://.*\.vercel\.app',
-            'https://.*\.up\.railway\.app',
+            'https://.*\.pages\.dev',
         ],
 
         /**
