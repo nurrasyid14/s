@@ -150,17 +150,16 @@ export default function AdminDisposition() {
         </div>
       )}
 
-      {/* Modal Disposisi Lengkap */}
+      {/* Lembar Disposisi Layar Penuh */}
       {selectedTicket && (
-        <div className="fixed inset-0 z-50 backdrop-in bg-black/60 backdrop-blur-xs overflow-y-auto overscroll-contain">
-        <div className="flex min-h-full items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 backdrop-in bg-[var(--color-surface)]">
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="modal-disposition-title"
-            className="bg-[var(--color-surface)] border border-[var(--color-border)] max-w-xl w-full p-6 space-y-4 rounded-2xl shadow-xl"
+            className="h-full w-full flex flex-col bg-[var(--color-surface)]"
           >
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border)]">
+            <div className="flex items-center justify-between px-5 sm:px-8 py-3 border-b border-[var(--color-border)] flex-shrink-0">
               <div>
                 <span className="text-[10px] font-mono uppercase tracking-wider text-purple-600 font-bold">
                   {tx('LEMBAR DISPOSISI RESMI', 'OFFICIAL DISPATCH SHEET')}
@@ -170,76 +169,83 @@ export default function AdminDisposition() {
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setSelectedTicket(null)}
                 aria-label={tx('Tutup lembar disposisi', 'Close dispatch sheet')}
                 className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-colors"
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
 
-            <div className="p-3.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-xs text-[var(--color-text-muted)] leading-relaxed rounded-xl">
-              <strong className="text-[var(--color-text)] block mb-1">{tx('Substansi Keluhan:', 'Complaint Details:')}</strong>
-              "{selectedTicket.description}"
-            </div>
+            <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col text-xs">
+              <div className="flex-1 min-h-0 overflow-y-auto px-5 sm:px-8 py-4">
+                <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-5 h-full lg:content-start">
+                  <div className="p-4 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-sm text-[var(--color-text-muted)] leading-relaxed rounded-xl lg:max-h-full lg:overflow-y-auto">
+                    <strong className="text-[var(--color-text)] block mb-1">{tx('Substansi Keluhan:', 'Complaint Details:')}</strong>
+                    "{selectedTicket.description}"
+                  </div>
 
-            <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
-              <div>
-                <label htmlFor="disposition-target-unit" className="block font-bold text-[var(--color-text)] mb-1">
-                  {tx('Pilih Unit Kerja Penerima Disposisi (14 Standar Unit PENS)', 'Select Receiving Work Unit (14 Standard PENS Units)')} *
-                </label>
-                <select
-                  id="disposition-target-unit"
-                  value={form.target_unit}
-                  onChange={e => setForm(f => ({ ...f, target_unit: e.target.value }))}
-                  className="input-field text-xs rounded-xl"
-                >
-                  {UNITS.map(u => (
-                    <option key={u.id} value={u.name}>{u.name} ({u.code}, SLA: {u.slaDays} {tx('hari', 'days')})</option>
-                  ))}
-                </select>
-              </div>
+                  <div className="space-y-3.5">
+                    <div>
+                      <label htmlFor="disposition-target-unit" className="block font-bold text-[var(--color-text)] mb-1">
+                        {tx('Pilih Unit Kerja Penerima Disposisi (14 Standar Unit PENS)', 'Select Receiving Work Unit (14 Standard PENS Units)')} *
+                      </label>
+                      <select
+                        id="disposition-target-unit"
+                        value={form.target_unit}
+                        onChange={e => setForm(f => ({ ...f, target_unit: e.target.value }))}
+                        className="input-field text-xs rounded-xl"
+                      >
+                        {UNITS.map(u => (
+                          <option key={u.id} value={u.name}>{u.name} ({u.code}, SLA: {u.slaDays} {tx('hari', 'days')})</option>
+                        ))}
+                      </select>
+                    </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="disposition-pic" className="block font-bold text-[var(--color-text)] mb-1">{tx('Nama / Jabatan PIC Unit', 'Unit PIC Name / Position')}</label>
-                  <input
-                    id="disposition-pic"
-                    type="text"
-                    placeholder={tx('Contoh: Koordinator Lab / Teknisi', 'Example: Lab Coordinator / Technician')}
-                    value={form.assigned_pic}
-                    onChange={e => setForm(f => ({ ...f, assigned_pic: e.target.value }))}
-                    className="input-field text-xs rounded-xl"
-                  />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label htmlFor="disposition-pic" className="block font-bold text-[var(--color-text)] mb-1">{tx('Nama / Jabatan PIC Unit', 'Unit PIC Name / Position')}</label>
+                        <input
+                          id="disposition-pic"
+                          type="text"
+                          placeholder={tx('Contoh: Koordinator Lab / Teknisi', 'Example: Lab Coordinator / Technician')}
+                          value={form.assigned_pic}
+                          onChange={e => setForm(f => ({ ...f, assigned_pic: e.target.value }))}
+                          className="input-field text-xs rounded-xl"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="disposition-sla" className="block font-bold text-[var(--color-text)] mb-1">{tx('Batas Waktu SLA (Opsional)', 'SLA Deadline (Optional)')}</label>
+                        <input
+                          id="disposition-sla"
+                          type="date"
+                          value={form.target_sla_date}
+                          onChange={e => setForm(f => ({ ...f, target_sla_date: e.target.value }))}
+                          className="input-field text-xs rounded-xl"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="disposition-notes" className="block font-bold text-[var(--color-text)] mb-1">
+                        {tx('Catatan Instruksi / Arahan Disposisi dari Administrator', 'Administrator Dispatch Instructions')} *
+                      </label>
+                      <textarea
+                        id="disposition-notes"
+                        rows={5}
+                        required
+                        placeholder={tx('Instruksi jelas bagi unit: investigasi, perbaikan segera, atau koordinasi...', 'Clear instructions for the unit: investigation, immediate repair, or coordination...')}
+                        value={form.disposition_note}
+                        onChange={e => setForm(f => ({ ...f, disposition_note: e.target.value }))}
+                        className="input-field text-xs resize-none rounded-xl"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label htmlFor="disposition-sla" className="block font-bold text-[var(--color-text)] mb-1">{tx('Batas Waktu SLA (Opsional)', 'SLA Deadline (Optional)')}</label>
-                  <input
-                    id="disposition-sla"
-                    type="date"
-                    value={form.target_sla_date}
-                    onChange={e => setForm(f => ({ ...f, target_sla_date: e.target.value }))}
-                    className="input-field text-xs rounded-xl"
-                  />
-                </div>
               </div>
 
-              <div>
-                <label htmlFor="disposition-notes" className="block font-bold text-[var(--color-text)] mb-1">
-                  {tx('Catatan Instruksi / Arahan Disposisi dari Administrator', 'Administrator Dispatch Instructions')} *
-                </label>
-                <textarea
-                  id="disposition-notes"
-                  rows={3}
-                  required
-                  placeholder={tx('Instruksi jelas bagi unit: investigasi, perbaikan segera, atau koordinasi...', 'Clear instructions for the unit: investigation, immediate repair, or coordination...')}
-                  value={form.disposition_note}
-                  onChange={e => setForm(f => ({ ...f, disposition_note: e.target.value }))}
-                  className="input-field text-xs resize-none rounded-xl"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+              <div className="flex-shrink-0 flex justify-end gap-2 px-5 sm:px-8 py-3 border-t border-[var(--color-border)] bg-[var(--color-surface)]">
                 <button
                   type="button"
                   onClick={() => setSelectedTicket(null)}
@@ -261,7 +267,6 @@ export default function AdminDisposition() {
               </div>
             </form>
           </div>
-        </div>
         </div>
       )}
     </AdminLayout>
