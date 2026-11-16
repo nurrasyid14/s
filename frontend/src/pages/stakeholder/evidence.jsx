@@ -6,6 +6,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge.jsx'
 import PageHeader from '../../components/ui/PageHeader.jsx'
 import EmptyState from '../../components/ui/EmptyState.jsx'
 import ErrorState from '../../components/ui/ErrorState.jsx'
+import ProtectedImage from '../../components/ui/ProtectedImage.jsx'
 import { getComplaints } from '../../services/complaintApi.js'
 import { formatDate } from '../../utils/formatter.js'
 import { Paperclip, ImageOff } from 'lucide-react'
@@ -62,10 +63,9 @@ export default function Evidence() {
                                 className="block h-full border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl shadow-sm overflow-hidden transition hover:shadow-md hover:border-[var(--color-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] group"
                             >
                                 <div className="aspect-[16/10] overflow-hidden bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)]">
-                                    <img
+                                    <ProtectedImage
                                         src={c.attachments[0].url}
                                         alt={c.attachments[0].name}
-                                        loading="lazy"
                                         className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
                                     />
                                 </div>

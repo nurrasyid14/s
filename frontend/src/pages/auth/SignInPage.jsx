@@ -119,13 +119,6 @@ export default function SignInPage() {
           )}
         </button>
       </form>
-
-      <div className="mt-5 space-y-1 rounded-xl border border-dashed border-[var(--color-primary)]/30 bg-[var(--color-primary-soft)]/60 p-4 text-xs text-[var(--color-text-muted)]">
-        <p className="font-semibold text-[var(--color-text)]">Demo credentials:</p>
-        <p>Admin: <span className="font-mono font-medium text-[var(--color-primary)]">admin@pens.ac.id</span> <span className="text-[11px]">(pw: admin123)</span></p>
-        <p>Stakeholder: <span className="font-mono font-medium text-[var(--color-primary)]">sari@pens.ac.id</span> <span className="text-[11px] text-[var(--color-text-muted)]">(Kemahasiswaan - pw: password123)</span></p>
-        <p>User: <span className="font-mono font-medium text-[var(--color-primary)]">budi@student.pens.ac.id</span> <span className="text-[11px]">(pw: password123)</span></p>
-      </div>
     </AuthShell>
   )
 }

@@ -28,15 +28,17 @@ $routes->group('api', function ($routes) {
         $routes->get('(:num)', 'ComplaintController::show/$1', ['filter' => 'authRole:user,stakeholder,admin']);
         $routes->post('', 'ComplaintController::create', ['filter' => 'authRole:user,stakeholder,admin']);
         $routes->patch('(:num)/status', 'ComplaintController::updateStatus/$1', ['filter' => 'authRole:stakeholder,admin']);
-        $routes->patch('(:num)/verify', 'ComplaintController::verify/$1', ['filter' => 'authRole:stakeholder,admin']);
-        $routes->post('(:num)/disposition', 'ComplaintController::dispatch/$1', ['filter' => 'authRole:stakeholder,admin']);
+        $routes->patch('(:num)/verify', 'ComplaintController::verify/$1', ['filter' => 'authRole:admin']);
+        $routes->post('(:num)/disposition', 'ComplaintController::dispatch/$1', ['filter' => 'authRole:admin']);
         $routes->post('(:num)/feedback', 'ComplaintController::feedback/$1', ['filter' => 'authRole:user,stakeholder,admin']);
-        $routes->post('(:num)/reply', 'ComplaintController::reply/$1', ['filter' => 'authRole:stakeholder,admin']);
-        $routes->get('(:num)/replies', 'ComplaintController::replies/$1', ['filter' => 'authRole:stakeholder,admin']);
+        $routes->post('(:num)/reply', 'ComplaintController::reply/$1', ['filter' => 'authRole:user,stakeholder,admin']);
+        $routes->get('(:num)/replies', 'ComplaintController::replies/$1', ['filter' => 'authRole:user,stakeholder,admin']);
         $routes->post('(:num)/analyze', 'ComplaintController::analyze/$1', ['filter' => 'authRole:stakeholder,admin']);
+        $routes->get('(:num)/analysis-history', 'ComplaintController::analysisHistory/$1', ['filter' => 'authRole:user,stakeholder,admin']);
+        $routes->get('(:num)/attachments/(:segment)', 'ComplaintController::attachment/$1/$2', ['filter' => 'authRole:user,stakeholder,admin']);
     });
 
-    $routes->group('admin/complaints', ['filter' => 'authRole:stakeholder,admin'], function ($routes) {
+    $routes->group('admin/complaints', ['filter' => 'authRole:admin'], function ($routes) {
         $routes->patch('(:num)/verify', 'ComplaintController::verify/$1');
         $routes->post('(:num)/disposition', 'ComplaintController::dispatch/$1');
     });
@@ -54,7 +56,7 @@ $routes->group('api', function ($routes) {
     });
 
     $routes->get('unit/stats', 'DashboardController::unitStats', ['filter' => 'authRole:stakeholder,admin']);
-    $routes->get('student/dashboard', 'DashboardController::studentDashboard');
+    $routes->get('student/dashboard', 'DashboardController::studentDashboard', ['filter' => 'authRole:user,admin']);
     $routes->get('admin/dashboard', 'DashboardController::adminDashboard', ['filter' => 'authRole:admin']);
     $routes->get('analytics/weekly', 'AnalyticsController::weekly', ['filter' => 'authRole:admin']);
 
@@ -68,5 +70,10 @@ $routes->group('api', function ($routes) {
         $routes->get('units', 'AnalyticsController::units');
         $routes->get('urgent', 'AnalyticsController::urgent');
         $routes->get('ai-summary', 'AnalyticsController::aiSummary');
+    });
+
+    // Tangani preflight OPTIONS untuk seluruh API group agar CORS lolos 204
+    $routes->options('(:any)', static function () {
+        return service('response')->setStatusCode(204);
     });
 });

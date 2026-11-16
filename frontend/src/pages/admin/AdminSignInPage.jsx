@@ -105,11 +105,6 @@ export default function AdminSignInPage() {
           )}
         </button>
       </form>
-
-      <div className="mt-5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3.5 text-[11px] text-[var(--color-text-muted)] font-mono rounded-xl shadow-xs">
-        <span className="font-bold text-[var(--color-text)] block mb-0.5">{tx('Kredensial Admin Demo:', 'Demo Admin Credentials:')}</span>
-        Email: <span className="text-[var(--color-primary)] font-bold">admin@pens.ac.id</span> | {tx('Sandi: bebas', 'Password: any')}
-      </div>
     </AuthShell>
   )
 }

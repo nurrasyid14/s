@@ -5,11 +5,14 @@ import StakeholderLayout from '../../components/layout/StakeholderLayout.jsx'
 import { StatusBadge, UrgencyBadge } from '../../components/ui/StatusBadge.jsx'
 import EmptyState from '../../components/ui/EmptyState.jsx'
 import ErrorState from '../../components/ui/ErrorState.jsx'
+import ProtectedImage from '../../components/ui/ProtectedImage.jsx'
+import ProtectedAttachmentLink from '../../components/ui/ProtectedAttachmentLink.jsx'
 import DispositionSheetModal from '../../components/pdf/DispositionSheetModal.jsx'
 import {
   getComplaint, acceptComplaintByUnit, addUnitFollowUp,
   submitUnitOfficialAnswer, updateComplaintStatus
 } from '../../services/complaintApi.js'
+import { downloadOrOpenAttachment } from '../../services/attachmentApi.js'
 import { formatDateTime, formatDate, getUrgencyLevel, formatUrgencyScore, WORKFLOW_STEPS } from '../../utils/formatter.js'
 import useBilingual from '../../hooks/useBilingual.js'
 import { useComplaintLabels } from '../../utils/ComplaintLabels.js'
@@ -273,6 +276,50 @@ export default function ComplaintDetail() {
                 {data.description}
               </p>
             </div>
+
+            {data.attachments && data.attachments.length > 0 && (
+              <div className="border-t border-[var(--color-border)] pt-4 mt-4">
+                <div className="text-[11px] font-mono uppercase text-[var(--color-text-muted)] mb-2">
+                  Lampiran Bukti Pengirim:
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {data.attachments.map((a, i) => {
+                    const fileUrl = typeof a === 'string' ? a : a?.url
+                    const fileName = typeof a === 'string' ? a : a?.name || `Lampiran ${i + 1}`
+                    const fileSize = typeof a === 'object' ? a?.size : null
+                    const isImg = fileUrl && (fileUrl.match(/\.(jpg|jpeg|png|webp|gif)$/i) || fileUrl.startsWith('data:image') || fileUrl.startsWith('blob:'))
+
+                    if (isImg) {
+                      return (
+                        <div key={i} className="inline-flex items-center gap-2 border border-[var(--color-border)] p-2 rounded-xl bg-[var(--color-bg-secondary)] text-xs">
+                          <button
+                            type="button"
+                            onClick={() => downloadOrOpenAttachment(fileUrl, fileName, { isInline: true })}
+                            className="block overflow-hidden rounded-lg border border-[var(--color-border)] hover:border-[var(--color-primary)] cursor-pointer"
+                            title={`Buka ${fileName}`}
+                          >
+                            <ProtectedImage src={fileUrl} alt={fileName} className="h-14 w-20 object-cover rounded-md" />
+                          </button>
+                          <div className="flex flex-col pr-1">
+                            <span className="font-medium text-[var(--color-text)] truncate max-w-[120px]" title={fileName}>{fileName}</span>
+                            {fileSize ? <span className="text-[10px] text-[var(--color-text-muted)] font-mono">{(fileSize / 1024).toFixed(0)} KB</span> : null}
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    return (
+                      <ProtectedAttachmentLink
+                        key={i}
+                        url={fileUrl}
+                        name={fileName}
+                        size={fileSize}
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Catatan Verifikasi & Disposisi Admin */}

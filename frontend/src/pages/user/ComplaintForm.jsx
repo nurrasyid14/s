@@ -55,11 +55,14 @@ export default function ComplaintForm() {
 
   async function handleSubmit() {
     setLoading(true)
+    setError('')
     try {
       const result = await submitComplaint(form)
       setSubmitted(result)
-    } catch {
-      setError(tx('Gagal mengirim aduan. Coba lagi.', 'Failed to submit the report. Please try again.'))
+    } catch (err) {
+      const backendMessage = err.response?.data?.message
+      const fallbackMessage = err.message || tx('Gagal mengirim pengajuan. Silakan periksa koneksi dan coba lagi.', 'Failed to submit. Please check your connection and try again.')
+      setError(backendMessage || fallbackMessage)
     } finally {
       setLoading(false)
     }
