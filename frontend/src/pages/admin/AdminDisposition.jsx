@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import AdminLayout from '../../components/layout/AdminLayout.jsx'
 import { StatusBadge } from '../../components/ui/StatusBadge.jsx'
 import { getComplaints, dispatchComplaint } from '../../services/complaintApi.js'
@@ -151,8 +152,8 @@ export default function AdminDisposition() {
       )}
 
       {/* Lembar Disposisi Layar Penuh */}
-      {selectedTicket && (
-        <div className="fixed inset-0 z-50 backdrop-in bg-[var(--color-surface)]">
+      {selectedTicket && createPortal(
+        <div className="fixed inset-0 z-[100] backdrop-in bg-[var(--color-surface)]">
           <div
             role="dialog"
             aria-modal="true"
@@ -180,13 +181,13 @@ export default function AdminDisposition() {
 
             <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col text-xs">
               <div className="flex-1 min-h-0 overflow-y-auto px-5 sm:px-8 py-4">
-                <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-5 h-full lg:content-start">
-                  <div className="p-4 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-sm text-[var(--color-text-muted)] leading-relaxed rounded-xl lg:max-h-full lg:overflow-y-auto">
+                <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-5 lg:h-full lg:grid-rows-1">
+                  <div className="p-4 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-sm text-[var(--color-text-muted)] leading-relaxed rounded-xl lg:h-full lg:overflow-y-auto">
                     <strong className="text-[var(--color-text)] block mb-1">{tx('Substansi Keluhan:', 'Complaint Details:')}</strong>
                     "{selectedTicket.description}"
                   </div>
 
-                  <div className="space-y-3.5">
+                  <div className="flex flex-col gap-3.5 lg:h-full">
                     <div>
                       <label htmlFor="disposition-target-unit" className="block font-bold text-[var(--color-text)] mb-1">
                         {tx('Pilih Unit Kerja Penerima Disposisi (14 Standar Unit PENS)', 'Select Receiving Work Unit (14 Standard PENS Units)')} *
@@ -227,7 +228,7 @@ export default function AdminDisposition() {
                       </div>
                     </div>
 
-                    <div>
+                    <div className="flex flex-col flex-1 min-h-[9rem]">
                       <label htmlFor="disposition-notes" className="block font-bold text-[var(--color-text)] mb-1">
                         {tx('Catatan Instruksi / Arahan Disposisi dari Administrator', 'Administrator Dispatch Instructions')} *
                       </label>
@@ -238,7 +239,7 @@ export default function AdminDisposition() {
                         placeholder={tx('Instruksi jelas bagi unit: investigasi, perbaikan segera, atau koordinasi...', 'Clear instructions for the unit: investigation, immediate repair, or coordination...')}
                         value={form.disposition_note}
                         onChange={e => setForm(f => ({ ...f, disposition_note: e.target.value }))}
-                        className="input-field text-xs resize-none rounded-xl"
+                        className="input-field text-xs resize-none rounded-xl flex-1"
                       />
                     </div>
                   </div>
@@ -267,7 +268,8 @@ export default function AdminDisposition() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </AdminLayout>
   )

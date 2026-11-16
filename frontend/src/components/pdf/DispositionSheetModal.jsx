@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { formatDate, formatDateTime, formatUrgencyScore } from '../../utils/formatter.js'
 import useBilingual from '../../hooks/useBilingual.js'
 import { StatusBadge } from '../ui/StatusBadge.jsx'
@@ -13,9 +14,9 @@ export default function DispositionSheetModal({ complaint, onClose }) {
 
   const currentDate = new Date()
 
-  return (
-    <div className="fixed inset-0 z-50 backdrop-in bg-black/60 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="modal-in bg-[var(--color-surface)] border border-[var(--color-border)] max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] backdrop-in bg-[var(--color-surface)]">
+      <div className="modal-in bg-[var(--color-surface)] w-full h-full flex flex-col">
         {/* Modal Controls */}
         <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between print:hidden bg-[var(--color-bg-secondary)]">
           <div className="flex items-center gap-2">
@@ -41,7 +42,8 @@ export default function DispositionSheetModal({ complaint, onClose }) {
         </div>
 
         {/* Printable Area */}
-        <div className="p-8 sm:p-10 overflow-y-auto flex-1 bg-white text-gray-900 print:p-0 print:m-0" id="printable-sheet">
+        <div className="p-6 sm:p-10 overflow-y-auto flex-1 bg-gray-100 text-gray-900 print:p-0 print:m-0 print:bg-white" id="printable-sheet">
+          <div className="max-w-4xl mx-auto bg-white p-6 sm:p-10 shadow-sm print:shadow-none print:p-0 print:max-w-none">
           {/* Header Kop */}
           <div className="border-b-2 border-gray-900 pb-3 mb-5 text-center">
             <div className="text-[11px] font-bold tracking-widest uppercase font-serif text-gray-600">
@@ -192,8 +194,10 @@ export default function DispositionSheetModal({ complaint, onClose }) {
               <div className="font-bold border-b border-gray-900 pb-0.5">( {tx('Koordinator / PIC Unit', 'Unit Coordinator / PIC')} )</div>
             </div>
           </div>
+          </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
