@@ -104,7 +104,7 @@ function Header() {
             {dark ? <Sun size={19} className="text-[var(--color-gold)]" /> : <Moon size={19} />}
           </button>
           <button onClick={switchLang} aria-label={L('Ganti bahasa', 'Switch language')} className="press hidden md:flex h-11 items-center gap-1.5 rounded-xl border border-white/25 px-3 text-sm font-medium text-white/90 transition-colors hover:bg-white/10">
-            <Globe size={15} />{i18n.language === 'id' ? 'EN' : 'ID'}
+            <Globe size={15} />{(i18n.language?.startsWith('en') ? 'EN' : 'ID')}
           </button>
           {user ? (
             <>
@@ -130,7 +130,7 @@ function Header() {
               <a key={href} href={href} style={{ '--i': i }} className="rounded-lg px-2 py-3 text-base font-medium text-white/90" onClick={() => setOpen(false)}>{label}</a>
             ))}
             <button onClick={switchLang} style={{ '--i': links.length }} className="flex items-center gap-2 px-2 py-3 text-left text-white/80">
-              <Globe size={15} />{i18n.language === 'id' ? 'English' : 'Bahasa Indonesia'}
+              <Globe size={15} />{(i18n.language?.startsWith('en') ? 'English' : 'Bahasa Indonesia')}
             </button>
             {user ? (
               <div style={{ '--i': links.length + 1 }} className="mt-2 grid grid-cols-2 gap-2">
@@ -203,9 +203,8 @@ function Hero() {
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col justify-center px-4 pb-10 pt-28 md:px-8 md:pt-32">
         <div className="grid items-center gap-12 lg:grid-cols-[1.15fr_0.85fr]">
           <div style={{ transform: `translate3d(0, ${shift * -0.06}px, 0)` }}>
-            <a href="#flow" className="blur-in inline-flex items-center gap-2.5 rounded-full border border-white/20 bg-white/[0.07] py-1 pl-1.5 pr-3.5 text-xs font-medium backdrop-blur-sm transition-colors hover:bg-white/[0.14] md:text-sm">
+            <a href="#flow" className="blur-in inline-flex items-center gap-2.5 rounded-full bg-white/[0.07] py-1 pl-1.5 pr-3.5 text-xs font-medium backdrop-blur-sm transition-colors hover:bg-white/[0.14] md:text-sm">
               <span className="flex items-center gap-1.5 rounded-full bg-[var(--color-gold)] px-2 py-0.5 text-[11px] font-bold text-[var(--color-on-gold)]">
-                <span className="live-dot h-1.5 w-1.5 rounded-full bg-[var(--color-on-gold)]" />
                 {L('Aktif', 'Live')}
               </span>
               {L('Analisis kategori dan urgensi otomatis', 'Automatic category and urgency analysis')}
@@ -322,7 +321,7 @@ function Units() {
       <div className="group relative [mask-image:linear-gradient(90deg,transparent,black_10%,black_90%,transparent)]">
         <div className="animate-marquee flex w-max gap-3 group-hover:[animation-play-state:paused]">
           {row.map(({ icon: Icon, name }, i) => (
-            <div key={i} className="flex items-center gap-2.5 whitespace-nowrap rounded-full border border-white/10 bg-white/[0.05] px-5 py-2.5">
+            <div key={i} className="flex items-center gap-2.5 whitespace-nowrap rounded-full bg-white/[0.05] px-5 py-2.5">
               <Icon size={17} className="text-[var(--color-gold)]" />
               <span className="text-sm font-semibold">{name}</span>
             </div>
@@ -339,10 +338,7 @@ function MobileShowcase() {
   return (
     <section id="showcase" className="relative overflow-hidden bg-[var(--color-bg-secondary)] px-4 pt-20 md:pt-28">
       <div className="mx-auto max-w-3xl text-center">
-        <Reveal as="span" className="inline-block rounded-full border border-[var(--color-primary)]/20 bg-[var(--color-primary-soft)] px-3.5 py-1 text-xs font-semibold text-[var(--color-primary)]">
-          {L('Di genggaman Anda', 'In your pocket')}
-        </Reveal>
-        <Reveal as="h2" delay={80} className="mt-4 text-3xl font-bold tracking-tight md:text-5xl">
+        <Reveal as="h2" delay={80} className="text-3xl font-bold tracking-tight md:text-5xl">
           {L('Ajukan dan pantau aduan langsung dari ponsel', 'Submit and track complaints right from your phone')}
         </Reveal>
         <Reveal as="p" delay={160} className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[var(--color-text-muted)]">
@@ -462,7 +458,7 @@ function Features() {
     <section id="features" className="relative bg-[var(--color-bg-secondary)] px-4 py-24 md:py-32">
       <div className="mx-auto max-w-6xl">
         <div className="mx-auto max-w-2xl text-center">
-          <Reveal as="span" className="inline-block rounded-full border border-[var(--color-primary)]/20 bg-[var(--color-primary-soft)] px-3.5 py-1 text-xs font-semibold text-[var(--color-primary)]">
+          <Reveal as="span" className="inline-block rounded-full bg-[var(--color-primary-soft)] px-3.5 py-1 text-xs font-semibold text-[var(--color-primary)]">
             {L('Fitur utama', 'Key features')}
           </Reveal>
           <Reveal as="h2" delay={80} className="mt-4 text-3xl font-bold leading-tight tracking-tight md:text-5xl">
@@ -584,7 +580,7 @@ function CampusSpotlight() {
         </div>
 
         <div className="flex flex-col">
-          <Reveal as="span" className="inline-block self-start rounded-full border border-[var(--color-primary)]/20 bg-[var(--color-primary-soft)] px-3.5 py-1 text-xs font-semibold text-[var(--color-primary)]">
+          <Reveal as="span" className="inline-block self-start rounded-full bg-[var(--color-primary-soft)] px-3.5 py-1 text-xs font-semibold text-[var(--color-primary)]">
             {L('Politeknik Elektronika Negeri Surabaya', 'Electronic Engineering Polytechnic Institute of Surabaya')}
           </Reveal>
           <Reveal as="h2" delay={80} className="mt-4 text-3xl font-bold leading-tight tracking-tight md:text-4xl">

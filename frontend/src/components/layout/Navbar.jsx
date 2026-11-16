@@ -1,11 +1,12 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Globe, Sun, Moon, Menu, X, AlertTriangle, CheckCircle2, Clock, Search } from 'lucide-react'
+import { Bell, Globe, Sun, Moon, Menu, X, AlertTriangle, CheckCircle2, Clock, Search, ChevronDown, Settings, LogOut } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useTheme } from '../../context/ThemeContext.jsx'
 import { getUrgentComplaints } from '../../services/analyticsApi.js'
-import { STAKEHOLDER_NAV, stakeholderActiveIndex } from './Sidebar.jsx'
+import { STAKEHOLDER_NAV, stakeholderActiveIndex, localizeNav } from './Sidebar.jsx'
+import useBilingual from '../../hooks/useBilingual.js'
 import { PillNav, BrandMark } from './NavParts.jsx'
 import { formatUrgencyScore } from '../../utils/formatter.js'
 
@@ -17,6 +18,7 @@ import { formatUrgencyScore } from '../../utils/formatter.js'
  */
 export default function Navbar({ variant = 'public', notifCount = 0, title = '' }) {
   const { t, i18n } = useTranslation()
+  const { tx, isId } = useBilingual()
   const { user, logout } = useAuth()
   const { dark, toggle } = useTheme()
   const navigate = useNavigate()
@@ -25,6 +27,8 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifs, setNotifs] = useState([])
   const notifRef = useRef(null)
+  const profileRef = useRef(null)
+  const [profileOpen, setProfileOpen] = useState(false)
 
   function switchLang() {
     const next = i18n.language === 'id' ? 'en' : 'id'
@@ -43,6 +47,9 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
       if (notifRef.current && !notifRef.current.contains(e.target)) {
         setNotifOpen(false)
       }
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileOpen(false)
+      }
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
@@ -52,6 +59,7 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
     function handleKeyDown(e) {
       if (e.key === 'Escape') {
         setNotifOpen(false)
+        setProfileOpen(false)
         setMenuOpen(false)
       }
     }
@@ -65,23 +73,23 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
 
   // ---- Stakeholder variant (inside sidebar layout) ----
   if (variant === 'stakeholder') {
-    const navItems = STAKEHOLDER_NAV.map(({ to, label }) => ({ to, label }))
+    const navItems = localizeNav(STAKEHOLDER_NAV, isId).map(({ to, label }) => ({ to, label }))
 
     return (
       <header className="sticky top-0 z-20 flex h-20 items-center justify-between gap-4 border-b border-[var(--color-border)] bg-[var(--color-surface)]/85 px-4 backdrop-blur-md sm:px-8">
         {/* Kiri: judul halaman */}
         <div className="flex min-w-0 items-center gap-3">
-          <Link to="/" className="md:hidden" aria-label="Beranda SuaraLens"><BrandMark size={36} /></Link>
+          <Link to="/" className="md:hidden" aria-label={tx('Beranda SuaraLens', 'SuaraLens Home')}><BrandMark size={36} /></Link>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">Portal Unit</span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">{tx('Portal Unit', 'Unit Portal')}</span>
               <span className="rounded-full bg-[var(--color-gold-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-gold-ink)]">Stakeholder</span>
             </div>
             <h1 className="truncate text-lg font-bold tracking-tight text-[var(--color-text)]">{title || 'SuaraLens'}</h1>
           </div>
         </div>
 
-        <PillNav items={navItems} activeIndex={stakeholderActiveIndex(location.pathname)} label="Menu stakeholder" />
+        <PillNav items={navItems} activeIndex={stakeholderActiveIndex(location.pathname)} label={tx('Menu stakeholder', 'Stakeholder menu')} />
 
         {/* Right: Search, Notif Dropdown, User Profile Pill */}
         <div className="flex items-center gap-2.5 sm:gap-3">
@@ -89,8 +97,8 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
           <Link
             to="/stakeholder/complaints"
             className="w-10 h-10 rounded-full border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition shadow-2xs"
-            title="Cari Aduan"
-            aria-label="Cari aduan"
+            title={tx('Cari Aduan', 'Search Complaints')}
+            aria-label={tx('Cari aduan', 'Search complaints')}
           >
             <Search size={17} strokeWidth={2.2} />
           </Link>
@@ -100,7 +108,7 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
             <button
               onClick={() => setNotifOpen(o => !o)}
               className="relative w-10 h-10 rounded-full border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
-              aria-label="Notifikasi"
+              aria-label={tx('Notifikasi', 'Notifications')}
               aria-haspopup="true"
               aria-expanded={notifOpen}
             >
@@ -116,12 +124,12 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
                   <div className="flex items-center gap-2">
                     <Bell size={14} className="text-[var(--color-primary)]" />
                     <span className="font-semibold text-xs tracking-tight uppercase font-mono text-[var(--color-text)]">
-                      {i18n.language === 'id' ? 'Aduan Perlu Perhatian' : 'Needs Attention'}
+                      {tx('Aduan Perlu Perhatian', 'Needs Attention')}
                     </span>
                   </div>
                   {notifCount > 0 && (
                     <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full border border-[var(--color-border)]" style={{ color: 'var(--color-status-danger)', background: 'color-mix(in srgb, var(--color-status-danger) 12%, transparent)' }}>
-                      {notifCount} {i18n.language === 'id' ? 'baru' : 'new'}
+                      {notifCount} {tx('baru', 'new')}
                     </span>
                   )}
                 </div>
@@ -132,7 +140,7 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
                       <CheckCircle2 size={32} className="text-[var(--color-status-success)] mx-auto mb-2" />
                       <p className="text-sm font-semibold text-[var(--color-text)]">Semua aman!</p>
                       <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                        {i18n.language === 'id' ? 'Tidak ada aduan mendesak.' : 'No urgent complaints.'}
+                        {tx('Tidak ada aduan mendesak.', 'No urgent complaints.')}
                       </p>
                     </div>
                   ) : (
@@ -172,26 +180,52 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
                     onClick={() => { navigate('/stakeholder/followups'); setNotifOpen(false) }}
                     className="text-xs text-[var(--color-primary)] hover:underline font-medium w-full text-center"
                   >
-                    {i18n.language === 'id' ? 'Lihat semua tindak lanjut' : 'View all follow-ups'}
+                    {tx('Lihat semua tindak lanjut', 'View all follow-ups')}
                   </button>
                 </div>
               </div>
             )}
           </div>
 
-          {/* User Profile Pill (Finexy Avatar & Dropdown Pill) */}
-          <div className="flex items-center gap-2.5 pl-1.5 pr-3 py-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xs">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-navy)] font-mono text-xs font-bold text-[var(--color-gold)] dark:bg-[var(--color-primary)] dark:text-white">
-              {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-            </div>
-            <div className="hidden xl:block text-left leading-tight">
-              <div className="text-xs font-bold text-[var(--color-text)] truncate max-w-[120px]">
-                {user?.name || 'Unit Pelaksana'}
+          {/* Profil: klik membuka menu Pengaturan Profil */}
+          <div className="relative" ref={profileRef}>
+            <button
+              type="button"
+              onClick={() => setProfileOpen(o => !o)}
+              aria-haspopup="menu"
+              aria-expanded={profileOpen}
+              className="press flex items-center gap-2.5 pl-1.5 pr-3 py-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xs transition-colors hover:bg-[var(--color-bg-secondary)]"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-navy)] font-mono text-xs font-bold text-[var(--color-gold)] dark:bg-[var(--color-primary)] dark:text-white">
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
               </div>
-              <div className="text-[10px] font-mono text-[var(--color-text-muted)] truncate max-w-[120px]">
-                {user?.role === 'stakeholder' ? 'Stakeholder' : 'Admin'}
+              <div className="hidden xl:block text-left leading-tight">
+                <div className="text-xs font-bold text-[var(--color-text)] truncate max-w-[120px]">
+                  {user?.name || 'Unit Pelaksana'}
+                </div>
+                <div className="text-[10px] font-mono text-[var(--color-text-muted)] truncate max-w-[120px]">
+                  {user?.role === 'stakeholder' ? 'Stakeholder' : 'Admin'}
+                </div>
               </div>
-            </div>
+              <ChevronDown size={14} className={`text-[var(--color-text-muted)] transition-transform duration-200 ${profileOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {profileOpen && (
+              <div role="menu" className="popover-in absolute right-0 top-12 z-50 w-60 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2 shadow-xl">
+                <div className="border-b border-[var(--color-border)] px-3 py-2">
+                  <div className="text-xs font-bold text-[var(--color-text)] truncate">{user?.name || 'Unit Pelaksana'}</div>
+                  <div className="font-mono text-[11px] text-[var(--color-text-muted)] truncate">{user?.email}</div>
+                </div>
+                <div className="py-1">
+                  <Link role="menuitem" to="/stakeholder/settings" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)]">
+                    <Settings size={15} /> {tx('Pengaturan Profil', 'Profile Settings')}
+                  </Link>
+                  <button role="menuitem" onClick={logout} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-[var(--color-status-danger)] hover:bg-[var(--color-status-danger)]/10">
+                    <LogOut size={15} /> {t('nav.logout')}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -214,7 +248,7 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
             <button
               onClick={toggle}
               className="press flex h-10 w-10 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white"
-              aria-label="Toggle theme"
+              aria-label={tx('Ganti tema', 'Toggle theme')}
             >
               {dark ? <Sun size={18} className="text-[var(--color-gold)]" /> : <Moon size={18} />}
             </button>
@@ -223,14 +257,14 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
               onClick={switchLang}
               className="press flex h-10 items-center gap-1.5 rounded-lg border border-white/20 px-3 text-sm font-medium text-white/90 transition-colors hover:bg-white/10"
             >
-              <Globe size={14} /> {i18n.language === 'id' ? 'EN' : 'ID'}
+              <Globe size={14} /> {(i18n.language?.startsWith('en') ? 'EN' : 'ID')}
             </button>
 
             {user ? (
               <>
                 {user.role === 'user' ? (
                   <>
-                    {[['/user/dashboard', 'Transparansi'], ['/user/complaints', 'Riwayat Saya']].map(([to, text]) => {
+                    {[['/user/dashboard', tx('Transparansi', 'Transparency')], ['/user/complaints', tx('Riwayat Saya', 'My History')]].map(([to, text]) => {
                       const active = location.pathname === to || (to === '/user/complaints' && location.pathname.startsWith(to))
                       return (
                         <Link key={to} to={to} aria-current={active ? 'page' : undefined} className={`group relative rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${active ? 'text-white' : 'text-white/70 hover:text-white'}`}>
@@ -240,7 +274,7 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
                       )
                     })}
                     <Link to="/user/submit" className="btn-gold !h-10 !px-4 !text-sm">
-                      + Ajukan
+                      + {tx('Ajukan', 'Submit')}
                     </Link>
                   </>
                 ) : (
@@ -265,7 +299,7 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
           </div>
 
           {/* Mobile hamburger */}
-          <button className="press md:hidden flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 text-white/85 hover:bg-white/10" onClick={() => setMenuOpen(m => !m)} aria-label="Toggle menu" aria-expanded={menuOpen}>
+          <button className="press md:hidden flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 text-white/85 hover:bg-white/10" onClick={() => setMenuOpen(m => !m)} aria-label={tx('Buka/tutup menu', 'Toggle menu')} aria-expanded={menuOpen}>
             {menuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
@@ -275,7 +309,7 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
           <div className="md:hidden space-y-2 border-t border-white/10 py-3 animate-fade-in-up [&_a]:text-white/90 [&_button]:text-white/85">
             <div className="flex items-center justify-between px-4 py-1">
               <button onClick={switchLang} className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
-                <Globe size={15} /> {i18n.language === 'id' ? 'English' : 'Bahasa Indonesia'}
+                <Globe size={15} /> {(i18n.language?.startsWith('en') ? 'English' : 'Bahasa Indonesia')}
               </button>
               <button onClick={toggle} className="p-1.5 rounded-lg text-[var(--color-text-muted)]">
                 {dark ? <Sun size={17} className="text-[var(--color-accent)]" /> : <Moon size={17} />}
@@ -292,13 +326,13 @@ export default function Navbar({ variant = 'public', notifCount = 0, title = '' 
                 {user.role === 'user' ? (
                   <>
                     <Link to="/user/dashboard" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-medium text-[var(--color-text)]">
-                      Dashboard Transparansi
+                      {tx('Dashboard Transparansi', 'Transparency Dashboard')}
                     </Link>
                     <Link to="/user/complaints" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-medium text-[var(--color-text)]">
-                      Riwayat Aduan Saya
+                      {tx('Riwayat Aduan Saya', 'My Complaint History')}
                     </Link>
                     <Link to="/user/submit" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-semibold text-[var(--color-primary)]">
-                      + Ajukan Aspirasi Baru
+                      + {tx('Ajukan Aspirasi Baru', 'Submit New Aspiration')}
                     </Link>
                   </>
                 ) : (

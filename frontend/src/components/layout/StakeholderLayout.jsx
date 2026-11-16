@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
-import Sidebar, { STAKEHOLDER_NAV, stakeholderActiveIndex } from './Sidebar.jsx'
+import Sidebar, { STAKEHOLDER_NAV, stakeholderActiveIndex, localizeNav } from './Sidebar.jsx'
+import useBilingual from '../../hooks/useBilingual.js'
 import Navbar from './Navbar.jsx'
 import { useAutoReveal } from '../motion/Motion.jsx'
 
@@ -7,10 +8,11 @@ import { useAutoReveal } from '../motion/Motion.jsx'
 function MobileTabBar() {
   const { pathname } = useLocation()
   const active = stakeholderActiveIndex(pathname)
+  const { tx, isId } = useBilingual()
   return (
-    <nav aria-label="Menu stakeholder" className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[var(--color-sidebar-bg)] px-2 pb-[env(safe-area-inset-bottom)] md:hidden">
+    <nav aria-label={tx('Menu stakeholder', 'Stakeholder menu')} className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[var(--color-sidebar-bg)] px-2 pb-[env(safe-area-inset-bottom)] md:hidden">
       <div className="grid grid-cols-6">
-        {STAKEHOLDER_NAV.map(({ to, icon: Icon, label }, i) => (
+        {localizeNav(STAKEHOLDER_NAV, isId).map(({ to, icon: Icon, label }, i) => (
           <Link
             key={to}
             to={to}

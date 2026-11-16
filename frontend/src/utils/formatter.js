@@ -1,27 +1,33 @@
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/id'
+import i18n from './i18n.js'
+
+/** Kode bahasa aktif untuk dayjs: 'id' atau 'en'. */
+function activeLang() {
+  return i18n.language?.startsWith('en') ? 'en' : 'id'
+}
 
 dayjs.extend(relativeTime)
 
 /**
  * Format tanggal ke "15 Jan 2024"
  */
-export function formatDate(date, locale = 'id') {
+export function formatDate(date, locale = activeLang()) {
   return dayjs(date).locale(locale).format('D MMM YYYY')
 }
 
 /**
  * Format tanggal + jam ke "15 Jan 2024, 13:45"
  */
-export function formatDateTime(date, locale = 'id') {
+export function formatDateTime(date, locale = activeLang()) {
   return dayjs(date).locale(locale).format('D MMM YYYY, HH:mm')
 }
 
 /**
  * Format relative time ("2 hari lalu", "baru saja")
  */
-export function formatRelative(date, locale = 'id') {
+export function formatRelative(date, locale = activeLang()) {
   return dayjs(date).locale(locale).fromNow()
 }
 
@@ -29,7 +35,7 @@ export function formatRelative(date, locale = 'id') {
  * Format angka dengan separator ribuan
  * 1000 → "1.000" (ID) / "1,000" (EN)
  */
-export function formatNumber(num, locale = 'id-ID') {
+export function formatNumber(num, locale = activeLang() === 'en' ? 'en-US' : 'id-ID') {
   return new Intl.NumberFormat(locale).format(num)
 }
 
@@ -137,4 +143,22 @@ export function truncate(text, maxLength = 80) {
  */
 export function formatTicketId(id) {
   return `ADS-${dayjs().format('YYYY')}-${String(id).padStart(4, '0')}`
+}
+
+const HONORIFICS = ['prof', 'dr', 'drs', 'dra', 'ir', 'bapak', 'pak', 'ibu', 'bu', 'mr', 'ms', 'mrs']
+
+/**
+ * Nama untuk sapaan: gelar di depan dipertahankan, lalu satu nama depan.
+ * "Dr. Sari Wulandari" -> "Dr. Sari", "Budi Santoso" -> "Budi".
+ */
+export function greetingName(name, fallback = '') {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return fallback
+  const titles = []
+  let i = 0
+  while (i < parts.length - 1 && HONORIFICS.includes(parts[i].replace(/\.$/, '').toLowerCase())) {
+    titles.push(parts[i])
+    i += 1
+  }
+  return [...titles, parts[i]].join(' ')
 }

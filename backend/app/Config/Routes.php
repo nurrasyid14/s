@@ -18,6 +18,8 @@ $routes->group('api', function ($routes) {
         $routes->post('register/stakeholder', 'AuthController::registerStakeholder');
         $routes->post('login', 'AuthController::login');
         $routes->post('logout', 'AuthController::logout', ['filter' => 'authRole']);
+        $routes->get('profile', 'AuthController::profile', ['filter' => 'authRole']);
+        $routes->match(['patch', 'put'], 'profile', 'AuthController::updateProfile', ['filter' => 'authRole']);
     });
 
     $routes->group('complaints', function ($routes) {

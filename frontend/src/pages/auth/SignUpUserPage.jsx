@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import useBilingual from '../../hooks/useBilingual.js'
 import { UserPlus, AlertCircle } from 'lucide-react'
 import { signUpUser } from '../../services/authApi.js'
 import { useAuth } from '../../context/AuthContext.jsx'
@@ -14,6 +15,7 @@ const label = 'mb-1 block text-xs font-semibold text-[var(--color-text)]'
 
 export default function SignUpUserPage() {
   const { t, i18n } = useTranslation()
+  const { tx } = useBilingual()
   const { login } = useAuth()
   const navigate = useNavigate()
 
@@ -24,7 +26,7 @@ export default function SignUpUserPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const roles = i18n.language === 'id' ? ROLES : ROLES_EN
+  const roles = i18n.language?.startsWith('en') ? ROLES_EN : ROLES
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target
@@ -35,7 +37,7 @@ export default function SignUpUserPage() {
   async function handleSubmit(e) {
     e.preventDefault()
     if (form.password !== form.confirm_password) {
-      setError('Kata sandi tidak cocok.')
+      setError(tx('Kata sandi tidak cocok.', 'Passwords do not match.'))
       return
     }
     if (!form.agree) { setError('Harap setujui kebijakan privasi.'); return }
@@ -45,7 +47,7 @@ export default function SignUpUserPage() {
       login(user)
       navigate('/user/dashboard')
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Gagal mendaftar. Coba lagi.')
+      setError(err.response?.data?.message || err.message || tx('Gagal mendaftar. Coba lagi.', 'Registration failed. Please try again.'))
     } finally {
       setLoading(false)
     }
@@ -56,7 +58,7 @@ export default function SignUpUserPage() {
       variant="user"
       wide
       title={t('auth.as_user')}
-      subtitle="Buat akun untuk menyampaikan aspirasi dan aduan"
+      subtitle={tx('Buat akun untuk menyampaikan aspirasi dan aduan', 'Create an account to submit aspirations and complaints')}
       footer={
         <>
           {t('auth.already_have_account')}{' '}
@@ -73,7 +75,7 @@ export default function SignUpUserPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="user-name" className={label}>{t('auth.name')}</label>
-          <input id="user-name" name="name" required placeholder="Nama Lengkap" value={form.name} onChange={handleChange} className="input-field rounded-xl" />
+          <input id="user-name" name="name" required placeholder={tx('Nama Lengkap', 'Full Name')} value={form.name} onChange={handleChange} className="input-field rounded-xl" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div>

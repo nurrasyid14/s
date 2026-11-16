@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import StakeholderLayout from '../../components/layout/StakeholderLayout.jsx'
+import AdminLayout from '../../components/layout/AdminLayout.jsx'
 import PageHeader from '../../components/ui/PageHeader.jsx'
 import ToggleSwitch from '../../components/ui/ToggleSwitch.jsx'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { useTheme } from '../../context/ThemeContext.jsx'
+import { updateProfile } from '../../services/authApi.js'
 import { User, Bell, Palette, Globe, Save, Check } from 'lucide-react'
 
 const SAVED_MESSAGE_MS = 2000
@@ -36,11 +38,14 @@ function SettingRow({ label, icon: Icon, children }) {
 
 export default function Settings() {
     const { t, i18n } = useTranslation()
-    const { user } = useAuth()
+    const { user, updateUser } = useAuth()
     const { dark, toggle } = useTheme()
+    const Layout = user?.role === 'admin' ? AdminLayout : StakeholderLayout
     const [form, setForm] = useState({ name: user?.name || '', position: user?.position || '', email: user?.email || '' })
     const [notifPrefs, setNotifPrefs] = useState({ email_urgent: true, email_daily: false })
     const [saved, setSaved] = useState(false)
+    const [saving, setSaving] = useState(false)
+    const [saveError, setSaveError] = useState('')
 
     useEffect(() => {
         if (!saved) return undefined
@@ -48,11 +53,24 @@ export default function Settings() {
         return () => clearTimeout(timer)
     }, [saved])
 
-    // TODO: profil dan preferensi notifikasi masih disimpan di state lokal.
-    // Hubungkan ke service update profil/preferensi ketika tersedia.
-    function handleSave(e) {
+    // Profil disimpan ke backend; preferensi notifikasi masih state lokal.
+    async function handleSave(e) {
         e.preventDefault()
-        setSaved(true)
+        if (!form.name.trim()) {
+            setSaveError(t('stk.settings.name_required', 'Nama wajib diisi'))
+            return
+        }
+        setSaving(true)
+        setSaveError('')
+        try {
+            const updated = await updateProfile({ name: form.name, position: form.position })
+            updateUser(updated)
+            setSaved(true)
+        } catch (err) {
+            setSaveError(err.response?.data?.message || t('stk.settings.save_failed', 'Gagal menyimpan profil'))
+        } finally {
+            setSaving(false)
+        }
     }
 
     const currentLang = i18n.language?.startsWith('en') ? 'en' : 'id'
@@ -63,7 +81,7 @@ export default function Settings() {
     ]
 
     return (
-        <StakeholderLayout title={t('nav.settings')} narrow>
+        <Layout title={t('nav.settings')} narrow>
             <PageHeader
                 heading={t('stk.settings.heading', 'Pengaturan akun')}
                 description={t('stk.settings.description', 'Atur profil, notifikasi, tampilan, dan bahasa.')}
@@ -108,10 +126,14 @@ export default function Settings() {
                 <div className="mt-5 flex items-center gap-3 pt-4 border-t border-[var(--color-border)]">
                     <button
                         type="submit"
+                        disabled={saving}
                         className="btn-solid inline-flex items-center gap-2 text-xs py-2 px-4 font-medium rounded-xl min-h-[40px]"
                     >
                         <Save size={14} aria-hidden="true" /> {t('common.save')}
                     </button>
+                    {saveError && (
+                        <span role="alert" className="text-xs font-mono text-[var(--color-status-danger)]">{saveError}</span>
+                    )}
                     {saved && (
                         <span role="status" className="inline-flex items-center gap-1.5 text-xs font-mono text-[var(--color-status-success)]">
                             <Check size={13} aria-hidden="true" /> {t('stk.settings.saved', 'Perubahan disimpan')}
@@ -157,6 +179,6 @@ export default function Settings() {
                     </SettingRow>
                 </div>
             </SectionCard>
-        </StakeholderLayout>
+        </Layout>
     )
 }

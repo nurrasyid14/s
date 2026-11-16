@@ -17,6 +17,10 @@ export function AuthProvider({ children }) {
     setUser(userData)
   }
 
+  function updateUser(userData) {
+    setUser(userData)
+  }
+
   async function logout(redirectTo = '/') {
     // 1. Hapus token & sesi pengguna dari localStorage seketika (sinkron)
     localStorage.removeItem('suaralens_token')
@@ -39,7 +43,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, updateUser, logout }}>
       {children}
     </AuthContext.Provider>
   )

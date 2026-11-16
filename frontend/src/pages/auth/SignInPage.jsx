@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import useBilingual from '../../hooks/useBilingual.js'
 import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react'
 import { signIn } from '../../services/authApi.js'
 import { useAuth } from '../../context/AuthContext.jsx'
@@ -8,6 +9,7 @@ import AuthShell from '../../components/layout/AuthShell.jsx'
 
 export default function SignInPage() {
   const { t } = useTranslation()
+  const { tx } = useBilingual()
   const { login } = useAuth()
   const navigate = useNavigate()
 
@@ -36,7 +38,7 @@ export default function SignInPage() {
         navigate('/user/dashboard')
       }
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Email atau kata sandi salah.')
+      setError(err.response?.data?.message || err.message || tx('Email atau kata sandi salah.', 'Incorrect email or password.'))
     } finally {
       setLoading(false)
     }
@@ -46,7 +48,7 @@ export default function SignInPage() {
     <AuthShell
       variant="signin"
       title={t('auth.signin')}
-      subtitle="Masuk ke akun SuaraLens Anda"
+      subtitle={tx('Masuk ke akun SuaraLens Anda', 'Sign in to your SuaraLens account')}
       footer={
         <div className="space-y-2">
           <div>
@@ -57,7 +59,7 @@ export default function SignInPage() {
           </div>
           <div className="pt-2 border-t border-[var(--color-border)] text-center">
             <Link to="/admin/signin" className="text-xs font-mono font-semibold text-[var(--color-primary)] hover:underline">
-              Portal Khusus Administrator Sentral
+              {tx('Portal Khusus Administrator Sentral', 'Central Administrator Portal')}
             </Link>
           </div>
         </div>

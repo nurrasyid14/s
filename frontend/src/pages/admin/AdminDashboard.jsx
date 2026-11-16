@@ -5,7 +5,7 @@ import AdminLayout from '../../components/layout/AdminLayout.jsx'
 import { CountUp } from '../../components/motion/Motion.jsx'
 import ErrorState from '../../components/ui/ErrorState.jsx'
 import { getComplaints, getAdminDashboardStats, verifyComplaint, dispatchComplaint } from '../../services/complaintApi.js'
-import { formatRelative } from '../../utils/formatter.js'
+import { formatRelative, greetingName } from '../../utils/formatter.js'
 import { UNITS } from '../../data/units.js'
 import { useDebounce } from '../../hooks/useDebounce.js'
 import useBilingual from '../../hooks/useBilingual.js'
@@ -13,7 +13,7 @@ import {
   CheckSquare, Send, Clock, AlertTriangle, ArrowRight,
   ShieldCheck, Building2, Search,
   ChevronDown, CheckCircle2, FileText,
-  Wrench, Server, MessageSquare, Lightbulb
+  Wrench, Server, MessageSquare, Lightbulb, X
 } from 'lucide-react'
 
 export default function AdminDashboard() {
@@ -150,7 +150,7 @@ export default function AdminDashboard() {
               {new Date().toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </div>
             <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
-              {tx('Selamat datang', 'Welcome')}, {user?.name ? user.name.split(' ')[0] : 'Admin'}
+              {tx('Selamat Datang', 'Welcome')}, {greetingName(user?.name, 'Admin')}
             </h2>
             <p className="mt-2 text-sm text-white/75">
               {tx('Ada', 'There are')} <strong className="text-white">{verificationCount} {tx('laporan menunggu verifikasi', 'reports awaiting verification')}</strong>{' '}
@@ -634,15 +634,15 @@ export default function AdminDashboard() {
                           {/* Distinct Type Badge */}
                           <td className="py-3.5 px-3 whitespace-nowrap">
                             {typeKey === 'feedback' ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-900/60">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--color-text)]">
                                 <MessageSquare size={10} /> {tx('Masukan', 'Feedback')}
                               </span>
                             ) : typeKey === 'suggestion' ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-900/60">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--color-text)]">
                                 <Lightbulb size={10} /> {tx('Saran', 'Suggestion')}
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--color-text)]">
                                 <AlertTriangle size={10} /> {tx('Aduan', 'Complaint')}
                               </span>
                             )}
@@ -733,7 +733,8 @@ export default function AdminDashboard() {
 
       {/* Modal Disposisi Cepat */}
       {selectedTicket && (
-        <div className="fixed inset-0 z-50 backdrop-in bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 backdrop-in bg-black/60 backdrop-blur-xs overflow-y-auto overscroll-contain">
+        <div className="flex min-h-full items-center justify-center p-4">
           <div
             role="dialog"
             aria-modal="true"
@@ -746,13 +747,7 @@ export default function AdminDashboard() {
                   <span className="text-[10px] font-mono uppercase text-[var(--color-primary)] font-bold">
                     {tx('DISPOSISI RESMI ADMIN', 'OFFICIAL ADMIN DISPATCH')}
                   </span>
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                    selectedTicket.type === 'feedback'
-                      ? 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300'
-                      : selectedTicket.type === 'suggestion'
-                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
-                      : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
-                  }`}>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--color-text)]">
                     {selectedTicket.type === 'feedback' ? <MessageSquare size={10} /> : selectedTicket.type === 'suggestion' ? <Lightbulb size={10} /> : <AlertTriangle size={10} />}
                     {selectedTicket.type === 'feedback' ? tx('Masukan', 'Feedback') : selectedTicket.type === 'suggestion' ? tx('Saran', 'Suggestion') : tx('Aduan', 'Complaint')}
                   </span>
@@ -764,9 +759,9 @@ export default function AdminDashboard() {
               <button
                 onClick={() => setSelectedTicket(null)}
                 aria-label={tx('Tutup modal disposisi cepat', 'Close quick dispatch modal')}
-                className="p-2 rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-colors text-sm"
+                className="p-2 rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)] transition-colors"
               >
-                ✕
+                <X size={16} />
               </button>
             </div>
 
@@ -844,6 +839,7 @@ export default function AdminDashboard() {
               </div>
             </form>
           </div>
+        </div>
         </div>
       )}
     </AdminLayout>

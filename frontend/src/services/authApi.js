@@ -107,6 +107,25 @@ export async function signUpStakeholder(data) {
 }
 
 /**
+ * Simpan profil (name, position, phone). Mengembalikan user terbaru dan memperbarui cache lokal.
+ */
+export async function updateProfile({ name, position, phone }) {
+  const patch = { name, position, phone }
+  Object.keys(patch).forEach(k => patch[k] === undefined && delete patch[k])
+
+  let user
+  if (USE_MOCK) {
+    await delay(400)
+    user = { ...getCurrentUser(), ...patch }
+  } else {
+    const res = await api.patch('/auth/profile', patch)
+    user = res.data.user
+  }
+  localStorage.setItem('suaralens_user', JSON.stringify(user))
+  return user
+}
+
+/**
  * Sign out
  */
 export async function signOut() {
