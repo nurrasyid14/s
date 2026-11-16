@@ -1,5 +1,6 @@
 import React from 'react'
 import { AlertTriangle, RotateCw, Home } from 'lucide-react'
+import i18n from '../../utils/i18n.js'
 
 /**
  * ErrorBoundary - menangkap runtime exception pada component tree
@@ -28,6 +29,7 @@ export default class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
+      const tx = (id, en) => (i18n.language?.startsWith('en') ? en : id)
       if (this.props.fallback) {
         return this.props.fallback
       }
@@ -46,10 +48,10 @@ export default class ErrorBoundary extends React.Component {
             </div>
 
             <h2 className="text-lg font-bold text-[var(--color-text)]">
-              Terjadi Kesalahan Tampilan
+              {tx('Terjadi Kesalahan Tampilan', 'A Display Error Occurred')}
             </h2>
             <p className="mt-2 text-xs text-[var(--color-text-muted)] leading-relaxed">
-              Komponen ini mengalami kendala saat memproses data. Anda dapat mencoba memuat ulang tampilan atau kembali ke halaman utama.
+              {tx('Komponen ini mengalami kendala saat memproses data. Anda dapat mencoba memuat ulang tampilan atau kembali ke halaman utama.', 'This component ran into a problem while processing data. You can try reloading the view or go back to the home page.')}
             </p>
 
             {this.state.error?.message && (
@@ -64,13 +66,13 @@ export default class ErrorBoundary extends React.Component {
                 onClick={this.handleReset}
                 className="btn-primary inline-flex items-center gap-2 !py-2 !px-4 text-xs font-semibold rounded-xl"
               >
-                <RotateCw size={14} /> Coba Muat Ulang
+                <RotateCw size={14} /> {tx('Coba Muat Ulang', 'Try Reloading')}
               </button>
               <a
                 href="/"
                 className="btn-outline inline-flex items-center gap-2 !py-2 !px-4 text-xs font-semibold rounded-xl"
               >
-                <Home size={14} /> Beranda
+                <Home size={14} /> {tx('Beranda', 'Home')}
               </a>
             </div>
           </div>

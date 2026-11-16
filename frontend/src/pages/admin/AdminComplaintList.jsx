@@ -5,9 +5,11 @@ import { StatusBadge } from '../../components/ui/StatusBadge.jsx'
 import { getComplaints } from '../../services/complaintApi.js'
 import { formatDateTime, formatDate, formatUrgencyScore } from '../../utils/formatter.js'
 import { UNITS } from '../../data/units.js'
+import useBilingual from '../../hooks/useBilingual.js'
 import { Search, Filter, Printer, ExternalLink, AlertTriangle, MessageSquare, Lightbulb } from 'lucide-react'
 
 export default function AdminComplaintList() {
+  const { tx } = useBilingual()
   const [complaints, setComplaints] = useState([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
@@ -33,21 +35,21 @@ export default function AdminComplaintList() {
   )
 
   return (
-    <AdminLayout title="Semua Masukan & Aduan Sentral">
+    <AdminLayout title={tx('Semua Masukan & Aduan Sentral', 'All Central Feedback & Complaints')}>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-[var(--color-border)]">
         <div>
           <h2 className="text-xl font-bold font-mono tracking-tight text-[var(--color-text)]">
-            Daftar Seluruh Laporan &amp; Aspirasi Sivitas
+            {tx('Daftar Seluruh Laporan & Aspirasi Sivitas', 'All Reports & Campus Community Aspirations')}
           </h2>
           <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Data terpusat seluruh aduan, masukan, dan saran dalam alur penanganan institusional kampus.
+            {tx('Data terpusat seluruh aduan, masukan, dan saran dalam alur penanganan institusional kampus.', 'Centralized data of all complaints, feedback, and suggestions in the campus institutional handling flow.')}
           </p>
         </div>
         <button
           onClick={() => window.print()}
           className="btn-outline !py-2 !px-3.5 text-xs inline-flex items-center gap-1.5 rounded-xl min-h-[40px]"
         >
-          <Printer size={14} /> Cetak Rekap (PDF)
+          <Printer size={14} /> {tx('Cetak Rekap (PDF)', 'Print Summary (PDF)')}
         </button>
       </div>
 
@@ -55,12 +57,12 @@ export default function AdminComplaintList() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 p-4 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl shadow-xs">
         <div>
           <label htmlFor="filter-search" className="block text-[11px] font-mono uppercase text-[var(--color-text-muted)] font-semibold mb-1">
-            Cari Tiket / Kata Kunci
+            {tx('Cari Tiket / Kata Kunci', 'Search Ticket / Keyword')}
           </label>
           <input
             id="filter-search"
             type="text"
-            placeholder="Ketik kata kunci pencarian..."
+            placeholder={tx('Ketik kata kunci pencarian...', 'Type a search keyword...')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="input-field text-xs !py-2 rounded-xl"
@@ -68,7 +70,7 @@ export default function AdminComplaintList() {
         </div>
         <div>
           <label htmlFor="filter-type" className="block text-[11px] font-mono uppercase text-[var(--color-text-muted)] font-semibold mb-1">
-            Jenis Laporan
+            {tx('Jenis Laporan', 'Report Type')}
           </label>
           <select
             id="filter-type"
@@ -76,15 +78,15 @@ export default function AdminComplaintList() {
             onChange={e => setTypeFilter(e.target.value)}
             className="input-field text-xs !py-2 rounded-xl"
           >
-            <option value="">-- Semua Jenis (3) --</option>
-            <option value="complaint">⚠️ Aduan (Masalah/Keluhan)</option>
-            <option value="feedback">💬 Masukan (Perbaikan Layanan)</option>
-            <option value="suggestion">💡 Saran (Ide Inovasi)</option>
+            <option value="">{tx('-- Semua Jenis (3) --', '-- All Types (3) --')}</option>
+            <option value="complaint">{tx('Aduan (Masalah/Keluhan)', 'Complaint (Problem/Grievance)')}</option>
+            <option value="feedback">{tx('Masukan (Perbaikan Layanan)', 'Feedback (Service Improvement)')}</option>
+            <option value="suggestion">{tx('Saran (Ide Inovasi)', 'Suggestion (Innovation Idea)')}</option>
           </select>
         </div>
         <div>
           <label htmlFor="filter-status" className="block text-[11px] font-mono uppercase text-[var(--color-text-muted)] font-semibold mb-1">
-            Filter Status
+            {tx('Filter Status', 'Status Filter')}
           </label>
           <select
             id="filter-status"
@@ -92,19 +94,19 @@ export default function AdminComplaintList() {
             onChange={e => setStatusFilter(e.target.value)}
             className="input-field text-xs !py-2 rounded-xl"
           >
-            <option value="">-- Semua Status --</option>
-            <option value="received">1. Diterima</option>
-            <option value="verified">2. Diverifikasi</option>
-            <option value="dispatched">3. Didisposisikan</option>
-            <option value="in_progress">4. Diproses</option>
-            <option value="action_taken">5. Ditindaklanjuti</option>
-            <option value="answered">6. Dijawab</option>
-            <option value="resolved">7. Selesai</option>
+            <option value="">{tx('-- Semua Status --', '-- All Statuses --')}</option>
+            <option value="received">1. {tx('Diterima', 'Received')}</option>
+            <option value="verified">2. {tx('Diverifikasi', 'Verified')}</option>
+            <option value="dispatched">3. {tx('Didisposisikan', 'Dispatched')}</option>
+            <option value="in_progress">4. {tx('Diproses', 'In Progress')}</option>
+            <option value="action_taken">5. {tx('Ditindaklanjuti', 'Action Taken')}</option>
+            <option value="answered">6. {tx('Dijawab', 'Answered')}</option>
+            <option value="resolved">7. {tx('Selesai', 'Resolved')}</option>
           </select>
         </div>
         <div>
           <label htmlFor="filter-unit" className="block text-[11px] font-mono uppercase text-[var(--color-text-muted)] font-semibold mb-1">
-            Filter Unit (14 Unit Baku)
+            {tx('Filter Unit (14 Unit Baku)', 'Unit Filter (14 Standard Units)')}
           </label>
           <select
             id="filter-unit"
@@ -112,7 +114,7 @@ export default function AdminComplaintList() {
             onChange={e => setUnitFilter(e.target.value)}
             className="input-field text-xs !py-2 rounded-xl"
           >
-            <option value="">-- Semua Unit Kerja --</option>
+            <option value="">{tx('-- Semua Unit Kerja --', '-- All Work Units --')}</option>
             {UNITS.map(u => (
               <option key={u.id} value={u.name}>{u.name}</option>
             ))}
@@ -127,21 +129,21 @@ export default function AdminComplaintList() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="p-12 text-center border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-muted)] font-mono rounded-2xl shadow-xs">
-          Tidak ada laporan yang sesuai dengan filter pencarian.
+          {tx('Tidak ada laporan yang sesuai dengan filter pencarian.', 'No reports match the search filters.')}
         </div>
       ) : (
         <div className="border border-[var(--color-border)] overflow-x-auto bg-[var(--color-surface)] rounded-2xl shadow-sm">
           <table className="w-full text-left text-xs">
-            <caption className="sr-only">Daftar rekap masukan, aduan, dan saran sivitas PENS</caption>
+            <caption className="sr-only">{tx('Daftar rekap masukan, aduan, dan saran sivitas PENS', 'Summary list of PENS community feedback, complaints, and suggestions')}</caption>
             <thead className="border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] font-mono uppercase">
               <tr>
-                <th scope="col" className="p-3.5">No Tiket</th>
-                <th scope="col" className="p-3.5">Jenis</th>
-                <th scope="col" className="p-3.5">Tanggal</th>
-                <th scope="col" className="p-3.5">Substansi Laporan</th>
-                <th scope="col" className="p-3.5">Unit Tujuan</th>
+                <th scope="col" className="p-3.5">{tx('No Tiket', 'Ticket No.')}</th>
+                <th scope="col" className="p-3.5">{tx('Jenis', 'Type')}</th>
+                <th scope="col" className="p-3.5">{tx('Tanggal', 'Date')}</th>
+                <th scope="col" className="p-3.5">{tx('Substansi Laporan', 'Report Details')}</th>
+                <th scope="col" className="p-3.5">{tx('Unit Tujuan', 'Target Unit')}</th>
                 <th scope="col" className="p-3.5">Status</th>
-                <th scope="col" className="p-3.5">Urgensi</th>
+                <th scope="col" className="p-3.5">{tx('Urgensi', 'Urgency')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
@@ -154,16 +156,16 @@ export default function AdminComplaintList() {
                     </td>
                     <td className="p-3.5 whitespace-nowrap">
                       {typeKey === 'feedback' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-900/60">
-                          <MessageSquare size={10} /> Masukan
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--color-text)]">
+                          <MessageSquare size={10} /> {tx('Masukan', 'Feedback')}
                         </span>
                       ) : typeKey === 'suggestion' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-900/60">
-                          <Lightbulb size={10} /> Saran
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--color-text)]">
+                          <Lightbulb size={10} /> {tx('Saran', 'Suggestion')}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60">
-                          <AlertTriangle size={10} /> Aduan
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--color-text)]">
+                          <AlertTriangle size={10} /> {tx('Aduan', 'Complaint')}
                         </span>
                       )}
                     </td>
@@ -176,7 +178,7 @@ export default function AdminComplaintList() {
                       </p>
                     </td>
                     <td className="p-3.5 font-medium text-[var(--color-text-muted)] whitespace-nowrap">
-                      {c.target_unit || c.unit || 'Belum ditugaskan'}
+                      {c.target_unit || c.unit || tx('Belum ditugaskan', 'Not assigned')}
                     </td>
                     <td className="p-3.5 whitespace-nowrap">
                       <StatusBadge status={c.status} />

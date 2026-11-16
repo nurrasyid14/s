@@ -5,7 +5,7 @@ import StakeholderLayout from '../../components/layout/StakeholderLayout.jsx'
 import { CountUp } from '../../components/motion/Motion.jsx'
 import ErrorState from '../../components/ui/ErrorState.jsx'
 import UnitReportModal from '../../components/pdf/UnitReportModal.jsx'
-import { formatDate, formatUrgencyScore, normalizeUrgencyScore } from '../../utils/formatter.js'
+import { formatDate, greetingName, formatUrgencyScore, normalizeUrgencyScore } from '../../utils/formatter.js'
 import { UNITS } from '../../data/units.js'
 import { getUnitDashboardStats } from '../../services/complaintApi.js'
 import { useDebounce } from '../../hooks/useDebounce.js'
@@ -126,7 +126,7 @@ export default function StakeholderDashboard() {
               </span>
             )}
             <h2 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">
-              {tx('Selamat datang', 'Welcome')}, {user?.name ? user.name.split(' ')[0] : tx('Pengelola', 'Manager')}
+              {tx('Selamat Datang', 'Welcome')}, {greetingName(user?.name, tx('Pengelola', 'Manager'))}
             </h2>
             <p className="mt-2 text-sm text-white/75">
               {urgentComplaints.length > 0

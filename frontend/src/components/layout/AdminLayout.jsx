@@ -6,17 +6,18 @@ import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, CheckSquare, Send, ListFilter,
   LogOut, Sun, Moon, Menu, X, Search, Bell,
-  HelpCircle, ChevronDown, BarChart3,
+  HelpCircle, ChevronDown, BarChart3, Settings,
 } from 'lucide-react'
+import useBilingual from '../../hooks/useBilingual.js'
 import { RailNav, RailButton, PillNav, BrandMark } from './NavParts.jsx'
 import { useAutoReveal } from '../motion/Motion.jsx'
 
 const NAV_LINKS = [
-  { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Overview', desc: 'Ringkasan & Metrik' },
-  { to: '/admin/verifikasi', icon: CheckSquare, label: 'Verifikasi', desc: 'Validasi Tiket' },
-  { to: '/admin/disposisi', icon: Send, label: 'Disposisi', desc: 'Distribusi 14 Unit' },
-  { to: '/admin/complaints', icon: ListFilter, label: 'Aduan', desc: 'Semua Tiket' },
-  { to: '/stakeholder', icon: BarChart3, label: 'Portal Unit', desc: 'Mode Stakeholder' },
+  { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Overview', labelEn: 'Overview', desc: 'Ringkasan & Metrik', descEn: 'Summary & Metrics' },
+  { to: '/admin/verifikasi', icon: CheckSquare, label: 'Verifikasi', labelEn: 'Verification', desc: 'Validasi Tiket', descEn: 'Validate Tickets' },
+  { to: '/admin/disposisi', icon: Send, label: 'Disposisi', labelEn: 'Dispatch', desc: 'Distribusi 14 Unit', descEn: '14-Unit Distribution' },
+  { to: '/admin/complaints', icon: ListFilter, label: 'Aduan', labelEn: 'Complaints', desc: 'Semua Tiket', descEn: 'All Tickets' },
+  { to: '/stakeholder', icon: BarChart3, label: 'Portal Unit', labelEn: 'Unit Portal', desc: 'Mode Stakeholder', descEn: 'Stakeholder Mode' },
 ]
 
 function activeIndexOf(pathname) {
@@ -27,6 +28,8 @@ export default function AdminLayout({ title, children }) {
   const { user, logout } = useAuth()
   const { dark, toggle } = useTheme()
   const { i18n } = useTranslation()
+  const { tx, isId } = useBilingual()
+  const navLinks = NAV_LINKS.map(l => ({ ...l, label: isId ? l.label : l.labelEn, desc: isId ? l.desc : l.descEn }))
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -58,23 +61,23 @@ export default function AdminLayout({ title, children }) {
     <div className="flex h-screen overflow-hidden bg-[var(--color-bg-secondary)]">
       {/* Rail ikon navy */}
       <aside className="z-20 hidden w-20 flex-shrink-0 flex-col items-center justify-between border-r border-[var(--color-sidebar-border)] bg-[var(--color-sidebar-bg)] py-5 md:flex">
-        <Link to="/" aria-label="Beranda SuaraLens"><BrandMark size={40} /></Link>
-        <RailNav items={NAV_LINKS} activeIndex={activeIndex} label="Menu administrator" />
+        <Link to="/" aria-label={tx('Beranda SuaraLens', 'SuaraLens Home')}><BrandMark size={40} /></Link>
+        <RailNav items={navLinks} activeIndex={activeIndex} label={tx('Menu administrator', 'Administrator menu')} />
         <div className="flex flex-col items-center gap-2">
-          <RailButton onClick={toggle} aria-label={dark ? 'Mode terang' : 'Mode gelap'} title={dark ? 'Mode terang' : 'Mode gelap'}>
+          <RailButton onClick={toggle} aria-label={dark ? tx('Mode terang', 'Light mode') : tx('Mode gelap', 'Dark mode')} title={dark ? tx('Mode terang', 'Light mode') : tx('Mode gelap', 'Dark mode')}>
             {dark ? <Sun size={19} className="text-[var(--color-gold)]" /> : <Moon size={19} />}
           </RailButton>
-          <RailButton onClick={switchLang} aria-label="Ganti bahasa" title="Ganti bahasa" className="font-mono text-xs font-bold">
-            {i18n.language.toUpperCase()}
+          <RailButton onClick={switchLang} aria-label={tx('Ganti bahasa', 'Switch language')} title={tx('Ganti bahasa', 'Switch language')} className="font-mono text-xs font-bold">
+            {(i18n.language?.startsWith('en') ? 'EN' : 'ID')}
           </RailButton>
           <RailButton
-            onClick={() => alert('Bantuan Administrator: Hubungi Tim IT Center PENS atau baca dokumentasi tata kelola penanganan aduan.')}
-            aria-label="Pusat bantuan"
-            title="Pusat bantuan"
+            onClick={() => alert(tx('Bantuan Administrator: Hubungi Tim IT Center PENS atau baca dokumentasi tata kelola penanganan aduan.', 'Administrator Help: Contact the PENS IT Center team or read the complaint handling governance documentation.'))}
+            aria-label={tx('Pusat bantuan', 'Help center')}
+            title={tx('Pusat bantuan', 'Help center')}
           >
             <HelpCircle size={19} />
           </RailButton>
-          <RailButton danger onClick={handleSignOut} aria-label="Keluar dari portal" title="Keluar dari portal">
+          <RailButton danger onClick={handleSignOut} aria-label={tx('Keluar dari portal', 'Sign out of portal')} title={tx('Keluar dari portal', 'Sign out of portal')}>
             <LogOut size={19} />
           </RailButton>
         </div>
@@ -82,7 +85,7 @@ export default function AdminLayout({ title, children }) {
 
       {/* Drawer mobile navy */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden" role="dialog" aria-modal="true" aria-label="Navigasi administrator">
+        <div className="fixed inset-0 z-50 flex md:hidden" role="dialog" aria-modal="true" aria-label={tx('Navigasi administrator', 'Administrator navigation')}>
           <div className="backdrop-in fixed inset-0 bg-[var(--color-navy-deep)]/60 backdrop-blur-xs" onClick={() => setMobileOpen(false)} aria-hidden="true" />
           <aside className="drawer-in relative z-10 flex h-full w-72 max-w-[85vw] flex-col justify-between bg-[var(--color-sidebar-bg)] p-5 text-white shadow-2xl">
             <div>
@@ -92,12 +95,12 @@ export default function AdminLayout({ title, children }) {
                   <span className="font-bold">SuaraLens</span>
                   <span className="rounded-full bg-[var(--color-gold)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-on-gold)]">ADMIN</span>
                 </div>
-                <button onClick={() => setMobileOpen(false)} className="press rounded-lg p-1.5 text-white/70 hover:bg-white/10" aria-label="Tutup navigasi">
+                <button onClick={() => setMobileOpen(false)} className="press rounded-lg p-1.5 text-white/70 hover:bg-white/10" aria-label={tx('Tutup navigasi', 'Close navigation')}>
                   <X size={20} />
                 </button>
               </div>
               <nav className="stagger mt-4 space-y-1.5">
-                {NAV_LINKS.map(({ to, icon: Icon, label, desc }, i) => {
+                {navLinks.map(({ to, icon: Icon, label, desc }, i) => {
                   const active = i === activeIndex
                   return (
                     <Link
@@ -122,14 +125,14 @@ export default function AdminLayout({ title, children }) {
             <div className="space-y-2 border-t border-white/10 pt-4">
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={toggle} className="press flex items-center justify-center gap-2 rounded-xl border border-white/15 p-2.5 text-sm text-white/85">
-                  {dark ? <Sun size={16} className="text-[var(--color-gold)]" /> : <Moon size={16} />}{dark ? 'Terang' : 'Gelap'}
+                  {dark ? <Sun size={16} className="text-[var(--color-gold)]" /> : <Moon size={16} />}{dark ? tx('Terang', 'Light') : tx('Gelap', 'Dark')}
                 </button>
                 <button onClick={switchLang} className="press rounded-xl border border-white/15 p-2.5 font-mono text-sm font-bold text-white/85">
-                  {i18n.language === 'id' ? 'EN' : 'ID'}
+                  {(i18n.language?.startsWith('en') ? 'EN' : 'ID')}
                 </button>
               </div>
               <button onClick={handleSignOut} className="press flex w-full items-center justify-center gap-2 rounded-xl bg-rose-500/15 p-3 text-sm font-semibold text-rose-200">
-                <LogOut size={16} /> Keluar Portal
+                <LogOut size={16} /> {tx('Keluar Portal', 'Sign Out')}
               </button>
             </div>
           </aside>
@@ -142,7 +145,7 @@ export default function AdminLayout({ title, children }) {
             <button
               onClick={() => setMobileOpen(true)}
               className="press rounded-xl p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-secondary)] md:hidden"
-              aria-label="Buka navigasi"
+              aria-label={tx('Buka navigasi', 'Open navigation')}
               aria-expanded={mobileOpen}
             >
               <Menu size={22} />
@@ -150,19 +153,19 @@ export default function AdminLayout({ title, children }) {
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">SuaraLens</span>
-                <span className="rounded-full bg-[var(--color-gold-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-gold-ink)]">Admin Sentral</span>
+                <span className="rounded-full bg-[var(--color-gold-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-gold-ink)]">{tx('Admin Sentral', 'Central Admin')}</span>
               </div>
-              <h1 className="truncate text-lg font-bold tracking-tight text-[var(--color-text)]">{title || NAV_LINKS[activeIndex]?.label || 'Dashboard'}</h1>
+              <h1 className="truncate text-lg font-bold tracking-tight text-[var(--color-text)]">{title || navLinks[activeIndex]?.label || 'Dashboard'}</h1>
             </div>
           </div>
 
-          <PillNav items={NAV_LINKS} activeIndex={activeIndex} label="Menu administrator" />
+          <PillNav items={navLinks} activeIndex={activeIndex} label={tx('Menu administrator', 'Administrator menu')} />
 
           <div className="flex items-center gap-2.5">
-            <Link to="/admin/complaints" className={iconBtn} title="Cari aduan" aria-label="Cari aduan">
+            <Link to="/admin/complaints" className={iconBtn} title={tx('Cari aduan', 'Search complaints')} aria-label={tx('Cari aduan', 'Search complaints')}>
               <Search size={17} />
             </Link>
-            <Link to="/admin/verifikasi" className={iconBtn} title="Antrean verifikasi" aria-label="Antrean verifikasi">
+            <Link to="/admin/verifikasi" className={iconBtn} title={tx('Antrean verifikasi', 'Verification queue')} aria-label={tx('Antrean verifikasi', 'Verification queue')}>
               <Bell size={17} />
               <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-[var(--color-surface)]" />
             </Link>
@@ -178,7 +181,7 @@ export default function AdminLayout({ title, children }) {
                   {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
                 </div>
                 <div className="hidden text-left leading-tight xl:block">
-                  <div className="max-w-[120px] truncate text-xs font-bold text-[var(--color-text)]">{user?.name || 'Admin Sentral'}</div>
+                  <div className="max-w-[120px] truncate text-xs font-bold text-[var(--color-text)]">{user?.name || tx('Admin Sentral', 'Central Admin')}</div>
                   <div className="max-w-[120px] truncate font-mono text-[10px] text-[var(--color-text-muted)]">{user?.email || 'admin@pens.ac.id'}</div>
                 </div>
                 <ChevronDown size={14} className={`text-[var(--color-text-muted)] transition-transform duration-200 ${profileOpen ? 'rotate-180' : ''}`} />
@@ -191,11 +194,14 @@ export default function AdminLayout({ title, children }) {
                     <div className="font-mono text-[11px] text-[var(--color-text-muted)]">{user?.email || 'admin@pens.ac.id'}</div>
                   </div>
                   <div className="py-1">
+                    <Link role="menuitem" to="/admin/settings" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)]">
+                      <Settings size={15} /> {tx('Pengaturan Profil', 'Profile Settings')}
+                    </Link>
                     <Link role="menuitem" to="/stakeholder" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-[var(--color-text)] hover:bg-[var(--color-bg-secondary)]">
-                      <BarChart3 size={15} /> Buka Dashboard Unit
+                      <BarChart3 size={15} /> {tx('Buka Dashboard Unit', 'Open Unit Dashboard')}
                     </Link>
                     <button role="menuitem" onClick={handleSignOut} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-[var(--color-status-danger)] hover:bg-[var(--color-status-danger)]/10">
-                      <LogOut size={15} /> Keluar Portal
+                      <LogOut size={15} /> {tx('Keluar Portal', 'Sign Out')}
                     </button>
                   </div>
                 </div>

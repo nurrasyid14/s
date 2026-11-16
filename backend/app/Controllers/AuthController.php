@@ -274,6 +274,92 @@ class AuthController extends ResourceController
         ]);
     }
 
+    /**
+     * Profil pengguna yang sedang login.
+     * GET /api/auth/profile
+     */
+    public function profile()
+    {
+        $auth = (new ApiTokenService())->userFromAuthorization(
+            $this->request->getHeaderLine('Authorization')
+        );
+        $user = $auth ? (new UserModel())->find((int) $auth['id']) : null;
+        if (!$user) {
+            return $this->respond(['status' => false, 'message' => 'Autentikasi diperlukan.'], 401);
+        }
+
+        return $this->respond(['status' => true, 'user' => $this->safeUser($user)]);
+    }
+
+    /**
+     * Simpan perubahan profil (nama, jabatan, telepon). Email dan role tidak dapat diubah.
+     * PATCH /api/auth/profile
+     */
+    public function updateProfile()
+    {
+        $auth = (new ApiTokenService())->userFromAuthorization(
+            $this->request->getHeaderLine('Authorization')
+        );
+        if (!$auth) {
+            return $this->respond(['status' => false, 'message' => 'Autentikasi diperlukan.'], 401);
+        }
+
+        $data    = $this->getRequestData();
+        $updates = [];
+
+        if (array_key_exists('name', $data)) {
+            $name = trim((string) $data['name']);
+            if ($name === '' || mb_strlen($name) > 100) {
+                return $this->respond(['status' => false, 'message' => 'Nama wajib diisi (maksimal 100 karakter).'], 422);
+            }
+            $updates['name'] = $name;
+        }
+
+        foreach (['position' => 150, 'phone' => 30] as $field => $max) {
+            if (array_key_exists($field, $data)) {
+                $value = trim((string) $data[$field]);
+                if (mb_strlen($value) > $max) {
+                    return $this->respond(['status' => false, 'message' => "Kolom {$field} maksimal {$max} karakter."], 422);
+                }
+                $updates[$field] = $value === '' ? null : $value;
+            }
+        }
+
+        if ($updates === []) {
+            return $this->respond(['status' => false, 'message' => 'Tidak ada data profil yang diubah.'], 400);
+        }
+
+        try {
+            $model = new UserModel();
+            $model->update((int) $auth['id'], $updates);
+            $user = $model->find((int) $auth['id']);
+
+            return $this->respond([
+                'status'  => true,
+                'message' => 'Profil berhasil diperbarui.',
+                'user'    => $this->safeUser($user),
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'Gagal memperbarui profil: ' . $e->getMessage());
+            return $this->respond(['status' => false, 'message' => 'Gagal memperbarui profil.'], 500);
+        }
+    }
+
+    private function safeUser(array $user): array
+    {
+        return [
+            'id'          => (int) $user['id'],
+            'name'        => $user['name'],
+            'email'       => $user['email'],
+            'role'        => $user['role'],
+            'user_role'   => $user['user_role'] ?? null,
+            'institution' => $user['institution'] ?? null,
+            'position'    => $user['position'] ?? null,
+            'phone'       => $user['phone'] ?? null,
+            'unit'        => $user['unit'] ?? null,
+        ];
+    }
+
     private function getRequestData(): array
     {
         try {

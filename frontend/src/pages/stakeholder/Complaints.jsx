@@ -73,7 +73,7 @@ export default function ComplaintsPage() {
   }, [page, query, status, type, unit, reloadKey])
 
   const statusTabs = [
-    { key: '', label: 'Semua Status' },
+    { key: '', label: t('stk.complaints.all_status', 'Semua Status') },
     ...STATUS_KEYS.map(key => ({ key, label: t(`status.${key}`) })),
   ]
 
@@ -117,18 +117,18 @@ export default function ComplaintsPage() {
     <div className="flex items-center gap-2">
       {user?.role === 'admin' ? (
         <select
-          aria-label="Pilih Unit"
+          aria-label={t('stk.complaints.select_unit', 'Pilih Unit')}
           value={unit}
           onChange={e => { setUnit(e.target.value); setPage(1) }}
           className="border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs font-mono text-[var(--color-text)] rounded-xl shadow-xs focus:outline-none focus:border-[var(--color-primary)]"
         >
-          <option value="">Semua Unit (14)</option>
+          <option value="">{t('stk.complaints.all_units', 'Semua Unit (14)')}</option>
           {UNITS.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
         </select>
       ) : (
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--color-primary)]/30 bg-[var(--color-primary-soft)] text-[var(--color-primary)] text-xs font-bold font-mono">
           <Building2 size={13} />
-          <span>{user?.unit || unit || 'Unit Anda'}</span>
+          <span>{user?.unit || unit || t('stk.complaints.your_unit', 'Unit Anda')}</span>
         </div>
       )}
 

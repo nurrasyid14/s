@@ -90,6 +90,7 @@ export default function App() {
             <Route path="/stakeholder/followups"      element={<ProtectedRoute role="stakeholder"><Followups /></ProtectedRoute>} />
             <Route path="/stakeholder/evidence"       element={<ProtectedRoute role="stakeholder"><Evidence /></ProtectedRoute>} />
             <Route path="/stakeholder/settings"       element={<ProtectedRoute role="stakeholder"><Settings /></ProtectedRoute>} />
+            <Route path="/admin/settings"             element={<ProtectedRoute role="admin"><Settings /></ProtectedRoute>} />
 
             {/* Administrator Area (Jalur Sentral Khusus Admin) */}
             <Route path="/admin/signin"     element={<AdminSignInPage />} />

@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import useBilingual from '../../hooks/useBilingual.js'
+import { useComplaintLabels } from '../../utils/ComplaintLabels.js'
 import Navbar from '../../components/layout/Navbar.jsx'
 import { StatusBadge } from '../../components/ui/StatusBadge.jsx'
 import { getMyComplaints } from '../../services/complaintApi.js'
@@ -10,6 +12,7 @@ import { PlusCircle, Clock, Inbox, ChevronRight, AlertTriangle, MessageSquare, L
 const TYPE_CONFIG = {
   complaint: {
     label: 'Aduan',
+    labelEn: 'Complaint',
     icon: AlertTriangle,
     badgeClass: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60',
     iconClass: 'text-rose-600 dark:text-rose-400',
@@ -17,6 +20,7 @@ const TYPE_CONFIG = {
   },
   feedback: {
     label: 'Masukan',
+    labelEn: 'Feedback',
     icon: MessageSquare,
     badgeClass: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-900/60',
     iconClass: 'text-sky-600 dark:text-sky-400',
@@ -24,6 +28,7 @@ const TYPE_CONFIG = {
   },
   suggestion: {
     label: 'Saran',
+    labelEn: 'Suggestion',
     icon: Lightbulb,
     badgeClass: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-900/60',
     iconClass: 'text-orange-600 dark:text-orange-400',
@@ -41,6 +46,9 @@ const CAT_MAP = {
 
 export default function MyComplaints() {
   const { t } = useTranslation()
+  const { tx, isId } = useBilingual()
+  const { categoryLabel } = useComplaintLabels()
+  const typeName = key => { const c = TYPE_CONFIG[key]; return c ? (isId ? c.label : c.labelEn) : '' }
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedType, setSelectedType] = useState('all') // 'all' | 'complaint' | 'feedback' | 'suggestion'
@@ -72,20 +80,20 @@ export default function MyComplaints() {
         <div className="banner-blue mb-6 flex flex-col justify-between gap-4 p-6 sm:flex-row sm:items-end md:p-8">
           <div>
             <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--color-gold)]">
-              PORTAL PELAPOR · RIWAYAT &amp; ASPIRASI
+              {tx('PORTAL PELAPOR · RIWAYAT & ASPIRASI', 'REPORTER PORTAL · HISTORY & ASPIRATIONS')}
             </div>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
               {t('nav.history')}
             </h1>
             <p className="mt-1 text-sm text-white/75">
-              Pantau status transparansi penanganan aduan, masukan, dan saran Anda secara real-time.
+              {tx('Pantau status transparansi penanganan aduan, masukan, dan saran Anda secara real-time.', 'Track the transparent handling status of your complaints, feedback, and suggestions in real time.')}
             </p>
           </div>
           <Link
             to="/user/submit"
             className="btn-gold self-start !h-11 sm:self-auto"
           >
-            <PlusCircle size={15} /> Ajukan Baru
+            <PlusCircle size={15} /> {tx('Ajukan Baru', 'Submit New')}
           </Link>
         </div>
 
@@ -104,17 +112,17 @@ export default function MyComplaints() {
             >
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400">
-                  <AlertTriangle size={14} /> Aduan
+                  <AlertTriangle size={14} /> {tx('Aduan', 'Complaints')}
                 </span>
                 <span className="text-[10px] font-mono uppercase text-rose-500 font-semibold px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950">
-                  7 Tahap SLA
+                  {tx('7 Tahap SLA', '7-Stage SLA')}
                 </span>
               </div>
               <div className="mt-2 text-2xl font-extrabold font-mono text-[var(--color-text)]">
                 {typeCounts.complaint}
               </div>
               <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                Keluhan masalah yang butuh solusi
+                {tx('Keluhan masalah yang butuh solusi', 'Problems that need a solution')}
               </p>
             </button>
 
@@ -130,17 +138,17 @@ export default function MyComplaints() {
             >
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center gap-1.5 text-xs font-bold text-sky-600 dark:text-sky-400">
-                  <MessageSquare size={14} /> Masukan
+                  <MessageSquare size={14} /> {tx('Masukan', 'Feedback')}
                 </span>
                 <span className="text-[10px] font-mono uppercase text-sky-500 font-semibold px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950">
-                  Evaluatif
+                  {tx('Evaluatif', 'Evaluative')}
                 </span>
               </div>
               <div className="mt-2 text-2xl font-extrabold font-mono text-[var(--color-text)]">
                 {typeCounts.feedback}
               </div>
               <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                Evaluasi &amp; perbaikan layanan
+                {tx('Evaluasi & perbaikan layanan', 'Service evaluation & improvement')}
               </p>
             </button>
 
@@ -156,17 +164,17 @@ export default function MyComplaints() {
             >
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 dark:text-orange-400">
-                  <Lightbulb size={14} /> Saran
+                  <Lightbulb size={14} /> {tx('Saran', 'Suggestions')}
                 </span>
                 <span className="text-[10px] font-mono uppercase text-orange-500 font-semibold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950">
-                  Ide Inovasi
+                  {tx('Ide Inovasi', 'Innovation Ideas')}
                 </span>
               </div>
               <div className="mt-2 text-2xl font-extrabold font-mono text-[var(--color-text)]">
                 {typeCounts.suggestion}
               </div>
               <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                Gagasan pengembangan kampus
+                {tx('Gagasan pengembangan kampus', 'Campus development ideas')}
               </p>
             </button>
           </div>
@@ -185,7 +193,7 @@ export default function MyComplaints() {
                     : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
                 }`}
               >
-                Semua ({data.length})
+                {tx('Semua', 'All')} ({data.length})
               </button>
               <button
                 type="button"
@@ -196,7 +204,7 @@ export default function MyComplaints() {
                     : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30'
                 }`}
               >
-                <AlertTriangle size={13} /> Aduan ({typeCounts.complaint})
+                <AlertTriangle size={13} /> {tx('Aduan', 'Complaints')} ({typeCounts.complaint})
               </button>
               <button
                 type="button"
@@ -207,7 +215,7 @@ export default function MyComplaints() {
                     : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/30'
                 }`}
               >
-                <MessageSquare size={13} /> Masukan ({typeCounts.feedback})
+                <MessageSquare size={13} /> {tx('Masukan', 'Feedback')} ({typeCounts.feedback})
               </button>
               <button
                 type="button"
@@ -218,7 +226,7 @@ export default function MyComplaints() {
                     : 'bg-[var(--color-surface)] border border-[var(--color-border)] text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/30'
                 }`}
               >
-                <Lightbulb size={13} /> Saran ({typeCounts.suggestion})
+                <Lightbulb size={13} /> {tx('Saran', 'Suggestions')} ({typeCounts.suggestion})
               </button>
             </div>
 
@@ -228,7 +236,7 @@ export default function MyComplaints() {
                 onClick={() => setSelectedType('all')}
                 className="text-[11px] font-mono text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:underline whitespace-nowrap"
               >
-                Reset Filter
+                {tx('Reset Filter', 'Reset Filter')}
               </button>
             )}
           </div>
@@ -250,16 +258,16 @@ export default function MyComplaints() {
               <Inbox size={22} />
             </div>
             <div className="font-bold text-lg text-[var(--color-text)] tracking-tight">
-              Belum Ada Laporan Terdaftar
+              {tx('Belum Ada Laporan Terdaftar', 'No Reports Registered Yet')}
             </div>
             <p className="text-sm text-[var(--color-text-muted)] mt-1 mb-6 max-w-sm mx-auto leading-relaxed">
-              Aduan, masukan, dan saran yang Anda ajukan akan muncul dan dapat dipantau perkembangannya di sini.
+              {tx('Aduan, masukan, dan saran yang Anda ajukan akan muncul dan dapat dipantau perkembangannya di sini.', 'The complaints, feedback, and suggestions you submit will appear here so you can track their progress.')}
             </p>
             <Link
               to="/user/submit"
               className="btn-solid inline-flex items-center gap-2 text-xs py-2.5 px-5 font-medium rounded-xl min-h-[44px]"
             >
-              Ajukan Sekarang <ChevronRight size={14} />
+              {tx('Ajukan Sekarang', 'Submit Now')} <ChevronRight size={14} />
             </Link>
           </div>
         )}
@@ -271,17 +279,17 @@ export default function MyComplaints() {
               <Filter size={18} />
             </div>
             <div className="font-bold text-sm text-[var(--color-text)]">
-              Belum Ada {TYPE_CONFIG[selectedType]?.label || 'Data'} yang Diajukan
+              {isId ? `Belum Ada ${typeName(selectedType) || 'Data'} yang Diajukan` : `No ${typeName(selectedType) || 'Data'} Submitted Yet`}
             </div>
             <p className="text-xs text-[var(--color-text-muted)] mt-1 mb-4 max-w-xs mx-auto">
-              Anda belum pernah menyampaikan {TYPE_CONFIG[selectedType]?.label?.toLowerCase() || 'laporan'} ke kampus.
+              {isId ? `Anda belum pernah menyampaikan ${typeName(selectedType).toLowerCase() || 'laporan'} ke kampus.` : `You have not submitted any ${typeName(selectedType).toLowerCase() || 'reports'} to the campus yet.`}
             </p>
             <button
               type="button"
               onClick={() => setSelectedType('all')}
               className="text-xs font-semibold text-[var(--color-primary)] hover:underline"
             >
-              Tampilkan Semua Laporan
+              {tx('Tampilkan Semua Laporan', 'Show All Reports')}
             </button>
           </div>
         )}
@@ -313,12 +321,12 @@ export default function MyComplaints() {
                           className={`inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 border rounded-lg font-bold ${typeInfo.badgeClass}`}
                         >
                           <TypeIcon size={12} className={typeInfo.iconClass} />
-                          {typeInfo.label}
+                          {isId ? typeInfo.label : typeInfo.labelEn}
                         </span>
 
                         {/* Category */}
                         <span className="text-xs px-2 py-0.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] rounded-lg">
-                          {CAT_MAP[c.category] || c.category}
+                          {categoryLabel(c.category) || c.category}
                         </span>
                       </div>
 

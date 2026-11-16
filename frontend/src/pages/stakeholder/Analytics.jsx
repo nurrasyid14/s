@@ -290,7 +290,7 @@ export default function Analytics() {
           <div className="flex items-center gap-2">
             {aiSummary?.grounding?.grounding_note && (
               <span className="hidden sm:inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 font-mono text-[11px] text-emerald-600 dark:text-emerald-400">
-                ✓ Angka Terverifikasi Faktual
+                {t('stk.analytics.verified_numbers', 'Angka Terverifikasi Faktual')}
               </span>
             )}
             <button
@@ -320,7 +320,7 @@ export default function Analytics() {
             </p>
           ) : (
             <p className="text-sm text-[var(--color-text-muted)] italic">
-              Ringkasan naratif analitik belum tersedia.
+              {t('stk.analytics.no_narrative', 'Ringkasan naratif analitik belum tersedia.')}
             </p>
           )}
         </div>
@@ -328,16 +328,16 @@ export default function Analytics() {
         {aiSummary?.metrics && (
           <div className="mt-4 pt-3 border-t border-[var(--color-border)]/60 flex flex-wrap gap-2 sm:gap-3 text-xs font-mono">
             <span className="rounded-lg bg-[var(--color-bg-secondary)] px-2.5 py-1 text-[var(--color-text-muted)]">
-              Total Masukan: <strong className="text-[var(--color-text)]">{aiSummary.metrics.total_records}</strong>
+              {t('stk.analytics.total_reports', 'Total Masukan')}: <strong className="text-[var(--color-text)]">{aiSummary.metrics.total_records}</strong>
             </span>
             <span className="rounded-lg bg-[var(--color-bg-secondary)] px-2.5 py-1 text-[var(--color-text-muted)]">
-              Kepatuhan SLA: <strong className="text-emerald-500">{aiSummary.metrics.overall_compliant_pct}%</strong>
+              {t('stk.analytics.sla_compliance', 'Kepatuhan SLA')}: <strong className="text-emerald-500">{aiSummary.metrics.overall_compliant_pct}%</strong>
             </span>
             <span className="rounded-lg bg-[var(--color-bg-secondary)] px-2.5 py-1 text-[var(--color-text-muted)]">
-              Sentimen Negatif: <strong className="text-rose-500">{aiSummary.metrics.sentiment?.negative_pct}%</strong>
+              {t('stk.analytics.negative_sentiment', 'Sentimen Negatif')}: <strong className="text-rose-500">{aiSummary.metrics.sentiment?.negative_pct}%</strong>
             </span>
             <span className="rounded-lg bg-[var(--color-bg-secondary)] px-2.5 py-1 text-[var(--color-text-muted)]">
-              Tiket Kritis Tertunda: <strong className="text-orange-500">{aiSummary.metrics.high_urgency_pending}</strong>
+              {t('stk.analytics.critical_pending', 'Tiket Kritis Tertunda')}: <strong className="text-orange-500">{aiSummary.metrics.high_urgency_pending}</strong>
             </span>
           </div>
         )}
@@ -351,7 +351,7 @@ export default function Analytics() {
             title={t('analytics.sentiment_title')}
             loading={loading}
             empty={sentiment.length === 0}
-            srSummary={`Ringkasan sentimen aduan: ${sentiment.map(s => `${s.name}: ${s.value}`).join(', ')}`}
+            srSummary={`${t('stk.analytics.sr_sentiment', 'Ringkasan sentimen aduan')}: ${sentiment.map(s => `${s.name}: ${s.value}`).join(', ')}`}
           >
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>

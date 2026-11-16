@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom'
 import { CheckCircle, AlertCircle, AlertTriangle, MessageCircle, Lightbulb, Check, Paperclip, Bot, ShieldCheck } from 'lucide-react'
 import { submitComplaint } from '../../services/complaintApi.js'
 import Navbar from '../../components/layout/Navbar.jsx'
+import useBilingual from '../../hooks/useBilingual.js'
+import { useComplaintLabels } from '../../utils/ComplaintLabels.js'
 
 const TYPES = [
   { key: 'complaint', icon: AlertTriangle, titleKey: 'form.type_complaint', descKey: 'form.type_complaint_desc' },
@@ -18,6 +20,8 @@ const MAX_ATTACHMENT_SIZE_BYTES = 5 * 1024 * 1024
 
 export default function ComplaintForm() {
   const { t } = useTranslation()
+  const { tx } = useBilingual()
+  const { categoryLabel } = useComplaintLabels()
   const navigate = useNavigate()
 
   const [step, setStep] = useState(1)
@@ -40,7 +44,7 @@ export default function ComplaintForm() {
 
   function nextStep() {
     if (!canNext()) {
-      setError(step === 3 ? `Minimal 50 karakter (sekarang: ${form.description.length})` : 'Pilih salah satu dulu.')
+      setError(step === 3 ? tx(`Minimal 50 karakter (sekarang: ${form.description.length})`, `Minimum 50 characters (currently: ${form.description.length})`) : tx('Pilih salah satu dulu.', 'Please choose an option first.'))
       return
     }
     setDir(1)
@@ -55,7 +59,7 @@ export default function ComplaintForm() {
       const result = await submitComplaint(form)
       setSubmitted(result)
     } catch {
-      setError('Gagal mengirim aduan. Coba lagi.')
+      setError(tx('Gagal mengirim aduan. Coba lagi.', 'Failed to submit the report. Please try again.'))
     } finally {
       setLoading(false)
     }
@@ -80,7 +84,7 @@ export default function ComplaintForm() {
           <h2 className="animate-fade-in-up delay-200 mb-2 text-3xl font-bold tracking-tight text-[var(--color-text)]">{t('form.success_title')}</h2>
           <p className="animate-fade-in-up delay-300 mb-5 text-sm text-[var(--color-text-muted)]">{t('form.success_desc')}</p>
           <div className="animate-fade-in-up delay-400 mb-8 inline-flex flex-col items-center rounded-2xl border border-[var(--color-gold)]/40 bg-[var(--color-gold-soft)] px-8 py-3">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-gold-ink)]">Nomor tiket</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-gold-ink)]">{tx('Nomor tiket', 'Ticket number')}</span>
             <span className="font-mono text-2xl font-bold text-[var(--color-text)]">{submitted.ticket_id}</span>
           </div>
           <div className="flex gap-3 justify-center">
@@ -91,7 +95,7 @@ export default function ComplaintForm() {
               onClick={() => { setSubmitted(null); setStep(1); setForm({ type: '', category: '', description: '', unit: '', attachments: [] }) }}
               className="btn-outline"
             >
-              Ajukan Lagi
+              {tx('Ajukan Lagi', 'Submit Another')}
             </button>
           </div>
         </div>
@@ -105,9 +109,9 @@ export default function ComplaintForm() {
       <div className="max-w-2xl mx-auto px-4 py-8 md:py-12">
         {/* Header */}
         <div className="banner-blue mb-8 p-6 md:p-8">
-          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-gold)]">Langkah {step} dari {TOTAL_STEPS}</div>
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-gold)]">{tx('Langkah', 'Step')} {step} {tx('dari', 'of')} {TOTAL_STEPS}</div>
           <h1 className="mt-2 text-3xl font-bold tracking-tight">{t('form.title')}</h1>
-          <p className="mt-1.5 text-sm text-white/75">Sampaikan keluhan, aspirasi, atau masukan Anda dengan aman dan terverifikasi.</p>
+          <p className="mt-1.5 text-sm text-white/75">{tx('Sampaikan keluhan, aspirasi, atau masukan Anda dengan aman dan terverifikasi.', 'Submit your complaints, aspirations, or feedback safely and verifiably.')}</p>
         </div>
 
         {/* Step Progress */}
@@ -120,7 +124,7 @@ export default function ComplaintForm() {
               <div key={n} className="flex items-center flex-1 last:flex-none">
                 <div
                   aria-current={active ? 'step' : undefined}
-                  aria-label={`Langkah ${n}: ${t(['form.step1_title', 'form.step2_title', 'form.step3_title', 'form.step4_title', 'form.step5_title'][i])}`}
+                  aria-label={`${tx('Langkah', 'Step')} ${n}: ${t(['form.step1_title', 'form.step2_title', 'form.step3_title', 'form.step4_title', 'form.step5_title'][i])}`}
                   className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition shadow-xs flex-shrink-0
                   ${done ? 'bg-[var(--color-navy)] text-white dark:bg-[var(--color-primary)]' : active ? 'bg-[var(--color-gold)] text-[var(--color-on-gold)] ring-4 ring-[var(--color-gold)]/25 scale-110' : 'border border-[var(--color-border)] text-[var(--color-text-muted)] bg-[var(--color-surface)]'}`}>
                   {done ? <Check size={15} aria-hidden="true" /> : n}
@@ -172,14 +176,14 @@ export default function ComplaintForm() {
           {/* Step 2: Divisi / Unit Tujuan */}
           {step === 2 && (
             <div>
-              <h3 className="font-semibold text-lg text-[var(--color-text)] mb-2">Pilih Divisi / Unit Tujuan</h3>
+              <h3 className="font-semibold text-lg text-[var(--color-text)] mb-2">{tx('Pilih Divisi / Unit Tujuan', 'Select Division / Target Unit')}</h3>
               <p className="text-xs text-[var(--color-text-muted)] mb-5 leading-relaxed">
-                Pilih unit kerja resmi PENS yang berwenang menindaklanjuti laporan Anda, atau gunakan rekomendasi otomatis cerdas oleh sistem AI.
+                {tx('Pilih unit kerja resmi PENS yang berwenang menindaklanjuti laporan Anda, atau gunakan rekomendasi otomatis cerdas oleh sistem AI.', 'Choose the official PENS work unit authorized to follow up on your report, or use the smart automatic recommendation by the AI system.')}
               </p>
 
               <div>
                 <label htmlFor="complaint-unit" className="block text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-2">
-                  Unit Kerja / Divisi Resmi Kampus
+                  {tx('Unit Kerja / Divisi Resmi Kampus', 'Official Campus Work Unit / Division')}
                 </label>
                 <select
                   id="complaint-unit"
@@ -190,7 +194,7 @@ export default function ComplaintForm() {
                   }}
                   className="input-field rounded-xl bg-[var(--color-surface)] text-[var(--color-text)] text-sm py-3"
                 >
-                  <option value="">✨ Rekomendasi Otomatis oleh AI (Smart Triage)</option>
+                  <option value="">{tx('Rekomendasi Otomatis oleh AI (Smart Triage)', 'Automatic AI Recommendation (Smart Triage)')}</option>
                   {UNITS.map(u => (
                     <option key={u.id} value={u.name}>
                       {u.name} ({u.code})
@@ -205,7 +209,7 @@ export default function ComplaintForm() {
                     Tupoksi {form.unit}:
                   </div>
                   <div>
-                    {UNITS.find(u => u.name === form.unit)?.desc || 'Unit pelaksana layanan kampus.'}
+                    {UNITS.find(u => u.name === form.unit)?.desc || tx('Unit pelaksana layanan kampus.', 'Campus service delivery unit.')}
                   </div>
                   <div className="mt-2 font-mono text-[11px] text-[var(--color-text-muted)]">
                     Target Penyelesaian (SLA): {UNITS.find(u => u.name === form.unit)?.slaDays || 3} hari kerja
@@ -213,7 +217,7 @@ export default function ComplaintForm() {
                 </div>
               ) : (
                 <div className="mt-4 p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-xs text-[var(--color-text-muted)] leading-relaxed">
-                  💡 <strong>Mode Otomatis Aktif:</strong> Model LLM/NLP SuaraLens akan membaca deskripsi laporan Anda di langkah berikutnya dan otomatis mengarahkan ke divisi yang paling tepat.
+                  <strong>{tx('Mode Otomatis Aktif:', 'Automatic Mode Active:')}</strong> {tx('Model LLM/NLP SuaraLens akan membaca deskripsi laporan Anda di langkah berikutnya dan otomatis mengarahkan ke divisi yang paling tepat.', 'The SuaraLens LLM/NLP model will read your report description in the next step and automatically route it to the most appropriate division.')}
                 </div>
               )}
             </div>
@@ -263,7 +267,7 @@ export default function ComplaintForm() {
                     if (!file) return
 
                     if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
-                      setError('Ukuran file maksimal 5 MB.')
+                      setError(tx('Ukuran file maksimal 5 MB.', 'Maximum file size is 5 MB.'))
                       e.target.value = ''
                       return
                     }
@@ -274,20 +278,20 @@ export default function ComplaintForm() {
                 />
                 <Paperclip size={24} className="text-[var(--color-text-muted)] mx-auto mb-2" aria-hidden="true" />
                 <p className="text-sm font-medium text-[var(--color-text)]">
-                  {form.attachments.length > 0 ? `File Terpilih: ${form.attachments[0]?.name || form.attachments[0]}` : 'Klik atau tarik file ke sini'}
+                  {form.attachments.length > 0 ? `${tx('File Terpilih', 'Selected file')}: ${form.attachments[0]?.name || form.attachments[0]}` : tx('Klik atau tarik file ke sini', 'Click or drag a file here')}
                 </p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">JPG, PNG, PDF (maksimal 5MB)</p>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">{tx('JPG, PNG, PDF (maksimal 5MB)', 'JPG, PNG, PDF (max 5MB)')}</p>
               </label>
 
               <div className="mt-5 flex items-start gap-3.5 p-4.5 border border-[var(--color-primary)]/30 rounded-xl bg-[var(--color-primary-soft)]">
                 <ShieldCheck size={20} className="text-[var(--color-primary)] flex-shrink-0 mt-0.5" aria-hidden="true" />
                 <div>
                   <div className="text-sm font-bold text-[var(--color-text)] flex items-center gap-2">
-                    <span>Nilai Inti SuaraLens: Anonimitas Mutlak (Wajib)</span>
-                    <span className="px-2.5 py-0.5 text-[10px] font-mono uppercase bg-[var(--color-primary)] text-white font-semibold rounded-full shadow-2xs">100% Terenkripsi</span>
+                    <span>{tx('Nilai Inti SuaraLens: Anonimitas Mutlak (Wajib)', 'SuaraLens Core Value: Absolute Anonymity (Required)')}</span>
+                    <span className="px-2.5 py-0.5 text-[10px] font-mono uppercase bg-[var(--color-primary)] text-white font-semibold rounded-full shadow-2xs">{tx('100% Terenkripsi', '100% Encrypted')}</span>
                   </div>
                   <div className="text-xs text-[var(--color-text-muted)] mt-1 leading-relaxed">
-                    SuaraLens dibangun di atas prinsip anonimitas mutlak. Identitas pribadi Anda tidak pernah disimpan atau diberikan kepada Admin Verifikator, Unit Kerja, maupun pihak mana pun. Aduan Anda ditindaklanjuti secara objektif dan transparan melalui Nomor Tiket Unik Anda.
+                    {tx('SuaraLens dibangun di atas prinsip anonimitas mutlak. Identitas pribadi Anda tidak pernah disimpan atau diberikan kepada Admin Verifikator, Unit Kerja, maupun pihak mana pun. Aduan Anda ditindaklanjuti secara objektif dan transparan melalui Nomor Tiket Unik Anda.', 'SuaraLens is built on the principle of absolute anonymity. Your personal identity is never stored or given to the Verifier Admin, Work Units, or any party. Your report is handled objectively and transparently through your Unique Ticket Number.')}
                   </div>
                 </div>
               </div>
@@ -300,8 +304,8 @@ export default function ComplaintForm() {
               <h3 className="font-semibold text-lg text-[var(--color-text)] mb-4">{t('form.step5_title')}</h3>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {[
-                  { label: 'Jenis Laporan', value: form.type ? t(`form.type_${form.type}`) || form.type : '-' },
-                  { label: 'Divisi Tujuan', value: form.unit || 'Otomatis (AI Smart Triage)' },
+                  { label: tx('Jenis Laporan', 'Report Type'), value: form.type ? t(`form.type_${form.type}`) || form.type : '-' },
+                  { label: tx('Divisi Tujuan', 'Target Division'), value: form.unit || tx('Otomatis (AI Smart Triage)', 'Automatic (AI Smart Triage)') },
                 ].map(({ label, value }) => (
                   <div key={label} className="p-3.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-xl">
                     <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)]">{label}</div>
@@ -314,7 +318,7 @@ export default function ComplaintForm() {
                   <div className="flex items-center gap-2.5">
                     <Paperclip size={16} className="text-[var(--color-text-muted)]" />
                     <div>
-                      <div className="text-[10px] uppercase font-mono tracking-wider text-[var(--color-text-muted)]">Lampiran File</div>
+                      <div className="text-[10px] uppercase font-mono tracking-wider text-[var(--color-text-muted)]">{tx('Lampiran File', 'File Attachment')}</div>
                       <div className="text-xs font-semibold text-[var(--color-text)]">{form.attachments[0]?.name || form.attachments[0]}</div>
                     </div>
                   </div>
@@ -326,7 +330,7 @@ export default function ComplaintForm() {
                 </div>
               )}
               <div className="p-4 border border-[var(--color-border)] text-sm rounded-xl bg-[var(--color-surface)]">
-                <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-1">Deskripsi Aduan</div>
+                <div className="text-xs uppercase tracking-wider text-[var(--color-text-muted)] mb-1">{tx('Deskripsi Aduan', 'Report Description')}</div>
                 <p className="text-[var(--color-text)] leading-relaxed whitespace-pre-line">{form.description}</p>
               </div>
               {/* NLP Preview */}
@@ -336,16 +340,16 @@ export default function ComplaintForm() {
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-xs">
                   <div className="p-3 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-lg">
-                    <div className="text-[var(--color-text-muted)] mb-1">Kategori</div>
-                    <div className="font-bold text-[var(--color-text)] capitalize">{form.category || '-'}</div>
+                    <div className="text-[var(--color-text-muted)] mb-1">{tx('Kategori', 'Category')}</div>
+                    <div className="font-bold text-[var(--color-text)] capitalize">{form.category ? categoryLabel(form.category) : '-'}</div>
                   </div>
                   <div className="p-3 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-lg">
-                    <div className="text-[var(--color-text-muted)] mb-1">Urgensi</div>
-                    <div className="font-bold text-[var(--color-status-warning)]">Sedang</div>
+                    <div className="text-[var(--color-text-muted)] mb-1">{tx('Urgensi', 'Urgency')}</div>
+                    <div className="font-bold text-[var(--color-status-warning)]">{tx('Sedang', 'Medium')}</div>
                   </div>
                   <div className="p-3 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-lg">
-                    <div className="text-[var(--color-text-muted)] mb-1">Sentimen</div>
-                    <div className="font-bold text-[var(--color-status-danger)]">Negatif</div>
+                    <div className="text-[var(--color-text-muted)] mb-1">{tx('Sentimen', 'Sentiment')}</div>
+                    <div className="font-bold text-[var(--color-status-danger)]">{tx('Negatif', 'Negative')}</div>
                   </div>
                 </div>
                 <div className="flex items-start gap-1.5 text-xs text-[var(--color-text-muted)] mt-3">
@@ -373,7 +377,7 @@ export default function ComplaintForm() {
               {loading ? (
                 <>
                   <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Memproses &amp; Menganalisis AI...</span>
+                  <span>{tx('Memproses & Menganalisis AI...', 'Processing & Analyzing with AI...')}</span>
                 </>
               ) : t('form.submit')}
             </button>

@@ -3,14 +3,16 @@ import AdminLayout from '../../components/layout/AdminLayout.jsx'
 import { StatusBadge } from '../../components/ui/StatusBadge.jsx'
 import { getComplaints, verifyComplaint } from '../../services/complaintApi.js'
 import { formatDateTime, formatUrgencyScore } from '../../utils/formatter.js'
+import useBilingual from '../../hooks/useBilingual.js'
 import { CheckSquare, XCircle, Check, Search, ShieldCheck } from 'lucide-react'
 
 export default function AdminVerification() {
+  const { tx } = useBilingual()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [verifyingId, setVerifyingId] = useState(null)
-  const [note, setNote] = useState('Data dan keluhan valid untuk ditindaklanjuti.')
+  const [note, setNote] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
 
@@ -28,13 +30,16 @@ export default function AdminVerification() {
   async function handleAction(id, isApproved) {
     try {
       setErrorMsg('')
-      await verifyComplaint(id, { verified: isApproved, note })
-      setSuccessMsg(`Tiket berhasil ${isApproved ? 'diverifikasi' : 'ditolak'}.`)
+      await verifyComplaint(id, {
+        verified: isApproved,
+        note: note.trim() || tx('Data dan keluhan valid untuk ditindaklanjuti.', 'The data and complaint are valid and ready for follow-up.'),
+      })
+      setSuccessMsg(isApproved ? tx('Tiket berhasil diverifikasi.', 'Ticket verified successfully.') : tx('Tiket berhasil ditolak.', 'Ticket rejected successfully.'))
       setTimeout(() => setSuccessMsg(''), 3000)
       setVerifyingId(null)
       loadData()
     } catch {
-      setErrorMsg('Gagal memproses aksi verifikasi. Silakan coba lagi.')
+      setErrorMsg(tx('Gagal memproses aksi verifikasi. Silakan coba lagi.', 'Failed to process the verification. Please try again.'))
       setTimeout(() => setErrorMsg(''), 4000)
     }
   }
@@ -45,21 +50,21 @@ export default function AdminVerification() {
   )
 
   return (
-    <AdminLayout title="Verifikasi Masukan Masuk">
+    <AdminLayout title={tx('Verifikasi Masukan Masuk', 'Incoming Report Verification')}>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-[var(--color-border)]">
         <div>
           <h2 className="text-xl font-bold font-mono tracking-tight text-[var(--color-text)]">
-            Antrean Verifikasi Validitas Aduan
+            {tx('Antrean Verifikasi Validitas Aduan', 'Complaint Validity Verification Queue')}
           </h2>
           <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Periksa kelayakan dan keabsahan aduan yang baru masuk (Status: Diterima) sebelum didisposisikan ke unit kerja.
+            {tx('Periksa kelayakan dan keabsahan aduan yang baru masuk (Status: Diterima) sebelum didisposisikan ke unit kerja.', 'Review the eligibility and validity of newly received reports (Status: Received) before dispatching them to a work unit.')}
           </p>
         </div>
         <div className="w-full sm:w-64">
           <input
             type="text"
-            placeholder="Cari ID tiket / deskripsi..."
-            aria-label="Cari ID tiket atau deskripsi aduan"
+            placeholder={tx('Cari ID tiket / deskripsi...', 'Search ticket ID / description...')}
+            aria-label={tx('Cari ID tiket atau deskripsi aduan', 'Search ticket ID or complaint description')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="input-field text-xs !py-2 rounded-xl"
@@ -86,8 +91,8 @@ export default function AdminVerification() {
       ) : filtered.length === 0 ? (
         <div className="p-12 text-center border border-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl shadow-sm">
           <CheckSquare size={32} className="mx-auto mb-2 text-[var(--color-status-success)] opacity-70" />
-          <h3 className="font-bold text-sm text-[var(--color-text)]">Tidak Ada Tiket yang Perlu Diverifikasi</h3>
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">Semua aduan masuk telah diverifikasi dan siap didisposisikan.</p>
+          <h3 className="font-bold text-sm text-[var(--color-text)]">{tx('Tidak Ada Tiket yang Perlu Diverifikasi', 'No Tickets Need Verification')}</h3>
+          <p className="text-xs text-[var(--color-text-muted)] mt-1">{tx('Semua aduan masuk telah diverifikasi dan siap didisposisikan.', 'All incoming reports have been verified and are ready to be dispatched.')}</p>
         </div>
       ) : (
         <div className="border border-[var(--color-border)] divide-y divide-[var(--color-border)] bg-[var(--color-surface)] rounded-2xl shadow-sm overflow-hidden">
@@ -98,11 +103,11 @@ export default function AdminVerification() {
                   <span className="font-mono text-sm font-bold text-[var(--color-primary)]">{c.ticket_id}</span>
                   <StatusBadge status={c.status} />
                   <span className="text-xs font-mono px-2.5 py-0.5 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] rounded-lg">
-                    Kategori: {c.category}
+                    {tx('Kategori', 'Category')}: {c.category}
                   </span>
                 </div>
                 <div className="text-xs font-mono text-[var(--color-text-muted)]">
-                  Masuk: {formatDateTime(c.created_at)}
+                  {tx('Masuk', 'Received')}: {formatDateTime(c.created_at)}
                 </div>
               </div>
 
@@ -112,9 +117,9 @@ export default function AdminVerification() {
 
               <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[var(--color-border)] text-xs">
                 <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
-                  <span>Saran Unit AI: <strong className="text-[var(--color-text)]">{c.target_unit || c.unit}</strong></span>
+                  <span>{tx('Saran Unit AI', 'AI Suggested Unit')}: <strong className="text-[var(--color-text)]">{c.target_unit || c.unit}</strong></span>
                   <span>·</span>
-                  <span>Skor Urgensi: <strong className="text-[var(--color-status-danger)] font-mono">{formatUrgencyScore(c.urgency_score)}/10</strong></span>
+                  <span>{tx('Skor Urgensi', 'Urgency Score')}: <strong className="text-[var(--color-status-danger)] font-mono">{formatUrgencyScore(c.urgency_score)}/10</strong></span>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -122,13 +127,13 @@ export default function AdminVerification() {
                     onClick={() => setVerifyingId(verifyingId === c.id ? null : c.id)}
                     className="btn-outline !py-1.5 !px-3 text-xs rounded-xl"
                   >
-                    {verifyingId === c.id ? 'Tutup Form' : 'Verifikasi Tiket'}
+                    {verifyingId === c.id ? tx('Tutup Form', 'Close Form') : tx('Verifikasi Tiket', 'Verify Ticket')}
                   </button>
                   <button
                     onClick={() => handleAction(c.id, true)}
                     className="btn-solid !py-1.5 !px-3 text-xs flex items-center gap-1.5 rounded-xl"
                   >
-                    <Check size={13} /> Setujui Langsung
+                    <Check size={13} /> {tx('Setujui Langsung', 'Approve Directly')}
                   </button>
                 </div>
               </div>
@@ -137,7 +142,7 @@ export default function AdminVerification() {
               {verifyingId === c.id && (
                 <div className="mt-4 p-4 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] space-y-3 rounded-xl">
                   <label htmlFor={`verify-note-${c.id}`} className="block text-xs font-bold text-[var(--color-text)]">
-                    Catatan Hasil Verifikasi Administrator:
+                    {tx('Catatan Hasil Verifikasi Administrator:', 'Administrator Verification Notes:')}
                   </label>
                   <textarea
                     id={`verify-note-${c.id}`}
@@ -145,20 +150,20 @@ export default function AdminVerification() {
                     value={note}
                     onChange={e => setNote(e.target.value)}
                     className="input-field text-xs resize-none rounded-lg"
-                    placeholder="Tuliskan catatan verifikasi..."
+                    placeholder={tx('Tuliskan catatan verifikasi...', 'Write verification notes...')}
                   />
                   <div className="flex justify-end gap-2">
                     <button
                       onClick={() => handleAction(c.id, false)}
                       className="p-2 border border-[var(--color-status-danger)] text-[var(--color-status-danger)] hover:bg-[var(--color-status-danger)]/10 text-xs font-bold flex items-center gap-1 rounded-xl transition-colors"
                     >
-                      <XCircle size={14} /> Tolak Aduan (Spam/Tidak Valid)
+                      <XCircle size={14} /> {tx('Tolak Aduan (Spam/Tidak Valid)', 'Reject Complaint (Spam/Invalid)')}
                     </button>
                     <button
                       onClick={() => handleAction(c.id, true)}
                       className="btn-solid text-xs !py-1.5 !px-4 font-bold flex items-center gap-1 rounded-xl"
                     >
-                      <Check size={14} /> Setujui & Lanjutkan ke Disposisi
+                      <Check size={14} /> {tx('Setujui & Lanjutkan ke Disposisi', 'Approve & Continue to Dispatch')}
                     </button>
                   </div>
                 </div>

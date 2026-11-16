@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import useBilingual from '../../hooks/useBilingual.js'
 import { UserPlus, AlertCircle, Info } from 'lucide-react'
 import { signUpStakeholder } from '../../services/authApi.js'
 import { useAuth } from '../../context/AuthContext.jsx'
@@ -11,6 +12,7 @@ const label = 'mb-1 block text-xs font-semibold text-[var(--color-text)]'
 
 export default function SignUpStakeholderPage() {
   const { t } = useTranslation()
+  const { tx } = useBilingual()
   const { login } = useAuth()
   const navigate = useNavigate()
 
@@ -29,15 +31,15 @@ export default function SignUpStakeholderPage() {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (form.password !== form.confirm_password) { setError('Kata sandi tidak cocok.'); return }
-    if (!form.agree) { setError('Harap setujui kebijakan privasi.'); return }
+    if (form.password !== form.confirm_password) { setError(tx('Kata sandi tidak cocok.', 'Passwords do not match.')); return }
+    if (!form.agree) { setError(tx('Harap setujui kebijakan privasi.', 'Please agree to the privacy policy.')); return }
     setLoading(true)
     try {
       const { user } = await signUpStakeholder({ ...form, role: 'stakeholder' })
       login(user)
       navigate('/stakeholder')
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Gagal mendaftar. Coba lagi.')
+      setError(err.response?.data?.message || err.message || tx('Gagal mendaftar. Coba lagi.', 'Registration failed. Please try again.'))
     } finally {
       setLoading(false)
     }
@@ -48,7 +50,7 @@ export default function SignUpStakeholderPage() {
       variant="stakeholder"
       wide
       title={t('auth.as_stakeholder')}
-      subtitle="Akun stakeholder untuk memantau & menindaklanjuti aduan"
+      subtitle={tx('Akun stakeholder untuk memantau & menindaklanjuti aduan', 'Stakeholder account to monitor & follow up on complaints')}
       footer={
         <>
           {t('auth.already_have_account')}{' '}
@@ -58,7 +60,7 @@ export default function SignUpStakeholderPage() {
     >
       <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-[var(--color-primary)]/30 bg-[var(--color-primary-soft)] p-3.5 text-xs leading-relaxed text-[var(--color-text)]">
         <Info size={16} className="mt-0.5 shrink-0 text-[var(--color-primary)]" />
-        <span>Verifikasi email domain institusi akan diaktifkan di versi berikutnya. Saat ini pendaftaran mandiri terbuka untuk peninjauan.</span>
+        <span>{tx('Verifikasi email domain institusi akan diaktifkan di versi berikutnya. Saat ini pendaftaran mandiri terbuka untuk peninjauan.', 'Institutional email domain verification will be enabled in a later version. Self-registration is currently open for review.')}</span>
       </div>
 
       {error && (
@@ -70,7 +72,7 @@ export default function SignUpStakeholderPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="stakeholder-name" className={label}>{t('auth.name')}</label>
-          <input id="stakeholder-name" name="name" required placeholder="Dr. Nama Lengkap" value={form.name} onChange={handleChange} className="input-field rounded-xl" />
+          <input id="stakeholder-name" name="name" required placeholder={tx('Dr. Nama Lengkap', 'Dr. Full Name')} value={form.name} onChange={handleChange} className="input-field rounded-xl" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div>
@@ -103,7 +105,7 @@ export default function SignUpStakeholderPage() {
             ))}
           </select>
           <span className="mt-1 block text-[11px] text-[var(--color-text-muted)]">
-            Dashboard Anda nantinya akan otomatis menampilkan aduan untuk unit ini.
+            {tx('Dashboard Anda nantinya akan otomatis menampilkan aduan untuk unit ini.', 'Your dashboard will automatically show complaints for this unit.')}
           </span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
