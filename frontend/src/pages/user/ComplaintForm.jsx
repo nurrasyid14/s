@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { CheckCircle, AlertCircle, AlertTriangle, MessageCircle, Lightbulb, Check, Paperclip, Bot, ShieldCheck } from 'lucide-react'
@@ -6,6 +6,76 @@ import { submitComplaint } from '../../services/complaintApi.js'
 import Navbar from '../../components/layout/Navbar.jsx'
 import useBilingual from '../../hooks/useBilingual.js'
 import { useComplaintLabels } from '../../utils/ComplaintLabels.js'
+
+function estimateClientNLP(text, userCategory) {
+  if (!text || text.trim().length < 5) {
+    return { category: userCategory || '-', urgency: 'Sedang', urgencyEn: 'Medium', sentiment: 'Netral', sentimentEn: 'Neutral', sentimentTone: 'neutral', urgencyTone: 'warning' }
+  }
+  const lower = text.toLowerCase()
+
+  // 1. Sentimen estimasi client
+  const positiveWords = ['terima kasih', 'makasih', 'apresiasi', 'bagus', 'puas', 'mantap', 'keren', 'sangat baik', 'senang', 'terima kasih banyak', 'nyaman', 'asri', 'tertib', 'ramah', 'terbantu']
+  const negativeWords = ['rusak', 'bocor', 'mati', 'panas', 'lemot', 'lambat', 'kecewa', 'parah', 'bobrok', 'hilang', 'tidak ada', 'gaada', 'kurang', 'kotor', 'bau', 'bising', 'gangguan', 'kendala', 'sulit', 'jelek']
+
+  let posCount = 0
+  let negCount = 0
+  positiveWords.forEach(w => { if (lower.includes(w)) posCount += 2 })
+  negativeWords.forEach(w => { if (lower.includes(w)) negCount += 2 })
+
+  let sentiment = 'Netral'
+  let sentimentEn = 'Neutral'
+  let sentimentTone = 'neutral'
+  if (posCount > negCount) {
+    sentiment = 'Positif'
+    sentimentEn = 'Positive'
+    sentimentTone = 'success'
+  } else if (negCount > posCount) {
+    sentiment = 'Negatif'
+    sentimentEn = 'Negative'
+    sentimentTone = 'danger'
+  }
+
+  // 2. Urgensi estimasi client
+  const criticalWords = ['kebakaran', 'api', 'asap', 'korslet', 'konslet', 'meledak', 'tegangan tinggi', 'darurat', 'bahaya jiwa', 'ancaman']
+  const urgentWords = ['darurat', 'bahaya', 'bocor parah', 'runtuh', 'ambruk', 'lumpuh total', 'segera', 'kritis', 'mendesak']
+  const lowWords = ['terima kasih', 'usulan', 'saran', 'apresiasi', 'ide', 'bangku taman', 'colokan', 'masukan']
+
+  let urgency = 'Sedang'
+  let urgencyEn = 'Medium'
+  let urgencyTone = 'warning'
+
+  if (criticalWords.some(w => lower.includes(w))) {
+    urgency = 'Kritis'
+    urgencyEn = 'Critical'
+    urgencyTone = 'danger'
+  } else if (urgentWords.some(w => lower.includes(w))) {
+    urgency = 'Tinggi'
+    urgencyEn = 'High'
+    urgencyTone = 'danger'
+  } else if (lowWords.some(w => lower.includes(w)) || sentimentTone === 'success') {
+    urgency = 'Rendah'
+    urgencyEn = 'Low'
+    urgencyTone = 'success'
+  }
+
+  // 3. Kategori fallback
+  let estimatedCategory = userCategory
+  if (!estimatedCategory) {
+    if (/(ac|ruang kelas|gedung|kursi|meja|toilet|lampu|pintu|atap|bocor|fasilitas|bangku)/i.test(lower)) {
+      estimatedCategory = 'Sarana Prasarana dan Layanan Umum'
+    } else if (/(wifi|internet|jaringan|komputer|server|sia|siakad|website|login|ethol)/i.test(lower)) {
+      estimatedCategory = 'TIK/Sistem Informasi'
+    } else if (/(beasiswa|ormawa|kemahasiswaan|lomba)/i.test(lower)) {
+      estimatedCategory = 'Kemahasiswaan'
+    } else if (/(nilai|krs|khs|transkrip|dosen|perkuliahan)/i.test(lower)) {
+      estimatedCategory = 'Akademik'
+    } else if (/(ukt|biaya|bayar|keuangan)/i.test(lower)) {
+      estimatedCategory = 'Keuangan'
+    }
+  }
+
+  return { category: estimatedCategory, urgency, urgencyEn, sentiment, sentimentEn, sentimentTone, urgencyTone }
+}
 
 const TYPES = [
   { key: 'complaint', icon: AlertTriangle, titleKey: 'form.type_complaint', descKey: 'form.type_complaint_desc' },
@@ -33,6 +103,10 @@ export default function ComplaintForm() {
     type: '', category: '', description: '', unit: '',
     attachments: [],
   })
+
+  const previewNLP = useMemo(() => {
+    return estimateClientNLP(form.description, form.category)
+  }, [form.description, form.category])
 
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); setError('') }
 
@@ -344,15 +418,33 @@ export default function ComplaintForm() {
                 <div className="grid grid-cols-3 gap-2 text-xs">
                   <div className="p-3 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-lg">
                     <div className="text-[var(--color-text-muted)] mb-1">{tx('Kategori', 'Category')}</div>
-                    <div className="font-bold text-[var(--color-text)] capitalize">{form.category ? categoryLabel(form.category) : '-'}</div>
+                    <div className="font-bold text-[var(--color-text)] capitalize">
+                      {previewNLP.category ? (categoryLabel(previewNLP.category) || previewNLP.category) : '-'}
+                    </div>
                   </div>
                   <div className="p-3 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-lg">
                     <div className="text-[var(--color-text-muted)] mb-1">{tx('Urgensi', 'Urgency')}</div>
-                    <div className="font-bold text-[var(--color-status-warning)]">{tx('Sedang', 'Medium')}</div>
+                    <div className={`font-bold ${
+                      previewNLP.urgencyTone === 'danger'
+                        ? 'text-[var(--color-status-danger)]'
+                        : previewNLP.urgencyTone === 'success'
+                        ? 'text-[var(--color-status-success)]'
+                        : 'text-[var(--color-status-warning)]'
+                    }`}>
+                      {tx(previewNLP.urgency, previewNLP.urgencyEn)}
+                    </div>
                   </div>
                   <div className="p-3 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-lg">
                     <div className="text-[var(--color-text-muted)] mb-1">{tx('Sentimen', 'Sentiment')}</div>
-                    <div className="font-bold text-[var(--color-status-danger)]">{tx('Negatif', 'Negative')}</div>
+                    <div className={`font-bold ${
+                      previewNLP.sentimentTone === 'success'
+                        ? 'text-[var(--color-status-success)]'
+                        : previewNLP.sentimentTone === 'danger'
+                        ? 'text-[var(--color-status-danger)]'
+                        : 'text-[var(--color-text-muted)]'
+                    }`}>
+                      {tx(previewNLP.sentiment, previewNLP.sentimentEn)}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-start gap-1.5 text-xs text-[var(--color-text-muted)] mt-3">
